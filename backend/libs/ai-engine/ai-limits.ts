@@ -1,0 +1,1 @@
+export const MAX_AI_CALLS_PER_CONVERSATION = 20

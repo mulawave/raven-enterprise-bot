@@ -1,0 +1,511 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id         String   @id @default(uuid())
+  name       String
+  logo_url   String?
+  theme      String?
+  suspended  Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  branches            Branch[]
+  users               User[]
+  customers           Customer[]
+  conversations       Conversation[]
+  messages            Message[]
+  menuCategories      MenuCategory[]
+  menuItems           MenuItem[]
+  orders              Order[]
+  orderItems          OrderItem[]
+  roomTypes           RoomType[]
+  bookings            Booking[]
+  payments            Payment[]
+  paymentAudits       PaymentAudit[]
+  orderAudits         OrderAudit[]
+  auditLogs           AuditLog[]
+  staffNotifications  StaffNotification[]
+  tenantAssignments   TenantAssignment[]
+  slaLogs             SlaLog[]
+  subscription        Subscription?
+  invoices            Invoice[]
+  usages              Usage[]
+  featureFlags        FeatureFlag[]
+
+  @@index([created_at])
+}
+
+model Branch {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant       Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  staffBranches StaffBranch[]
+  orders       Order[]
+  bookings     Booking[]
+
+  @@index([tenant_id])
+}
+
+enum UserScope {
+  SYSTEM
+  TENANT
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  admin
+  owner
+  staff
+}
+
+model User {
+  id         String    @id @default(uuid())
+  tenant_id  String?
+  email      String    @unique
+  password   String
+  role       UserRole
+  scope      UserScope @default(TENANT)
+  name       String?
+  avatar_url String?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  tenant             Tenant?              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  staffBranches      StaffBranch[]
+  orderAudits        OrderAudit[]
+  staffNotifications StaffNotification[]
+  consents           Consent[]
+
+  @@index([tenant_id])
+  @@index([email])
+  @@index([role])
+  @@index([scope])
+}
+
+model StaffBranch {
+  id         String   @id @default(uuid())
+  user_id    String
+  branch_id  String
+  created_at DateTime @default(now())
+
+  user   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, branch_id])
+  @@index([user_id])
+  @@index([branch_id])
+}
+
+model Customer {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  name       String?
+  email      String?
+  phone      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+  orders        Order[]
+  bookings      Booking[]
+
+  @@index([tenant_id])
+  @@index([email])
+  @@index([phone])
+}
+
+model Conversation {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  customer_id String
+  status      String   @default("open")  // open | resolved | archived
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  customer Customer  @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([tenant_id])
+  @@index([customer_id])
+  @@index([status])
+  @@index([created_at])
+  @@index([updated_at])
+}
+
+model Message {
+  id              String   @id @default(uuid())
+  tenant_id       String
+  conversation_id String
+  sender_type     String
+  sender_id       String?
+  content         String
+  created_at      DateTime @default(now())
+
+  tenant       Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([conversation_id])
+  @@index([created_at])
+}
+
+model MenuCategory {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  name       String
+  created_at DateTime @default(now())
+
+  tenant    Tenant     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  menuItems MenuItem[]
+
+  @@index([tenant_id])
+}
+
+model MenuItem {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  category_id String
+  name        String
+  price_kobo  Int
+  available   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant     Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  category   MenuCategory @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([tenant_id])
+  @@index([category_id])
+  @@index([available])
+}
+
+model Order {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  branch_id   String
+  customer_id String
+  total_kobo  Int
+  status      String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  branch      Branch       @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  customer    Customer     @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  payments    Payment[]
+  orderAudits OrderAudit[]
+
+  @@index([tenant_id])
+  @@index([branch_id])
+  @@index([customer_id])
+  @@index([status])
+  @@index([created_at])
+}
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  order_id     String
+  menu_item_id String
+  quantity     Int
+  price_kobo   Int
+  created_at   DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menu_item_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([order_id])
+  @@index([menu_item_id])
+}
+
+model RoomType {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  name       String
+  price_kobo Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([tenant_id])
+}
+
+model Booking {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  branch_id    String
+  customer_id  String
+  room_type_id String
+  start_date   DateTime
+  end_date     DateTime
+  total_kobo   Int
+  status       String
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  branch   Branch    @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  customer Customer  @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  roomType RoomType  @relation(fields: [room_type_id], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([tenant_id])
+  @@index([branch_id])
+  @@index([customer_id])
+  @@index([room_type_id])
+  @@index([status])
+  @@index([created_at])
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  order_id    String?
+  booking_id  String?
+  amount_kobo Int
+  status      String
+  reference   String   @unique
+  provider    String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  order         Order?         @relation(fields: [order_id], references: [id], onDelete: SetNull)
+  booking       Booking?       @relation(fields: [booking_id], references: [id], onDelete: SetNull)
+  paymentAudits PaymentAudit[]
+
+  @@index([tenant_id])
+  @@index([order_id])
+  @@index([booking_id])
+  @@index([status])
+  @@index([reference])
+  @@index([created_at])
+}
+
+model PaymentAudit {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  payment_id String
+  status     String
+  reference  String
+  created_at DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  payment Payment @relation(fields: [payment_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([payment_id])
+  @@index([created_at])
+}
+
+model OrderAudit {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  order_id   String
+  status     String
+  user_id    String?
+  created_at DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  order  Order  @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id])
+  @@index([order_id])
+  @@index([created_at])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  entity_id  String
+  action     String
+  metadata   String?  // JSON string for structured event data
+  timestamp  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([entity_id])
+  @@index([timestamp])
+}
+
+model StaffNotification {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  user_id    String
+  message    String
+  read       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([user_id])
+  @@index([read])
+  @@index([created_at])
+}
+
+model ResellerAccount {
+  id         String   @id @default(uuid())
+  name       String
+  email      String   @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenantAssignments TenantAssignment[]
+
+  @@index([email])
+}
+
+model TenantAssignment {
+  id          String   @id @default(uuid())
+  reseller_id String
+  tenant_id   String
+  assigned_at DateTime @default(now())
+
+  reseller ResellerAccount @relation(fields: [reseller_id], references: [id], onDelete: Cascade)
+  tenant   Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([reseller_id, tenant_id])
+  @@index([reseller_id])
+  @@index([tenant_id])
+}
+
+model SlaLog {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  metric     String
+  value      Float
+  timestamp  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([timestamp])
+}
+
+model Subscription {
+  id                          String   @id @default(uuid())
+  tenant_id                   String   @unique
+  plan_tier                   String   // "starter" | "growth" | "enterprise"
+  status                      String   // "active" | "cancelled" | "past_due"
+  current_period_start        DateTime
+  current_period_end          DateTime
+  conversations_used          Int      @default(0)
+  conversations_limit         Int      // 500, 2500, 12000
+  overage_cost_kobo           Int      @default(0)
+  paystack_plan_code          String?
+  paystack_subscription_code  String?
+  created_at                  DateTime @default(now())
+  updated_at                  DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([status])
+  @@index([current_period_end])
+}
+
+model AppSettings {
+  id              String   @id @default(uuid())
+  logo_url        String?
+  favicon_url     String?
+  company_name    String?
+  company_address String?
+  company_email   String?
+  company_phone   String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Billing: Invoice
+// ---------------------------------------------------------------------------
+model Invoice {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  plan       String
+  period     String
+  amount     Float
+  status     String   @default("pending") // pending | charged | paid | failed
+  reference  String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([status])
+  @@index([created_at])
+}
+
+// ---------------------------------------------------------------------------
+// Billing: Usage tracking per tenant
+// ---------------------------------------------------------------------------
+model Usage {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  key        String
+  count      Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, key])
+  @@index([tenant_id])
+}
+
+// ---------------------------------------------------------------------------
+// Compliance: GDPR consent tracking per user
+// ---------------------------------------------------------------------------
+model Consent {
+  id         String   @id @default(uuid())
+  user_id    String
+  type       String
+  timestamp  DateTime @default(now())
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([type])
+}
+
+// ---------------------------------------------------------------------------
+// Config: Feature flags per tenant
+// ---------------------------------------------------------------------------
+model FeatureFlag {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  flag       String
+  enabled    Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, flag])
+  @@index([tenant_id])
+}

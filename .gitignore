@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.next/
+out/
+build/
+
+# Env files — never commit secrets
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+
+# Uploads (user data)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+
+# Redis data
+redis-data/
+*.rdb
+*.aof
+
+# Deploy archives
+*.tar.gz
+*.zip

@@ -1,0 +1,228 @@
+import { Injectable, Logger } from '@nestjs/common'
+import { PrismaClient } from '@prisma/client'
+
+export type PlanTier = 'starter' | 'growth' | 'enterprise'
+export type SubscriptionStatus = 'active' | 'cancelled' | 'past_due'
+
+export interface SubscriptionPlan {
+  tier: PlanTier
+  name: string
+  priceKobo: number
+  conversationsLimit: number
+  overagePriceKobo: number
+}
+
+export const PLANS: Record<PlanTier, SubscriptionPlan> = {
+  starter: {
+    tier: 'starter',
+    name: 'Starter Plan',
+    priceKobo: 4900000, // ₦49,000
+    conversationsLimit: 500,
+    overagePriceKobo: 12000, // ₦120 per additional conversation
+  },
+  growth: {
+    tier: 'growth',
+    name: 'Growth Plan',
+    priceKobo: 19900000, // ₦199,000
+    conversationsLimit: 2500,
+    overagePriceKobo: 10000, // ₦100 per additional conversation
+  },
+  enterprise: {
+    tier: 'enterprise',
+    name: 'Enterprise Plan',
+    priceKobo: 79900000, // ₦799,000
+    conversationsLimit: 12000,
+    overagePriceKobo: 8000, // ₦80 per additional conversation
+  },
+}
+
+@Injectable()
+export class SubscriptionsService {
+  private readonly logger = new Logger(SubscriptionsService.name)
+
+  constructor(private readonly prisma: PrismaClient) {}
+
+  /**
+   * Create a new subscription for a tenant
+   */
+  async createSubscription(tenantId: string, planTier: PlanTier) {
+    const plan = PLANS[planTier]
+    const now = new Date()
+    const periodEnd = new Date()
+    periodEnd.setDate(periodEnd.getDate() + 30) // 30-day billing cycle
+
+    return this.prisma.subscription.create({
+      data: {
+        tenant_id: tenantId,
+        plan_tier: planTier,
+        status: 'active',
+        current_period_start: now,
+        current_period_end: periodEnd,
+        conversations_used: 0,
+        conversations_limit: plan.conversationsLimit,
+        overage_cost_kobo: 0,
+      },
+    })
+  }
+
+  /**
+   * Get subscription for a tenant
+   */
+  async getSubscription(tenantId: string) {
+    return this.prisma.subscription.findUnique({
+      where: { tenant_id: tenantId },
+      include: { tenant: true },
+    })
+  }
+
+  /**
+   * Increment conversation counter (called from AI processor)
+   */
+  async incrementConversationCount(tenantId: string) {
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { tenant_id: tenantId },
+    })
+
+    if (!subscription) {
+      this.logger.warn(`No subscription found for tenant ${tenantId}`)
+      return
+    }
+
+    // Increment counter
+    await this.prisma.subscription.update({
+      where: { tenant_id: tenantId },
+      data: { conversations_used: { increment: 1 } },
+    })
+
+    // Check if limit exceeded (for warning notifications)
+    const newCount = subscription.conversations_used + 1
+    const limit = subscription.conversations_limit
+    const usagePercent = (newCount / limit) * 100
+
+    if (usagePercent >= 80 && usagePercent < 81) {
+      // Send warning email at 80%
+      this.logger.log(`Tenant ${tenantId} has used ${usagePercent.toFixed(0)}% of conversations`)
+      // TODO: Trigger email notification
+    }
+
+    if (usagePercent >= 100) {
+      // Calculate overage
+      const overage = newCount - limit
+      const plan = PLANS[subscription.plan_tier as PlanTier]
+      const overageCost = overage * plan.overagePriceKobo
+
+      await this.prisma.subscription.update({
+        where: { tenant_id: tenantId },
+        data: { overage_cost_kobo: overageCost },
+      })
+
+      this.logger.log(`Tenant ${tenantId} has ${overage} overage conversations (₦${overageCost / 100})`)
+    }
+  }
+
+  /**
+   * Calculate total bill for current period
+   */
+  async calculateBill(tenantId: string) {
+    const subscription = await this.getSubscription(tenantId)
+    if (!subscription) {
+      throw new Error('Subscription not found')
+    }
+
+    const plan = PLANS[subscription.plan_tier as PlanTier]
+    const baseCost = plan.priceKobo
+    const overageCost = subscription.overage_cost_kobo
+
+    return {
+      baseCost,
+      overageCost,
+      totalCost: baseCost + overageCost,
+      conversationsUsed: subscription.conversations_used,
+      conversationsLimit: subscription.conversations_limit,
+      overageConversations: Math.max(0, subscription.conversations_used - subscription.conversations_limit),
+    }
+  }
+
+  /**
+   * Reset billing cycle (run at end of month)
+   */
+  async resetBillingCycle(tenantId: string) {
+    const subscription = await this.getSubscription(tenantId)
+    if (!subscription) {
+      throw new Error('Subscription not found')
+    }
+
+    const now = new Date()
+    const nextPeriodEnd = new Date()
+    nextPeriodEnd.setDate(nextPeriodEnd.getDate() + 30)
+
+    await this.prisma.subscription.update({
+      where: { tenant_id: tenantId },
+      data: {
+        current_period_start: now,
+        current_period_end: nextPeriodEnd,
+        conversations_used: 0,
+        overage_cost_kobo: 0,
+      },
+    })
+
+    return { success: true, message: 'Billing cycle reset', nextBillingDate: nextPeriodEnd }
+  }
+
+  /**
+   * Upgrade/downgrade plan
+   */
+  async changePlan(tenantId: string, newPlanTier: PlanTier) {
+    const newPlan = PLANS[newPlanTier]
+
+    await this.prisma.subscription.update({
+      where: { tenant_id: tenantId },
+      data: {
+        plan_tier: newPlanTier,
+        conversations_limit: newPlan.conversationsLimit,
+      },
+    })
+
+    return { success: true, message: `Plan changed to ${newPlan.name}` }
+  }
+
+  /**
+   * Cancel subscription
+   */
+  async cancelSubscription(tenantId: string) {
+    await this.prisma.subscription.update({
+      where: { tenant_id: tenantId },
+      data: { status: 'cancelled' },
+    })
+
+    return { success: true, message: 'Subscription cancelled. Data will be retained for 30 days.' }
+  }
+
+  /**
+   * Get usage stats for dashboard
+   */
+  async getUsageStats(tenantId: string) {
+    const subscription = await this.getSubscription(tenantId)
+    if (!subscription) {
+      return null
+    }
+
+    const usagePercent = (subscription.conversations_used / subscription.conversations_limit) * 100
+    const remainingConversations = Math.max(0, subscription.conversations_limit - subscription.conversations_used)
+
+    return {
+      planTier: subscription.plan_tier,
+      status: subscription.status,
+      conversationsUsed: subscription.conversations_used,
+      conversationsLimit: subscription.conversations_limit,
+      remainingConversations,
+      usagePercent: Math.round(usagePercent),
+      overageCost: subscription.overage_cost_kobo,
+      currentPeriodStart: subscription.current_period_start,
+      currentPeriodEnd: subscription.current_period_end,
+      daysUntilRenewal: Math.ceil(
+        (subscription.current_period_end.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+      ),
+    }
+  }
+}

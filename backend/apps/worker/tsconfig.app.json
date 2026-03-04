@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "outDir": "../../dist/apps/worker"
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "**/*.test.ts"]
+}

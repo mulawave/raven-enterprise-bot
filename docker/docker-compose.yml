@@ -1,0 +1,93 @@
+
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: app_db
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: change_me
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - raven-net
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - raven-net
+
+  api:
+    image: node:20-alpine
+    restart: unless-stopped
+    working_dir: /app/backend
+    volumes:
+      - ../:/app
+    environment:
+      NODE_ENV: development
+      API_PORT: "4000"
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/raven_dev
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    command: sh -c "npm install && npm run build && npm run start:prod"
+    ports:
+      - "4000:4000"
+    networks:
+      - raven-net
+
+  worker:
+    image: node:20-alpine
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../backend/apps/worker:/app/backend/apps/worker
+      - ../backend/libs:/app/backend/libs
+      - ../backend/prisma:/app/backend/prisma
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://app_user:change_me@postgres:5432/app_db
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    command: ["node", "-e", "setInterval(()=>{}, 1e9)"]
+    networks:
+      - raven-net
+
+  dashboard:
+    image: node:20-alpine
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../dashboard:/app/dashboard
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      NEXT_PUBLIC_API_URL: http://api:4000
+    depends_on:
+      - api
+    command: ["node", "-e", "setInterval(()=>{}, 1e9)"]
+    ports:
+      - "3000:3000"
+    networks:
+      - raven-net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  raven-net:
+    driver: bridge

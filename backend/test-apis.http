@@ -1,0 +1,48 @@
+# Test Subscription & Branding APIs
+
+## Health Check
+GET http://localhost:4000/health
+
+### Create Subscription (Starter Plan)
+POST http://localhost:4000/subscriptions
+Content-Type: application/json
+
+{
+  "tenantId": "test-tenant-123",
+  "planTier": "starter"
+}
+
+### Get Subscription
+GET http://localhost:4000/subscriptions?tenantId=test-tenant-123
+
+### Get Usage Stats
+GET http://localhost:4000/subscriptions/usage?tenantId=test-tenant-123
+
+### Get Bill
+GET http://localhost:4000/subscriptions/bill?tenantId=test-tenant-123
+
+### Upgrade Plan to Growth
+PUT http://localhost:4000/subscriptions/plan
+Content-Type: application/json
+
+{
+  "tenantId": "test-tenant-123",
+  "newPlanTier": "growth"
+}
+
+### Get Branding
+GET http://localhost:4000/tenant/branding?tenantId=test-tenant-123
+
+### Update Branding
+POST http://localhost:4000/tenant/branding
+Content-Type: application/json
+
+{
+  "tenantId": "test-tenant-123",
+  "businessName": "Mama Cass Kitchen",
+  "logoUrl": "https://example.com/logo.png",
+  "primaryColor": "#FF6B35"
+}
+
+### Cancel Subscription
+DELETE http://localhost:4000/subscriptions?tenantId=test-tenant-123

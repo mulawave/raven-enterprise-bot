@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /
+
+# Raven admin console — not intended for public indexing

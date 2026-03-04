@@ -1,0 +1,282 @@
+### Test Menu Categories
+GET http://localhost:4000/api/ordering/menu/categories?tenantId=test-tenant-1
+
+### ========== HEALTH & READINESS ==========
+
+### Health Check
+GET http://localhost:4000/api/health
+
+### Readiness Check (DB + Redis)
+GET http://localhost:4000/api/ready
+
+### ========== ORDERING ==========
+
+### Test Menu Items
+GET http://localhost:4000/api/ordering/menu/items?tenantId=test-tenant-1
+
+### ========== BOOKINGS ==========
+
+### Test Room Types
+GET http://localhost:4000/api/bookings/room-types?tenantId=test-tenant-1
+
+### Create Order
+POST http://localhost:4000/api/ordering/orders
+Content-Type: application/json
+
+{
+  "cart": {
+    "tenantId": "test-tenant-1",
+    "customerId": "customer-1",
+    "items": [
+      { "itemId": "item-1", "quantity": 2 },
+      { "itemId": "item-2", "quantity": 1 }
+    ]
+  },
+  "branchId": "branch-1"
+}
+
+### List Orders
+GET http://localhost:4000/api/ordering/orders?tenantId=test-tenant-1&branchId=branch-1
+
+### ========== BOOKINGS (continued) ==========
+
+### Check Availability
+GET http://localhost:4000/api/bookings/availability?tenantId=test-tenant-1&roomTypeId=room-1&start=2026-02-01T14:00:00Z&end=2026-02-03T12:00:00Z
+
+### Create Booking
+POST http://localhost:4000/api/bookings
+Content-Type: application/json
+
+{
+  "tenantId": "test-tenant-1",
+  "branchId": "branch-1",
+  "customerId": "customer-1",
+  "roomTypeId": "room-1",
+  "start": "2026-02-01T14:00:00Z",
+  "end": "2026-02-03T12:00:00Z",
+  "totalKobo": 3000000
+}
+
+### List Bookings
+GET ========== PAYMENTS ==========
+
+### http://localhost:4000/api/bookings?tenantId=test-tenant-1&branchId=branch-1
+
+### Initialize Payment for Order
+POST http://localhost:4000/api/payments/initialize
+Content-Type: application/json
+
+{
+  "tenantId": "test-tenant-1",
+  "amountKobo": 700000,
+  "email": "john@test.com",
+  "provider": "paystack",
+  "orderId": "ORDER_ID_FROM_CREATE_ORDER"
+}
+
+### Initialize Payment for Booking
+POST http://localhost:4000/api/payments/initialize
+Content-Type: application/json
+
+{
+  "tenantId": "test-tenant-1",
+  "amountKobo": 3000000,
+  "email": "john@test.com",
+  "provider": "paystack",
+  "bookingId": "BOOKING_ID_FROM_CREATE_BOOKING"
+}
+
+### Verify Payment
+GET http://localhost:4000/api/payments/verify?tenantId=test-tenant-1&reference=PAYMENT_REFERENCE&provider=paystack
+
+### Check Payment Status for Order
+GET http://localhost:4000/api/payments/status?tenantId=test-tenant-1&orderId=ORDER_ID
+
+### Check Payment Status for Booking
+GET http://localhost:4000/api/payments/status?tenantId=test-tenant-1&bookingId=BOOKING_ID
+
+### Simulate Paystack Webhook (for testing)
+POST http://localhost:4000/api/payments/webhook/paystack
+Content-Type: application/json
+x-paystack-signature: test_signature
+
+{
+  "event": "charge.success",
+  "data": {
+    "reference": "PAYMENT_REFERENCE",
+    "status": "success",
+    "amount": 700000
+  }
+}
+
+### ========== MESSAGING WEBHOOKS ==========
+
+### Verify Meta Webhook (Facebook/WhatsApp/Instagram)
+GET http://localhost:4000/api/messaging/webhook/verify?hub.mode=subscribe&hub.challenge=test_challenge_123&hub.verify_token=test-verify-token
+
+### WhatsApp Message Webhook
+POST http://localhost:4000/api/messaging/webhook/whatsapp
+Content-Type: application/json
+x-hub-signature-256: sha256=SIGNATURE_PLACEHOLDER
+
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "15551234567",
+              "phone_number_id": "1234567890"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "John Doe"
+                },
+                "wa_id": "15559876543"
+              }
+            ],
+            "messages": [
+              {
+                "from": "15559876543",
+                "id": "wamid.ABC123",
+                "timestamp": "1706745600",
+                "type": "text",
+                "text": {
+                  "body": "I want to book a room"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}
+
+### Instagram Message Webhook
+POST http://localhost:4000/api/messaging/webhook/instagram
+Content-Type: application/json
+x-hub-signature-256: sha256=SIGNATURE_PLACEHOLDER
+
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "id": "INSTAGRAM_ACCOUNT_ID",
+      "time": 1706745600,
+      "messaging": [
+        {
+          "sender": {
+            "id": "1234567890"
+          },
+          "recipient": {
+            "id": "0987654321"
+          },
+          "timestamp": 1706745600,
+          "message": {
+            "mid": "mid.ABC123",
+            "text": "What's on the menu?"
+          }
+        }
+      ]
+    }
+  ]
+}
+
+### Facebook Message Webhook
+POST http://localhost:4000/api/messaging/webhook/facebook
+Content-Type: application/json
+x-hub-signature-256: sha256=SIGNATURE_PLACEHOLDER
+
+{
+  "object": "page",
+  "entry": [
+    {
+      "id": "PAGE_ID",
+      "time": 1706745600,
+      "messaging": [
+        {
+          "sender": {
+            "id": "1234567890"
+          },
+          "recipient": {
+            "id": "0987654321"
+          },
+          "timestamp": 1706745600,
+          "message": {
+            "mid": "mid.ABC123",
+            "text": "Do you have availability this weekend?"
+          }
+        }
+      ]
+    }
+  ]
+}
+
+### ========== TESTING WORKER FLOW ==========
+### NOTE: Workers process jobs asynchronously via BullMQ/Redis
+### 1. Send webhook (above) → Message saved + AI job enqueued
+### 2. AI worker processes message → Generates response
+### 3. Check logs: docker logs -f backend_api (or console if running locally)
+### 4. Query database to see bot messages
+
+### ========== SUBSCRIPTION BILLING ==========
+
+### Create Subscription for Test Tenant
+POST http://localhost:4000/api/subscriptions
+Content-Type: application/json
+
+{
+  "tenantId": "test-tenant-1",
+  "planTier": "starter"
+}
+
+### Get Subscription Details
+GET http://localhost:4000/api/subscriptions?tenantId=test-tenant-1
+
+### Get Usage Statistics (Dashboard Widget)
+GET http://localhost:4000/api/subscriptions/usage?tenantId=test-tenant-1
+
+### Calculate Current Bill (Base + Overages)
+GET http://localhost:4000/api/subscriptions/bill?tenantId=test-tenant-1
+
+### Upgrade Plan (Starter → Growth)
+PUT http://localhost:4000/api/subscriptions/plan
+Content-Type: application/json
+
+{
+  "tenantId": "test-tenant-1",
+  "newPlanTier": "growth"
+}
+
+### Cancel Subscription
+DELETE http://localhost:4000/api/subscriptions?tenantId=test-tenant-1
+
+### ========== WHITE-LABEL BRANDING ==========
+
+### Get Branding for Tenant
+GET http://localhost:4000/api/tenant/branding?tenantId=test-tenant-1
+
+### Update Branding (Custom Name + Logo + Theme)
+POST http://localhost:4000/api/tenant/branding
+Content-Type: application/json
+
+{
+  "tenantId": "test-tenant-1",
+  "name": "Mama Cass Kitchen",
+  "logoUrl": "https://cdn.example.com/logos/mama-cass.png",
+  "theme": "{\"primary\": \"#FF5733\", \"secondary\": \"#C70039\", \"font\": \"Inter, sans-serif\"}"
+}
+
+### Get Branding for Second Tenant (Multi-Tenant Test)
+GET http://localhost:4000/api/tenant/branding?tenantId=tenant-mama-cass
+
+### Get Branding for Third Tenant
+GET http://localhost:4000/api/tenant/branding?tenantId=tenant-golden-palace
+

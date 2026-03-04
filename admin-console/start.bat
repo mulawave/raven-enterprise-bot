@@ -1,0 +1,3 @@
+@echo off
+echo Starting Raven Admin Console...
+npm run dev
