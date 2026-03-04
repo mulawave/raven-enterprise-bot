@@ -33,4 +33,5 @@ export const API_ENDPOINTS = {
   PLANS: '/admin/subscriptions/plans',
   ORDERS: '/admin/ops/orders/stats',
   BOOKINGS: '/admin/ops/bookings/stats',
+  ADMIN_USERS: '/admin/users',
 } as const
