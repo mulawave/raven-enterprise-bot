@@ -3,8 +3,9 @@
   "compilerOptions": {
     "module": "commonjs",
     "declaration": true,
-    "outDir": "../../dist/apps/worker"
+    "outDir": "../../dist",
+    "rootDir": "../../"
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "../../libs/**/*.ts"],
   "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "**/*.test.ts"]
 }

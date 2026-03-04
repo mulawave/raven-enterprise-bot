@@ -3,9 +3,9 @@
   "compilerOptions": {
     "module": "commonjs",
     "declaration": true,
-    "outDir": "../../dist/apps/api",
-    "rootDir": "."
+    "outDir": "../../dist",
+    "rootDir": "../../"
   },
-  "include": ["src/**/*.ts", "admin/**/*.ts"],
+  "include": ["src/**/*.ts", "admin/**/*.ts", "../../libs/**/*.ts"],
   "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "**/*.test.ts"]
 }

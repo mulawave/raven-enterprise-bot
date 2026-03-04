@@ -11,6 +11,7 @@ export class BranchResolverMiddleware implements NestMiddleware {
   constructor(private readonly branchService: BranchService) {}
 
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const r = req as any
     const tenantId = req.headers['x-tenant-id'] as string | undefined
     let branchId = req.headers['x-branch-id'] as string | undefined
     if (!tenantId) {
@@ -21,7 +22,7 @@ export class BranchResolverMiddleware implements NestMiddleware {
       const branch = await this.branchService.getOrCreateDefaultBranch(tenantId)
       branchId = branch.id
     }
-    req.branchId = branchId
+    r.branchId = branchId
     next()
   }
 }

@@ -8,7 +8,8 @@ import { FeatureFlagService } from './feature-flag.service'
  */
 export function flagGuardMiddleware(flagService: FeatureFlagService, flag: string) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const tenantId = req.tenant?.id ?? req.user?.tenant_id
+    const r = req as any
+    const tenantId = r.tenant?.id ?? r.user?.tenant_id
     if (!tenantId) {
       res.status(403).json({ error: 'Forbidden' })
       return
