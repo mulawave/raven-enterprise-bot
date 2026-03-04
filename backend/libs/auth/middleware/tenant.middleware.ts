@@ -5,7 +5,8 @@ import { UserScope } from '@prisma/client'
 @Injectable()
 export class TenantMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction): void {
-    const user = req.user
+    const r = req as any
+    const user = r.user
 
     // If no user yet, let the JWT guard handle authentication downstream
     if (!user) {
@@ -14,7 +15,7 @@ export class TenantMiddleware implements NestMiddleware {
 
     // Bypass tenant requirement for SYSTEM-scoped users (SUPER_ADMIN)
     if (user.scope === UserScope.SYSTEM) {
-      req.tenant_id = null
+      r.tenant_id = null
       return next()
     }
 
@@ -22,7 +23,7 @@ export class TenantMiddleware implements NestMiddleware {
     if (!user.tenant_id) {
       throw new UnauthorizedException('Tenant required')
     }
-    req.tenant_id = user.tenant_id
+    r.tenant_id = user.tenant_id
     next()
   }
 }

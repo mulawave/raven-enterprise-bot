@@ -15,13 +15,14 @@ export class BranchPermissionMiddleware implements NestMiddleware {
   ) {}
 
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {
-    const user = req.user
-    const branchId = req.branchId
+    const r = req as any
+    const user = r.user
+    const branchId = r.branchId
     if (!user || !branchId) {
       res.status(403).json({ error: 'Forbidden' })
       return
     }
-    if (user.role === 'owner') {
+    if ((user as any).role === 'owner') {
       next()
       return
     }
