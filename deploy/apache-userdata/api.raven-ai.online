@@ -1,0 +1,5 @@
+ProxyRequests Off
+ProxyPreserveHost On
+ProxyPass / http://127.0.0.1:3000/
+ProxyPassReverse / http://127.0.0.1:3000/
+ProxyTimeout 120

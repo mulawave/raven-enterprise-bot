@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { api } from '@/lib/api'
 import { useTenantContext } from '@/lib/tenant-context'
 
 interface BrandingFormProps {
@@ -29,23 +30,18 @@ export default function BrandingForm({ initialSettings }: BrandingFormProps) {
     setMessage(null)
 
     try {
-      const response = await fetch('http://localhost:4000/tenant/branding', {
+      await api('/tenant/branding', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           tenantId: tenant.id,
-          ...formData,
+          name: formData.businessName,
+          logoUrl: formData.logoUrl,
+          primaryColor: formData.primaryColor,
+          whatsappNumber: formData.whatsappNumber,
         }),
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to save settings')
-      }
-
       setMessage({ type: 'success', text: 'Settings saved successfully!' })
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' })
     } finally {
       setSaving(false)

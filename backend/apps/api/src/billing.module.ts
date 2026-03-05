@@ -21,8 +21,11 @@ import { UsageTracker as BillingUsageTracker } from '../../../libs/billing/usage
 import { BillingLifecycleService } from '../../../libs/billing/billing-lifecycle.service'
 import { PaystackService } from '../../../libs/payments/paystack.service'
 import { FlutterwaveService } from '../../../libs/payments/flutterwave.service'
+import { ComplianceModule } from './compliance.module'
+import { AuthModule } from './auth.module'
 
 @Module({
+  imports: [ComplianceModule, AuthModule],
   controllers: [
     PaymentController,
     SubscriptionsController,

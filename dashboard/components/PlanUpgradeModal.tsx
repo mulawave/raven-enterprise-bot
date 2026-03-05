@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { api } from '@/lib/api'
 import { useTenantContext } from '@/lib/tenant-context'
 
 interface PlanUpgradeModalProps {
@@ -9,9 +10,8 @@ interface PlanUpgradeModalProps {
 }
 
 const PLANS = [
-  { tier: 'free', name: 'Free', conversations: 100 },
   { tier: 'starter', name: 'Starter', conversations: 1000 },
-  { tier: 'professional', name: 'Professional', conversations: 5000 },
+  { tier: 'growth', name: 'Growth', conversations: 5000 },
   { tier: 'enterprise', name: 'Enterprise', conversations: 20000 },
 ]
 
@@ -21,6 +21,7 @@ export default function PlanUpgradeModal({ currentPlan, onUpgradeSuccess }: Plan
   const [isOpen, setIsOpen] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState(currentPlan)
   const [upgrading, setUpgrading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleUpgrade = async () => {
     if (isSuspended) return
@@ -30,26 +31,19 @@ export default function PlanUpgradeModal({ currentPlan, onUpgradeSuccess }: Plan
     }
 
     setUpgrading(true)
+    setError(null)
     try {
-      const response = await fetch('http://localhost:4000/subscriptions/plan', {
+      await api('/subscriptions/plan', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           tenantId: tenant.id,
           newPlanTier: selectedPlan,
         }),
       })
-
-      if (response.ok) {
-        onUpgradeSuccess?.()
-        setIsOpen(false)
-      } else {
-        alert('Failed to upgrade plan')
-      }
-    } catch (error) {
-      alert('Failed to upgrade plan')
+      onUpgradeSuccess?.()
+      setIsOpen(false)
+    } catch {
+      setError('Failed to update plan. Please try again.')
     } finally {
       setUpgrading(false)
     }
@@ -99,10 +93,17 @@ export default function PlanUpgradeModal({ currentPlan, onUpgradeSuccess }: Plan
               ))}
             </div>
 
+            {error && (
+              <div className="mb-4 px-3 py-2 rounded-md bg-red-50 border border-red-200 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => setIsOpen(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                disabled={upgrading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Cancel
               </button>
@@ -111,7 +112,7 @@ export default function PlanUpgradeModal({ currentPlan, onUpgradeSuccess }: Plan
                 disabled={upgrading || selectedPlan === currentPlan}
                 className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
-                {upgrading ? 'Updating...' : 'Confirm Change'}
+                {upgrading ? 'Updating…' : 'Confirm Change'}
               </button>
             </div>
           </div>

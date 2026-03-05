@@ -1,75 +1,180 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { API_ENDPOINTS } from '@/lib/constants'
-import LoadingSkeleton from '@/components/LoadingSkeleton'
 
-interface OrderStats {
-  total_orders: number
-  orders_24h: number
-  by_status: Array<{ status: string; _count: { id: number } }>
+interface OrderItem {
+  id: string
+  quantity: number
+  price_kobo: number
+}
+
+interface Order {
+  id: string
+  status: string
+  total_kobo: number
+  created_at: string
+  customer: { id: string; name: string | null; phone: string | null; email: string | null } | null
+  tenant: { id: string; name: string } | null
+  orderItems: OrderItem[]
+}
+
+interface OrdersResponse {
+  orders: Order[]
+  total: number
+  page: number
+  limit: number
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-yellow-900/40 text-yellow-300 border-yellow-700',
+  confirmed: 'bg-blue-900/40 text-blue-300 border-blue-700',
+  preparing: 'bg-purple-900/40 text-purple-300 border-purple-700',
+  ready: 'bg-teal-900/40 text-teal-300 border-teal-700',
+  delivered: 'bg-green-900/40 text-green-300 border-green-700',
+  cancelled: 'bg-red-900/40 text-red-300 border-red-700',
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cls = STATUS_COLORS[status.toLowerCase()] ?? 'bg-slate-700 text-slate-300 border-slate-600'
+  return (
+    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium border capitalize ${cls}`}>
+      {status}
+    </span>
+  )
+}
+
+function koboToNaira(kobo: number) {
+  return `₦${(kobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+}
+
+function Shimmer({ className }: { className?: string }) {
+  return <div className={`bg-slate-700 rounded animate-pulse ${className ?? ''}`} />
 }
 
 export default function OrdersPage() {
-  const [stats, setStats] = useState<OrderStats | null>(null)
+  const [data, setData] = useState<OrdersResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const limit = 50
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      const result = await api.get<OrdersResponse>(`${API_ENDPOINTS.ORDERS_LIST}?page=${page}&limit=${limit}`)
+      setData(result)
+      setError(null)
+    } catch (err: any) {
+      setError(err.message || 'Failed to load orders')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [page])
 
   useEffect(() => {
-    async function fetchOrders() {
-      try {
-        setIsLoading(true)
-        const data = await api.get<OrderStats>(API_ENDPOINTS.ORDERS)
-        setStats(data)
-      } catch (err: any) {
-        setError(err.message || 'Failed to load order stats')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     fetchOrders()
-  }, [])
+  }, [fetchOrders])
 
-  if (isLoading) {
-    return <LoadingSkeleton />
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-800">{error}</p>
-      </div>
-    )
-  }
+  const totalPages = data ? Math.ceil(data.total / limit) : 0
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-slate-900">Orders Statistics</h1>
+    <div className="space-y-6 p-6 bg-slate-900 min-h-screen text-white">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Orders</h1>
+          {isLoading || !data
+            ? <Shimmer className="h-4 w-32 mt-1" />
+            : <p className="text-sm text-slate-400 mt-1">{data.total.toLocaleString()} total orders</p>}
+        </div>
+        <button
+          onClick={fetchOrders}
+          disabled={isLoading}
+          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-sm text-slate-200 rounded-lg transition-colors"
+        >
+          {isLoading ? 'Loading…' : 'Refresh'}
+        </button>
+      </div>
 
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
-            <h3 className="text-sm font-medium text-slate-500">Total Orders</h3>
-            <p className="text-3xl font-bold text-slate-900 mt-2">{stats.total_orders.toLocaleString()}</p>
-          </div>
+      {error && !data && (
+        <div className="bg-red-900/40 border border-red-700 rounded-lg px-4 py-3 text-red-300 text-sm">{error}</div>
+      )}
 
-          <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
-            <h3 className="text-sm font-medium text-slate-500">Orders (Last 24h)</h3>
-            <p className="text-3xl font-bold text-blue-600 mt-2">{stats.orders_24h.toLocaleString()}</p>
-          </div>
+      {/* Table */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-700 text-left">
+              <th className="px-4 py-3 text-slate-400 font-medium">Order ID</th>
+              <th className="px-4 py-3 text-slate-400 font-medium">Customer</th>
+              <th className="px-4 py-3 text-slate-400 font-medium">Tenant</th>
+              <th className="px-4 py-3 text-slate-400 font-medium">Items</th>
+              <th className="px-4 py-3 text-slate-400 font-medium">Total</th>
+              <th className="px-4 py-3 text-slate-400 font-medium">Status</th>
+              <th className="px-4 py-3 text-slate-400 font-medium">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading
+              ? Array.from({ length: 10 }).map((_, i) => (
+                  <tr key={i} className="border-b border-slate-700/50">
+                    {Array.from({ length: 7 }).map((_, j) => (
+                      <td key={j} className="px-4 py-4">
+                        <Shimmer className="h-4 w-full max-w-[120px]" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              : data?.orders.length === 0
+                ? <tr>
+                    <td colSpan={7} className="px-4 py-12 text-center text-slate-400">No orders found.</td>
+                  </tr>
+                : data?.orders.map((order) => (
+                    <tr key={order.id} className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs text-slate-300 max-w-[100px] truncate" title={order.id}>
+                        {order.id.slice(0, 8)}…
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-white font-medium">{order.customer?.name ?? '—'}</div>
+                        <div className="text-xs text-slate-400">{order.customer?.phone ?? order.customer?.email ?? ''}</div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">{order.tenant?.name ?? '—'}</td>
+                      <td className="px-4 py-3 text-slate-300">{order.orderItems.length}</td>
+                      <td className="px-4 py-3 text-white font-semibold">{koboToNaira(order.total_kobo)}</td>
+                      <td className="px-4 py-3"><StatusBadge status={order.status} /></td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">
+                        {new Date(order.created_at).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </td>
+                    </tr>
+                  ))
+            }
+          </tbody>
+        </table>
+      </div>
 
-          <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
-            <h3 className="text-sm font-medium text-slate-500">By Status</h3>
-            <div className="mt-2 space-y-1">
-              {stats.by_status.map((item) => (
-                <div key={item.status} className="flex justify-between text-sm">
-                  <span className="text-slate-600 capitalize">{item.status}</span>
-                  <span className="font-semibold text-slate-900">{item._count.id}</span>
-                </div>
-              ))}
-            </div>
+      {/* Pagination */}
+      {!isLoading && data && totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-400">
+            Page {page} of {totalPages} &mdash; {data.total.toLocaleString()} orders
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-sm text-slate-200 rounded-lg transition-colors"
+            >
+              ← Prev
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-sm text-slate-200 rounded-lg transition-colors"
+            >
+              Next →
+            </button>
           </div>
         </div>
       )}

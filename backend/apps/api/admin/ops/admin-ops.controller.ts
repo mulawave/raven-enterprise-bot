@@ -1,12 +1,30 @@
-import { Controller, Get, UseGuards } from '@nestjs/common'
+import { Controller, Get, UseGuards, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
+import { Queue } from 'bullmq'
+import Redis from 'ioredis'
 import { JwtAuthGuard } from '../../../../libs/auth/guards/jwt-auth.guard'
 import { SuperAdminGuard } from '../../../../libs/auth/guards/super-admin.guard'
 
 @Controller('admin/ops')
 @UseGuards(JwtAuthGuard, SuperAdminGuard)
-export class AdminOpsController {
-  constructor(private readonly prisma: PrismaClient) {}
+export class AdminOpsController implements OnModuleInit, OnModuleDestroy {
+  private queueAi!: Queue
+  private queueOutbound!: Queue
+
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly redis: Redis,
+  ) {}
+
+  onModuleInit(): void {
+    this.queueAi = new Queue('ai-messages', { connection: this.redis })
+    this.queueOutbound = new Queue('outbound-messages', { connection: this.redis })
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.queueAi?.close()
+    await this.queueOutbound?.close()
+  }
 
   /**
    * GET /admin/ops/messaging/stats
@@ -126,37 +144,36 @@ export class AdminOpsController {
 
   /**
    * GET /admin/ops/queues/health
-   * BullMQ queue health (basic implementation)
+   * BullMQ queue health with real job counts
    */
   @Get('queues/health')
   async getQueueHealth() {
-    // This is a basic implementation
-    // Full queue monitoring requires BullMQ queue instances
-    
+    const [aiCounts, outboundCounts] = await Promise.all([
+      this.queueAi.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed'),
+      this.queueOutbound.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed'),
+    ])
+
+    const toStatus = (counts: Record<string, number>) =>
+      counts.failed > 10 ? 'degraded' : 'healthy'
+
     return {
-      status: 'monitoring_not_implemented',
-      note: 'Full queue health requires BullMQ queue instance access',
-      recommendation: 'Implement queue depth and worker status monitoring',
+      status: 'ok',
       queues: {
         'ai-messages': {
-          status: 'unknown',
-          depth: null,
-          processing_rate: null,
+          status: toStatus(aiCounts),
+          waiting: aiCounts.waiting ?? 0,
+          active: aiCounts.active ?? 0,
+          completed: aiCounts.completed ?? 0,
+          failed: aiCounts.failed ?? 0,
+          delayed: aiCounts.delayed ?? 0,
         },
         'outbound-messages': {
-          status: 'unknown',
-          depth: null,
-          processing_rate: null,
-        },
-      },
-      workers: {
-        'ai-processor': {
-          status: 'unknown',
-          jobs_completed: null,
-        },
-        'message-retry': {
-          status: 'unknown',
-          jobs_completed: null,
+          status: toStatus(outboundCounts),
+          waiting: outboundCounts.waiting ?? 0,
+          active: outboundCounts.active ?? 0,
+          completed: outboundCounts.completed ?? 0,
+          failed: outboundCounts.failed ?? 0,
+          delayed: outboundCounts.delayed ?? 0,
         },
       },
     }

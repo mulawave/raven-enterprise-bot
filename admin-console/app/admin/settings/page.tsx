@@ -1,8 +1,10 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import ImageUpload from '@/components/ImageUpload'
+import Button from '@/components/Button'
 import { api } from '@/lib/api'
+import { CheckCircle2, AlertCircle } from 'lucide-react'
 
 interface AppSettings {
   id: string
@@ -14,192 +16,214 @@ interface AppSettings {
   company_phone: string | null
 }
 
+function FieldSkeleton({ wide = false }: { wide?: boolean }) {
+  return (
+    <div className={`h-10 ${wide ? 'w-full' : 'w-64'} bg-gray-700/60 rounded-lg animate-pulse`} />
+  )
+}
+
+function LabelSkeleton() {
+  return <div className="h-4 w-32 bg-gray-700/60 rounded animate-pulse mb-2" />
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState<string | null>(null)
+  const [draft, setDraft] = useState<Partial<AppSettings>>({})
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchSettings()
   }, [])
 
   const fetchSettings = async () => {
+    setIsLoading(true)
+    setFetchError(null)
     try {
       const data = await api.get<AppSettings>('/admin/settings')
       setSettings(data)
-    } catch (error) {
-      console.error('Failed to fetch settings:', error)
+      setDraft({
+        company_name: data.company_name ?? '',
+        company_address: data.company_address ?? '',
+        company_email: data.company_email ?? '',
+        company_phone: data.company_phone ?? '',
+      })
+    } catch {
+      setFetchError('Failed to load settings. Is the backend running?')
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
-  const updateField = async (field: keyof AppSettings, value: string) => {
+  const handleSave = async () => {
     if (!settings) return
-
-    setSaving(field)
+    setIsSaving(true)
+    setSaveError(null)
+    setSaveSuccess(false)
     try {
-      const updated = await api.patch<AppSettings>('/admin/settings', { [field]: value })
+      const updated = await api.patch<AppSettings>('/admin/settings', {
+        company_name: draft.company_name ?? '',
+        company_address: draft.company_address ?? '',
+        company_email: draft.company_email ?? '',
+        company_phone: draft.company_phone ?? '',
+      })
       setSettings(updated)
-    } catch (error) {
-      console.error('Failed to update settings:', error)
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (err: any) {
+      setSaveError(err?.message ?? 'Failed to save settings')
     } finally {
-      setSaving(null)
+      setIsSaving(false)
     }
   }
 
-  const handleInputChange = (field: keyof AppSettings, value: string) => {
-    if (!settings) return
-    setSettings({ ...settings, [field]: value })
+  const handleLogoChange = async (url: string) => {
+    setSettings((prev) => (prev ? { ...prev, logo_url: url } : prev))
+    try {
+      await api.patch('/admin/settings', { logo_url: url })
+    } catch {
+      // non-critical — upload endpoint already persisted the file
+    }
   }
 
-  const handleInputBlur = (field: keyof AppSettings, value: string) => {
-    updateField(field, value)
-  }
-
-  if (loading) {
-    return (
-      <div className="space-y-6 max-w-4xl">
-        <div className="h-9 w-40 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded animate-pulse" />
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 space-y-6">
-          <div className="h-6 w-24 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded animate-pulse" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <div key={i} className="h-36 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded-lg animate-pulse" />
-            ))}
-          </div>
-        </div>
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 space-y-6">
-          <div className="h-6 w-40 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded animate-pulse" />
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <div className="h-4 w-28 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded animate-pulse" />
-              <div className="h-10 w-full bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded-lg animate-pulse" />
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  if (!settings) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-400">Failed to load settings</p>
-      </div>
-    )
+  const handleFaviconChange = async (url: string) => {
+    setSettings((prev) => (prev ? { ...prev, favicon_url: url } : prev))
+    try {
+      await api.patch('/admin/settings', { favicon_url: url })
+    } catch {
+      // non-critical
+    }
   }
 
   return (
     <div className="space-y-6 max-w-4xl">
       <h1 className="text-3xl font-bold text-white">App Settings</h1>
 
-      {/* Branding Section */}
-      <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 space-y-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Branding</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <ImageUpload
-            value={settings.logo_url}
-            onChange={(url) => {
-              setSettings({ ...settings, logo_url: url })
-            }}
-            endpoint="/admin/settings/upload/logo"
-            label="App Logo"
-            maxSize={5 * 1024 * 1024}
-          />
-
-          <ImageUpload
-            value={settings.favicon_url}
-            onChange={(url) => {
-              setSettings({ ...settings, favicon_url: url })
-            }}
-            endpoint="/admin/settings/upload/favicon"
-            label="App Favicon"
-            maxSize={2 * 1024 * 1024}
-          />
+      {fetchError && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-red-900/40 border border-red-600/50 text-sm text-red-300">
+          <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium">Could not load settings</p>
+            <p className="text-red-400 mt-0.5">{fetchError}</p>
+            <button onClick={fetchSettings} className="mt-2 text-xs text-red-200 underline hover:text-white">
+              Retry
+            </button>
+          </div>
         </div>
+      )}
+
+      {/* Branding */}
+      <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 space-y-6">
+        <h2 className="text-xl font-semibold text-white">Branding</h2>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="h-36 bg-gray-700/60 rounded-lg animate-pulse" />
+            <div className="h-36 bg-gray-700/60 rounded-lg animate-pulse" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ImageUpload
+              value={settings?.logo_url}
+              onChange={handleLogoChange}
+              endpoint="/admin/settings/upload/logo"
+              label="App Logo"
+              maxSize={5 * 1024 * 1024}
+            />
+            <ImageUpload
+              value={settings?.favicon_url}
+              onChange={handleFaviconChange}
+              endpoint="/admin/settings/upload/favicon"
+              label="App Favicon"
+              maxSize={2 * 1024 * 1024}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Company Information Section */}
+      {/* Company Information */}
       <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 space-y-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Company Information</h2>
+        <h2 className="text-xl font-semibold text-white">Company Information</h2>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Company Name
-              {saving === 'company_name' && (
-                <span className="ml-2 text-xs text-blue-400">Saving...</span>
-              )}
-            </label>
-            <input
-              type="text"
-              value={settings.company_name || ''}
-              onChange={(e) => handleInputChange('company_name', e.target.value)}
-              onBlur={(e) => handleInputBlur('company_name', e.target.value)}
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
-              placeholder="Enter company name"
-            />
+            {isLoading ? <LabelSkeleton /> : <label className="block text-sm font-medium text-gray-300 mb-2">Company Name</label>}
+            {isLoading ? <FieldSkeleton wide /> : (
+              <input
+                type="text"
+                value={draft.company_name ?? ''}
+                onChange={(e) => setDraft({ ...draft, company_name: e.target.value })}
+                className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
+                placeholder="Enter company name"
+              />
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Company Address
-              {saving === 'company_address' && (
-                <span className="ml-2 text-xs text-blue-400">Saving...</span>
-              )}
-            </label>
-            <textarea
-              value={settings.company_address || ''}
-              onChange={(e) => handleInputChange('company_address', e.target.value)}
-              onBlur={(e) => handleInputBlur('company_address', e.target.value)}
-              rows={3}
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors resize-none"
-              placeholder="Enter company address"
-            />
+            {isLoading ? <LabelSkeleton /> : <label className="block text-sm font-medium text-gray-300 mb-2">Company Address</label>}
+            {isLoading ? <div className="h-24 w-full bg-gray-700/60 rounded-lg animate-pulse" /> : (
+              <textarea
+                value={draft.company_address ?? ''}
+                onChange={(e) => setDraft({ ...draft, company_address: e.target.value })}
+                rows={3}
+                className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors resize-none"
+                placeholder="Enter company address"
+              />
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Company Email
-              {saving === 'company_email' && (
-                <span className="ml-2 text-xs text-blue-400">Saving...</span>
-              )}
-            </label>
-            <input
-              type="email"
-              value={settings.company_email || ''}
-              onChange={(e) => handleInputChange('company_email', e.target.value)}
-              onBlur={(e) => handleInputBlur('company_email', e.target.value)}
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
-              placeholder="contact@company.com"
-            />
+            {isLoading ? <LabelSkeleton /> : <label className="block text-sm font-medium text-gray-300 mb-2">Company Email</label>}
+            {isLoading ? <FieldSkeleton wide /> : (
+              <input
+                type="email"
+                value={draft.company_email ?? ''}
+                onChange={(e) => setDraft({ ...draft, company_email: e.target.value })}
+                className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
+                placeholder="contact@company.com"
+              />
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Company Phone
-              {saving === 'company_phone' && (
-                <span className="ml-2 text-xs text-blue-400">Saving...</span>
-              )}
-            </label>
-            <input
-              type="tel"
-              value={settings.company_phone || ''}
-              onChange={(e) => handleInputChange('company_phone', e.target.value)}
-              onBlur={(e) => handleInputBlur('company_phone', e.target.value)}
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
-              placeholder="+1 (555) 000-0000"
-            />
+            {isLoading ? <LabelSkeleton /> : <label className="block text-sm font-medium text-gray-300 mb-2">Company Phone</label>}
+            {isLoading ? <FieldSkeleton wide /> : (
+              <input
+                type="tel"
+                value={draft.company_phone ?? ''}
+                onChange={(e) => setDraft({ ...draft, company_phone: e.target.value })}
+                className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
+                placeholder="+1 (555) 000-0000"
+              />
+            )}
           </div>
         </div>
-      </div>
 
-      <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
-        <p className="text-sm text-blue-300">
-          <strong>Auto-save:</strong> All changes are saved automatically when you finish editing each field.
-        </p>
+        {saveError && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-red-900/40 border border-red-600/50 text-sm text-red-300">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {saveError}
+          </div>
+        )}
+        {saveSuccess && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-green-900/40 border border-green-600/50 text-sm text-green-300">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            Settings saved successfully
+          </div>
+        )}
+
+        <div className="pt-2">
+          <Button
+            isLoading={isSaving}
+            loadingText="Saving…"
+            onClick={handleSave}
+            disabled={isLoading || isSaving}
+          >
+            Save Changes
+          </Button>
+        </div>
       </div>
     </div>
   )

@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { API_ENDPOINTS } from '@/lib/constants'
 import HealthBadge from '@/components/HealthBadge'
-import LoadingSkeleton from '@/components/LoadingSkeleton'
 
 type ComponentStatus = 'up' | 'down' | 'unknown'
 
@@ -122,7 +121,7 @@ export default function SystemHealthPage() {
 
   useEffect(() => {
     fetchHealth()
-    const interval = setInterval(fetchHealth, 30000) // Refresh every 30s
+    const interval = setInterval(fetchHealth, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -131,26 +130,13 @@ export default function SystemHealthPage() {
       setIsLoading(true)
       const data = await api.get<SystemHealthApiResponse>(API_ENDPOINTS.SYSTEM_HEALTH)
       setHealth(normalizeHealth(data))
+      setError(null)
     } catch (err: any) {
       setError(err.message || 'Failed to load system health')
     } finally {
       setIsLoading(false)
     }
   }
-
-  if (isLoading && !health) {
-    return <LoadingSkeleton />
-  }
-
-  if (error && !health) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-800">{error}</p>
-      </div>
-    )
-  }
-
-  if (!health) return null
 
   const formatUptime = (seconds: number) => {
     const days = Math.floor(seconds / 86400)
@@ -159,131 +145,153 @@ export default function SystemHealthPage() {
     return `${days}d ${hours}h ${minutes}m`
   }
 
+  const shimmer = 'h-5 bg-slate-700 rounded animate-pulse'
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6 bg-slate-900 min-h-screen text-white">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">System Health</h1>
-          <p className="text-sm text-slate-600 mt-1">
-            Last checked: {new Date(health.lastChecked).toLocaleString()}
+          <h1 className="text-3xl font-bold text-white">System Health</h1>
+          <p className="text-sm text-slate-400 mt-1">
+            {isLoading || !health
+              ? <span className="inline-block h-4 w-48 bg-slate-700 rounded animate-pulse" />
+              : `Last checked: ${new Date(health.lastChecked).toLocaleString()}`}
           </p>
         </div>
-        <HealthBadge status={health.status} />
+        {isLoading || !health
+          ? <span className="inline-block h-7 w-20 bg-slate-700 rounded-full animate-pulse" />
+          : <HealthBadge status={health.status} />}
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <p className="text-sm text-slate-600">System Uptime</p>
-            <p className="text-2xl font-bold text-slate-900">{formatUptime(health.uptimeSeconds)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-slate-600">Response Time</p>
-            <p className="text-2xl font-bold text-slate-900">{health.responseTimeMs}ms</p>
-          </div>
-          <div>
-            <p className="text-sm text-slate-600">Overall Status</p>
-            <div className="mt-2">
-              <HealthBadge status={health.status} />
+      {/* Error banner — shown only if we have no data at all */}
+      {error && !health && (
+        <div className="bg-red-900/40 border border-red-700 rounded-lg px-4 py-3 text-red-300 text-sm">{error}</div>
+      )}
+
+      {/* Overview strip */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { label: 'System Uptime', value: isLoading || !health ? null : formatUptime(health.uptimeSeconds) },
+            { label: 'Response Time', value: isLoading || !health ? null : `${health.responseTimeMs}ms` },
+            { label: 'Overall Status', value: isLoading || !health ? null : health.status },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <p className="text-sm text-slate-400">{label}</p>
+              {value === null
+                ? <div className={`${shimmer} mt-2 w-32`} />
+                : label === 'Overall Status'
+                  ? <div className="mt-2"><HealthBadge status={health!.status} /></div>
+                  : <p className="text-2xl font-bold text-white mt-1">{value}</p>}
             </div>
-          </div>
+          ))}
         </div>
       </div>
 
+      {/* Component grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+        {/* Database */}
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">Database</h2>
-            <HealthBadge status={health.components.database.status} />
+            <h2 className="text-lg font-semibold text-white">Database</h2>
+            {isLoading || !health
+              ? <span className="h-6 w-16 bg-slate-700 rounded-full animate-pulse inline-block" />
+              : <HealthBadge status={health.components.database.status} />}
           </div>
           <div className="space-y-3">
             <div>
-              <p className="text-sm text-slate-600">Response Time</p>
-              <p className="text-lg font-medium text-slate-900">
-                {health.components.database.latencyMs === null ? '—' : `${health.components.database.latencyMs}ms`}
-              </p>
+              <p className="text-sm text-slate-400">Response Time</p>
+              {isLoading || !health
+                ? <div className={`${shimmer} w-20 mt-1`} />
+                : <p className="text-lg font-medium text-white">
+                    {health.components.database.latencyMs === null ? '—' : `${health.components.database.latencyMs}ms`}
+                  </p>}
             </div>
             <div>
-              <p className="text-sm text-slate-600">Message</p>
-              <p className="text-sm text-slate-900">{health.components.database.message}</p>
+              <p className="text-sm text-slate-400">Message</p>
+              {isLoading || !health
+                ? <div className={`${shimmer} w-48 mt-1`} />
+                : <p className="text-sm text-slate-200">{health.components.database.message}</p>}
             </div>
-            {health.components.database.error && (
-              <div>
-                <p className="text-sm text-slate-600">Error</p>
-                <p className="text-sm text-red-700 break-all">{health.components.database.error}</p>
-              </div>
+            {health?.components.database.error && (
+              <p className="text-sm text-red-400 break-all">{health.components.database.error}</p>
             )}
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+        {/* Redis */}
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">Redis Cache</h2>
-            <HealthBadge status={health.components.redis.status} />
+            <h2 className="text-lg font-semibold text-white">Redis Cache</h2>
+            {isLoading || !health
+              ? <span className="h-6 w-16 bg-slate-700 rounded-full animate-pulse inline-block" />
+              : <HealthBadge status={health.components.redis.status} />}
           </div>
           <div className="space-y-3">
             <div>
-              <p className="text-sm text-slate-600">Response Time</p>
-              <p className="text-lg font-medium text-slate-900">
-                {health.components.redis.latencyMs === null ? '—' : `${health.components.redis.latencyMs}ms`}
-              </p>
+              <p className="text-sm text-slate-400">Response Time</p>
+              {isLoading || !health
+                ? <div className={`${shimmer} w-20 mt-1`} />
+                : <p className="text-lg font-medium text-white">
+                    {health.components.redis.latencyMs === null ? '—' : `${health.components.redis.latencyMs}ms`}
+                  </p>}
             </div>
             <div>
-              <p className="text-sm text-slate-600">Message</p>
-              <p className="text-sm text-slate-900">{health.components.redis.message}</p>
+              <p className="text-sm text-slate-400">Message</p>
+              {isLoading || !health
+                ? <div className={`${shimmer} w-48 mt-1`} />
+                : <p className="text-sm text-slate-200">{health.components.redis.message}</p>}
             </div>
-            {health.components.redis.error && (
-              <div>
-                <p className="text-sm text-slate-600">Error</p>
-                <p className="text-sm text-red-700 break-all">{health.components.redis.error}</p>
-              </div>
+            {health?.components.redis.error && (
+              <p className="text-sm text-red-400 break-all">{health.components.redis.error}</p>
             )}
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">Queues</h2>
-            <HealthBadge status={health.status === 'healthy' ? 'healthy' : 'degraded'} label="Instrument" />
-          </div>
-          {health.components.queuesNote && <p className="text-sm text-slate-600 mb-3">{health.components.queuesNote}</p>}
-          <div className="space-y-2">
-            {health.components.queues.map((q) => (
-              <div key={q.name} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-4 py-2">
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{q.name}</p>
-                  <p className="text-xs text-slate-500">status: {q.status}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-slate-700">depth: {q.depth ?? '—'}</p>
-                  <p className="text-sm text-slate-700">rate: {q.processingRate ?? '—'}</p>
-                </div>
-              </div>
-            ))}
-            {health.components.queues.length === 0 && <p className="text-sm text-slate-500">No queue metrics available.</p>}
-          </div>
+        {/* Queues */}
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">Queues</h2>
+          {isLoading || !health
+            ? Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="h-12 bg-slate-700 rounded-lg animate-pulse mb-2" />
+              ))
+            : health.components.queues.length === 0
+              ? <p className="text-sm text-slate-400">No queue metrics available.</p>
+              : health.components.queues.map((q) => (
+                  <div key={q.name} className="flex items-center justify-between bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 mb-2">
+                    <div>
+                      <p className="text-sm font-medium text-white">{q.name}</p>
+                      <p className="text-xs text-slate-400">status: {q.status}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-slate-300">depth: {q.depth ?? '—'}</p>
+                      <p className="text-sm text-slate-300">rate: {q.processingRate ?? '—'}</p>
+                    </div>
+                  </div>
+                ))
+          }
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">Workers</h2>
-            <HealthBadge status={health.status === 'healthy' ? 'healthy' : 'degraded'} label="Instrument" />
-          </div>
-          {health.components.workersNote && <p className="text-sm text-slate-600 mb-3">{health.components.workersNote}</p>}
-          <div className="space-y-2">
-            {health.components.workers.map((w) => (
-              <div key={w.name} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-4 py-2">
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{w.name}</p>
-                  <p className="text-xs text-slate-500">status: {w.status}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-slate-700">jobs: {w.jobsCompleted ?? '—'}</p>
-                </div>
-              </div>
-            ))}
-            {health.components.workers.length === 0 && <p className="text-sm text-slate-500">No worker metrics available.</p>}
-          </div>
+        {/* Workers */}
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">Workers</h2>
+          {isLoading || !health
+            ? Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="h-12 bg-slate-700 rounded-lg animate-pulse mb-2" />
+              ))
+            : health.components.workers.length === 0
+              ? <p className="text-sm text-slate-400">No worker metrics available.</p>
+              : health.components.workers.map((w) => (
+                  <div key={w.name} className="flex items-center justify-between bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 mb-2">
+                    <div>
+                      <p className="text-sm font-medium text-white">{w.name}</p>
+                      <p className="text-xs text-slate-400">status: {w.status}</p>
+                    </div>
+                    <p className="text-sm text-slate-300">jobs: {w.jobsCompleted ?? '—'}</p>
+                  </div>
+                ))
+          }
         </div>
       </div>
     </div>

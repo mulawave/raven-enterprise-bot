@@ -13,10 +13,14 @@ export const ROUTES = {
   OPS: '/admin/ops',
   ORDERS: '/admin/orders',
   BOOKINGS: '/admin/bookings',
+  CUSTOMERS: '/admin/customers',
   SYSTEM: '/admin/system',
   USERS: '/admin/users',
   PROFILE: '/admin/profile',
   SETTINGS: '/admin/settings',
+  API_KEYS: '/admin/api-keys',
+  PAYMENT_CONFIG: '/admin/payment-config',
+  EMAIL_CONFIG: '/admin/email-config',
 } as const
 
 export const API_ENDPOINTS = {
@@ -32,6 +36,11 @@ export const API_ENDPOINTS = {
   SUBSCRIPTIONS: '/admin/subscriptions',
   PLANS: '/admin/subscriptions/plans',
   ORDERS: '/admin/ops/orders/stats',
+  ORDERS_LIST: '/admin/orders',
+  CUSTOMERS_LIST: '/admin/customers',
   BOOKINGS: '/admin/ops/bookings/stats',
   ADMIN_USERS: '/admin/users',
+  CONFIG_KEYS: '/admin/config/keys',
+  CONFIG_EMAIL_TEMPLATES: '/admin/config/email/templates',
+  CONFIG_EMAIL_TEST: '/admin/config/email/test',
 } as const

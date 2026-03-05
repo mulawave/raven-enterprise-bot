@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, UseGuards, UseInterceptors, UploadedFile, Post } from '@nestjs/common'
+import { Controller, Get, Patch, Body, UseGuards, UseInterceptors, UploadedFile, Post, BadRequestException } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { PrismaClient } from '@prisma/client'
 import { JwtAuthGuard } from '../../../../libs/auth/guards/jwt-auth.guard'
@@ -11,7 +11,18 @@ interface UpdateSettingsDto {
   company_address?: string
   company_email?: string
   company_phone?: string
+  logo_url?: string
+  favicon_url?: string
 }
+
+const ALLOWED_FIELDS: Array<keyof UpdateSettingsDto> = [
+  'company_name',
+  'company_address',
+  'company_email',
+  'company_phone',
+  'logo_url',
+  'favicon_url',
+]
 
 @Controller('admin/settings')
 @UseGuards(JwtAuthGuard, SuperAdminGuard)
@@ -33,6 +44,18 @@ export class AdminSettingsController {
 
   @Patch()
   async updateSettings(@Body() body: UpdateSettingsDto) {
+    // Build data object with only the fields present in the request body
+    const data: Record<string, string | null> = {}
+    for (const field of ALLOWED_FIELDS) {
+      if (field in body) {
+        data[field] = body[field] ?? null
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('No valid fields provided')
+    }
+
     let settings = await this.prisma.appSettings.findFirst()
 
     if (!settings) {
@@ -41,12 +64,7 @@ export class AdminSettingsController {
 
     const updated = await this.prisma.appSettings.update({
       where: { id: settings.id },
-      data: {
-        company_name: body.company_name,
-        company_address: body.company_address,
-        company_email: body.company_email,
-        company_phone: body.company_phone,
-      },
+      data,
     })
 
     return updated

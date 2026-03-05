@@ -11,6 +11,7 @@ import { MessagingModule } from './messaging.module'
 import { AnalyticsModule } from './analytics.module'
 import { ComplianceModule } from './compliance.module'
 import { AdminModule } from './admin.module'
+import { AppConfigModule } from './app-config.module'
 
 // ── Core controllers (remain in AppModule — only need PrismaClient) ────────
 import { HealthController } from './health.controller'
@@ -27,6 +28,7 @@ import { BranchResolverMiddleware } from '../../../libs/tenant/branch.middleware
 @Module({
   imports: [
     InfrastructureModule,
+    AppConfigModule,
     AuthModule,
     BillingModule,
     TenantModule,

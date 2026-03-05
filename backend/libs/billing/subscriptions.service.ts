@@ -43,10 +43,28 @@ export class SubscriptionsService {
   constructor(private readonly prisma: PrismaClient) {}
 
   /**
+   * Look up a plan from DB, with PLANS constant as a fallback
+   */
+  private async lookupPlan(tier: string): Promise<{ conversationsLimit: number; overagePriceKobo: number; priceKobo: number; name: string }> {
+    const dbPlan = await this.prisma.plan.findUnique({ where: { tier } }).catch(() => null)
+    if (dbPlan) {
+      return {
+        conversationsLimit: dbPlan.conversations_limit,
+        overagePriceKobo: dbPlan.overage_price_kobo,
+        priceKobo: dbPlan.price_kobo,
+        name: dbPlan.name,
+      }
+    }
+    const fallback = PLANS[tier as PlanTier]
+    if (!fallback) throw new Error(`Unknown plan tier: ${tier}`)
+    return fallback
+  }
+
+  /**
    * Create a new subscription for a tenant
    */
   async createSubscription(tenantId: string, planTier: PlanTier) {
-    const plan = PLANS[planTier]
+    const plan = await this.lookupPlan(planTier)
     const now = new Date()
     const periodEnd = new Date()
     periodEnd.setDate(periodEnd.getDate() + 30) // 30-day billing cycle
@@ -108,7 +126,7 @@ export class SubscriptionsService {
     if (usagePercent >= 100) {
       // Calculate overage
       const overage = newCount - limit
-      const plan = PLANS[subscription.plan_tier as PlanTier]
+      const plan = await this.lookupPlan(subscription.plan_tier)
       const overageCost = overage * plan.overagePriceKobo
 
       await this.prisma.subscription.update({
@@ -129,7 +147,7 @@ export class SubscriptionsService {
       throw new Error('Subscription not found')
     }
 
-    const plan = PLANS[subscription.plan_tier as PlanTier]
+    const plan = await this.lookupPlan(subscription.plan_tier)
     const baseCost = plan.priceKobo
     const overageCost = subscription.overage_cost_kobo
 
@@ -173,7 +191,7 @@ export class SubscriptionsService {
    * Upgrade/downgrade plan
    */
   async changePlan(tenantId: string, newPlanTier: PlanTier) {
-    const newPlan = PLANS[newPlanTier]
+    const newPlan = await this.lookupPlan(newPlanTier)
 
     await this.prisma.subscription.update({
       where: { tenant_id: tenantId },

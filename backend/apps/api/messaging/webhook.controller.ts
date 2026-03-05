@@ -6,6 +6,7 @@ import { SessionResolver } from './session.resolver'
 import { InstagramAdapter } from './instagram.adapter'
 import { FacebookAdapter } from './facebook.adapter'
 import * as crypto from 'crypto'
+import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
 
 // Import worker processor (optional - only if workers are initialized)
 import type { AiMessageProcessor } from '../../worker/messaging/ai-message.processor'
@@ -27,6 +28,7 @@ export class WebhookController {
   constructor(
     private readonly prisma: PrismaClient,
     @Optional() @Inject('AI_MESSAGE_PROCESSOR') private readonly aiProcessor?: AiMessageProcessor,
+    @Optional() private readonly configLoader?: ConfigLoaderService,
   ) {
     this.parser = new MessageParser()
     this.sessionResolver = new SessionResolver(prisma)
@@ -35,13 +37,15 @@ export class WebhookController {
   }
 
   @Get('verify')
-  verify(
+  async verify(
     @Query('hub.mode') mode: string,
     @Query('hub.challenge') challenge: string,
     @Query('hub.verify_token') verifyToken: string,
     @Res() res: Response,
   ) {
-    const expectedToken = process.env.META_WEBHOOK_VERIFY_TOKEN || 'test-verify-token'
+    const expectedToken = (this.configLoader
+      ? await this.configLoader.get('META_WEBHOOK_VERIFY_TOKEN')
+      : process.env.META_WEBHOOK_VERIFY_TOKEN) || 'test-verify-token'
     if (mode === 'subscribe' && verifyToken === expectedToken) {
       return res.status(200).send(challenge)
     }
@@ -54,7 +58,7 @@ export class WebhookController {
     @Headers('x-hub-signature-256') signature: string | undefined,
     @Res() res: Response,
   ) {
-    this.validateSignature(JSON.stringify(body), signature)
+    await this.validateSignature(JSON.stringify(body), signature)
     await this.processMessages(body, 'whatsapp', this.parser)
     res.sendStatus(200)
   }
@@ -65,7 +69,7 @@ export class WebhookController {
     @Headers('x-hub-signature-256') signature: string | undefined,
     @Res() res: Response,
   ) {
-    this.validateSignature(JSON.stringify(body), signature)
+    await this.validateSignature(JSON.stringify(body), signature)
     await this.processMessages(body, 'instagram', this.instagramAdapter)
     res.sendStatus(200)
   }
@@ -76,13 +80,15 @@ export class WebhookController {
     @Headers('x-hub-signature-256') signature: string | undefined,
     @Res() res: Response,
   ) {
-    this.validateSignature(JSON.stringify(body), signature)
+    await this.validateSignature(JSON.stringify(body), signature)
     await this.processMessages(body, 'facebook', this.facebookAdapter)
     res.sendStatus(200)
   }
 
-  private validateSignature(payload: string, signature: string | undefined): void {
-    const secret = process.env.META_APP_SECRET
+  private async validateSignature(payload: string, signature: string | undefined): Promise<void> {
+    const secret = (this.configLoader
+      ? await this.configLoader.get('META_APP_SECRET')
+      : process.env.META_APP_SECRET) || ''
     if (!secret) {
       throw new UnauthorizedException('META_APP_SECRET not configured')
     }

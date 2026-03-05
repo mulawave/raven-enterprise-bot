@@ -440,6 +440,42 @@ model AppSettings {
 }
 
 // ---------------------------------------------------------------------------
+// System Configuration (API keys & integration settings stored in DB)
+// ---------------------------------------------------------------------------
+model SystemConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String?
+  description String?
+  group       String   @default("general")
+  is_secret   Boolean  @default(false)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([group])
+}
+
+// ---------------------------------------------------------------------------
+// Subscription Plans (admin-editable)
+// ---------------------------------------------------------------------------
+model Plan {
+  id                  String   @id @default(uuid())
+  tier                String   @unique
+  name                String
+  description         String?
+  price_kobo          Int
+  conversations_limit Int      // -1 = unlimited
+  overage_price_kobo  Int
+  features            String   @default("[]") // JSON array of feature strings
+  is_active           Boolean  @default(true)
+  sort_order          Int      @default(0)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  @@index([is_active])
+}
+
+// ---------------------------------------------------------------------------
 // Billing: Invoice
 // ---------------------------------------------------------------------------
 model Invoice {

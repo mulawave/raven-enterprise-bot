@@ -3,6 +3,7 @@ import { Queue, Worker, Job } from 'bullmq'
 import { PrismaClient } from '@prisma/client'
 import { MessageSender } from '../../../apps/api/messaging/message.sender'
 import Redis from 'ioredis'
+import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
 
 export interface OutboundMessageJob {
   conversationId: string
@@ -21,6 +22,7 @@ export class OutboundMessageWorker {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly redisConnection: Redis,
+    private readonly configLoader?: ConfigLoaderService,
   ) {
     // Initialize queue
     this.queue = new Queue<OutboundMessageJob>('outbound-messages', {
@@ -68,10 +70,13 @@ export class OutboundMessageWorker {
 
     this.logger.log(`Sending message to ${to} on ${platform}`)
 
-    // Get access token and phone number ID from tenant config
-    // For MVP, use environment variables
-    const accessToken = process.env.META_ACCESS_TOKEN || ''
-    const phoneNumberId = process.env.META_PHONE_NUMBER_ID || ''
+    // Get access token and phone number ID — read from DB config first, fall back to env
+    const accessToken = (this.configLoader
+      ? await this.configLoader.get('META_ACCESS_TOKEN')
+      : process.env.META_ACCESS_TOKEN) || ''
+    const phoneNumberId = (this.configLoader
+      ? await this.configLoader.get('META_PHONE_NUMBER_ID')
+      : process.env.META_PHONE_NUMBER_ID) || ''
 
     if (!accessToken || !phoneNumberId) {
       this.logger.warn('META_ACCESS_TOKEN or META_PHONE_NUMBER_ID not configured — skipping send')

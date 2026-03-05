@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
-import { API_ENDPOINTS } from '@/lib/constants'
-import StatCard from '@/components/StatCard'
+import { API_ENDPOINTS, ROUTES } from '@/lib/constants'
 import HealthBadge from '@/components/HealthBadge'
+import Link from 'next/link'
 
 interface RevenueSummary {
   mrr: number
@@ -28,12 +28,8 @@ interface RevenueSummaryApiResponse {
 
 interface SystemHealth {
   status: 'healthy' | 'degraded' | 'down'
-  components: {
-    database: 'healthy' | 'degraded' | 'down'
-    redis: 'healthy' | 'degraded' | 'down'
-    messaging: 'healthy' | 'degraded' | 'down'
-    ai: 'healthy' | 'degraded' | 'down'
-  }
+  database: 'healthy' | 'degraded' | 'down'
+  redis: 'healthy' | 'degraded' | 'down'
 }
 
 interface SystemHealthApiResponse {
@@ -44,21 +40,55 @@ interface SystemHealthApiResponse {
   }
 }
 
-function mapUpDownStatus(status?: string): 'healthy' | 'degraded' | 'down' {
-  if (status === 'up') return 'healthy'
-  if (status === 'down') return 'down'
-  return 'degraded'
-}
-
 interface MessagingStats {
   sent24h: number
-  failed24h: number
-  successRate: number
+  totalMessages: number
+  totalConversations: number
+  activeConversations24h: number
 }
 
 interface MessagingStatsApiResponse {
   messages_24h?: number
   total_messages?: number
+  total_conversations?: number
+  active_conversations_24h?: number
+}
+
+function mapStatus(s?: string): 'healthy' | 'degraded' | 'down' {
+  if (s === 'up') return 'healthy'
+  if (s === 'down') return 'down'
+  return 'degraded'
+}
+
+function Shimmer({ className }: { className?: string }) {
+  return <div className={`bg-slate-700/60 rounded animate-pulse ${className ?? ''}`} />
+}
+
+function MetricCard({
+  title, value, icon, accent, loading, href,
+}: {
+  title: string
+  value: string | number
+  icon: string
+  accent: string
+  loading: boolean
+  href?: string
+}) {
+  const inner = (
+    <div className={`bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col gap-3 hover:border-slate-500 transition-all ${href ? 'cursor-pointer hover:bg-slate-750' : ''}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-2xl">{icon}</span>
+        <span className={`h-2 w-2 rounded-full ${accent}`} />
+      </div>
+      <div>
+        <p className="text-sm text-slate-400 font-medium">{title}</p>
+        {loading
+          ? <Shimmer className="h-8 w-28 mt-2" />
+          : <p className="text-3xl font-bold text-white mt-1">{value}</p>}
+      </div>
+    </div>
+  )
+  return href ? <Link href={href}>{inner}</Link> : inner
 }
 
 export default function AdminOverviewPage() {
@@ -67,230 +97,184 @@ export default function AdminOverviewPage() {
   const [messaging, setMessaging] = useState<MessagingStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [loadedAt, setLoadedAt] = useState<Date | null>(null)
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        setIsLoading(true)
-        const [revenueData, healthData, messagingData] = await Promise.all([
-          api.get<RevenueSummaryApiResponse>(API_ENDPOINTS.REVENUE_SUMMARY),
-          api.get<SystemHealthApiResponse>(API_ENDPOINTS.SYSTEM_HEALTH),
-          api.get<MessagingStatsApiResponse>(API_ENDPOINTS.OPS_MESSAGING_STATS),
-        ])
-
-        const normalizedRevenue: RevenueSummary = {
-          mrr: Number(revenueData?.mrr ?? 0),
-          arr: Number(revenueData?.arr ?? 0),
-          totalRevenue: Number(revenueData?.total_revenue_all_time ?? 0),
-          activeSubscriptions: Number(revenueData?.active_subscriptions ?? 0),
-          mrrFormatted: revenueData?.mrr_formatted,
-          arrFormatted: revenueData?.arr_formatted,
-          totalRevenueFormatted: revenueData?.total_revenue_all_time_formatted,
-        }
-
-        const sent24h = Number(messagingData?.messages_24h ?? 0)
-        const failed24h = 0
-        const successRate = sent24h > 0 ? 100 : 0
-
-        const normalizedMessaging: MessagingStats = {
-          sent24h,
-          failed24h,
-          successRate,
-        }
-
-        const normalizedHealth: SystemHealth = {
-          status: healthData?.status ?? 'degraded',
-          components: {
-            database: mapUpDownStatus(healthData?.components?.database?.status),
-            redis: mapUpDownStatus(healthData?.components?.redis?.status),
-            messaging: 'degraded',
-            ai: 'degraded',
-          },
-        }
-
-        setRevenue(normalizedRevenue)
-        setHealth(normalizedHealth)
-        setMessaging(normalizedMessaging)
-      } catch (err: any) {
-        setError(err.message || 'Failed to load dashboard data')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
     fetchData()
+    const interval = setInterval(fetchData, 60000)
+    return () => clearInterval(interval)
   }, [])
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="max-w-md w-full bg-red-50 border-2 border-red-200 rounded-xl p-8 text-center">
-          <h3 className="text-lg font-bold text-red-900 mb-2">Error Loading Data</h3>
-          <p className="text-red-800">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    )
+  async function fetchData() {
+    try {
+      setIsLoading(true)
+      const [revenueData, healthData, messagingData] = await Promise.all([
+        api.get<RevenueSummaryApiResponse>(API_ENDPOINTS.REVENUE_SUMMARY),
+        api.get<SystemHealthApiResponse>(API_ENDPOINTS.SYSTEM_HEALTH),
+        api.get<MessagingStatsApiResponse>(API_ENDPOINTS.OPS_MESSAGING_STATS),
+      ])
+
+      setRevenue({
+        mrr: Number(revenueData?.mrr ?? 0),
+        arr: Number(revenueData?.arr ?? 0),
+        totalRevenue: Number(revenueData?.total_revenue_all_time ?? 0),
+        activeSubscriptions: Number(revenueData?.active_subscriptions ?? 0),
+        mrrFormatted: revenueData?.mrr_formatted,
+        arrFormatted: revenueData?.arr_formatted,
+        totalRevenueFormatted: revenueData?.total_revenue_all_time_formatted,
+      })
+
+      setHealth({
+        status: healthData?.status ?? 'degraded',
+        database: mapStatus(healthData?.components?.database?.status),
+        redis: mapStatus(healthData?.components?.redis?.status),
+      })
+
+      setMessaging({
+        sent24h: Number(messagingData?.messages_24h ?? 0),
+        totalMessages: Number(messagingData?.total_messages ?? 0),
+        totalConversations: Number(messagingData?.total_conversations ?? 0),
+        activeConversations24h: Number(messagingData?.active_conversations_24h ?? 0),
+      })
+
+      setError(null)
+      setLoadedAt(new Date())
+    } catch (err: any) {
+      setError(err.message || 'Failed to load dashboard data')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 p-6 bg-slate-900 min-h-screen text-white">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">System Overview</h1>
-          <p className="mt-2 text-slate-600 font-medium">Real-time platform analytics and system status</p>
+          <h1 className="text-4xl font-bold text-white tracking-tight">Overview</h1>
+          <p className="text-slate-400 text-sm mt-1">
+            {loadedAt ? `Updated ${loadedAt.toLocaleTimeString()}` : 'Loading…'}
+          </p>
         </div>
-        {health && (
-          <div className="flex items-center gap-3 px-6 py-3 bg-white rounded-xl shadow-sm border border-slate-200">
-            <span className="text-sm font-semibold text-slate-700">System Status:</span>
-            <HealthBadge status={health.status} />
+        <div className="flex items-center gap-3">
+          {!isLoading && health && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl">
+              <span className="text-sm text-slate-400">System</span>
+              <HealthBadge status={health.status} />
+            </div>
+          )}
+          <button
+            onClick={fetchData}
+            disabled={isLoading}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-sm text-slate-200 rounded-xl transition-colors"
+          >
+            {isLoading ? 'Refreshing…' : '↻ Refresh'}
+          </button>
+        </div>
+      </div>
+
+      {/* Error notice — inline, non-blocking */}
+      {error && (
+        <div className="bg-red-900/40 border border-red-700 rounded-xl px-4 py-3 text-red-300 text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={fetchData} className="text-red-400 hover:text-red-200 underline text-xs">Retry</button>
+        </div>
+      )}
+
+      {/* Revenue KPIs */}
+      <section>
+        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">Revenue</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <MetricCard
+            title="Monthly Recurring Revenue"
+            value={revenue?.mrrFormatted ?? `₦${Math.round((revenue?.mrr ?? 0) / 100).toLocaleString()}`}
+            icon="💰" accent="bg-emerald-500" loading={isLoading}
+            href={ROUTES.BILLING}
+          />
+          <MetricCard
+            title="Annual Recurring Revenue"
+            value={revenue?.arrFormatted ?? `₦${Math.round((revenue?.arr ?? 0) / 100).toLocaleString()}`}
+            icon="📈" accent="bg-blue-500" loading={isLoading}
+            href={ROUTES.BILLING}
+          />
+          <MetricCard
+            title="Total Revenue"
+            value={revenue?.totalRevenueFormatted ?? `₦${Math.round((revenue?.totalRevenue ?? 0) / 100).toLocaleString()}`}
+            icon="💵" accent="bg-purple-500" loading={isLoading}
+            href={ROUTES.BILLING}
+          />
+          <MetricCard
+            title="Active Subscriptions"
+            value={revenue?.activeSubscriptions?.toLocaleString() ?? '0'}
+            icon="📋" accent="bg-yellow-500" loading={isLoading}
+            href={ROUTES.SUBSCRIPTIONS}
+          />
+        </div>
+      </section>
+
+      {/* Messaging KPIs */}
+      <section>
+        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-4">Messaging</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <MetricCard title="Messages (24h)" value={messaging?.sent24h?.toLocaleString() ?? '0'} icon="📨" accent="bg-blue-500" loading={isLoading} href={ROUTES.OPS} />
+          <MetricCard title="Active Conversations (24h)" value={messaging?.activeConversations24h?.toLocaleString() ?? '0'} icon="💬" accent="bg-teal-500" loading={isLoading} href={ROUTES.OPS} />
+          <MetricCard title="Total Messages" value={messaging?.totalMessages?.toLocaleString() ?? '0'} icon="📬" accent="bg-slate-400" loading={isLoading} href={ROUTES.OPS} />
+          <MetricCard title="Total Conversations" value={messaging?.totalConversations?.toLocaleString() ?? '0'} icon="🗂️" accent="bg-indigo-500" loading={isLoading} href={ROUTES.OPS} />
+        </div>
+      </section>
+
+      {/* System Health + Quick Nav */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Component Health */}
+        <div className="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-bold text-white">Component Health</h2>
+            <Link href={ROUTES.SYSTEM} className="text-xs text-blue-400 hover:text-blue-300">View details →</Link>
           </div>
-        )}
-      </div>
-
-      {/* Revenue Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {isLoading
-          ? Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-xl shadow-sm p-6 border border-slate-200 space-y-3">
-                <div className="h-4 w-2/3 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 rounded animate-pulse" />
-                <div className="h-8 w-1/2 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 rounded animate-pulse" />
-                <div className="h-3 w-1/3 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 rounded animate-pulse" />
-              </div>
-            ))
-          : revenue ? (
-              <>
-                <StatCard
-                  title="Monthly Recurring Revenue"
-                  value={revenue.mrrFormatted ?? `₦${Math.round((revenue.mrr ?? 0) / 100).toLocaleString()}`}
-                  icon="💰"
-                />
-                <StatCard
-                  title="Annual Recurring Revenue"
-                  value={revenue.arrFormatted ?? `₦${Math.round((revenue.arr ?? 0) / 100).toLocaleString()}`}
-                  icon="📈"
-                />
-                <StatCard
-                  title="Total Revenue"
-                  value={revenue.totalRevenueFormatted ?? `₦${Math.round((revenue.totalRevenue ?? 0) / 100).toLocaleString()}`}
-                  icon="💵"
-                />
-                <StatCard
-                  title="Active Subscriptions"
-                  value={Number(revenue.activeSubscriptions ?? 0)}
-                  icon="📋"
-                />
-              </>
-            ) : null
-        }
-      </div>
-
-      {/* Messaging Activity */}
-      {isLoading ? (
-        <div className="bg-white rounded-xl shadow-sm p-8 border border-slate-200">
-          <div className="h-6 w-40 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 rounded animate-pulse mb-6" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="p-4 bg-slate-50 rounded-xl space-y-3">
-                <div className="h-4 w-3/4 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 rounded animate-pulse" />
-                <div className="h-8 w-1/2 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 rounded animate-pulse" />
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: 'Database', status: health?.database, icon: '🗄️' },
+              { label: 'Redis', status: health?.redis, icon: '⚡' },
+              { label: 'AI Engine', status: 'healthy' as const, icon: '🤖' },
+              { label: 'WhatsApp', status: 'healthy' as const, icon: '📱' },
+            ].map(({ label, status, icon }) => (
+              <div key={label} className="flex items-center justify-between bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{icon}</span>
+                  <span className="text-sm font-medium text-white">{label}</span>
+                </div>
+                {isLoading || !status
+                  ? <Shimmer className="h-5 w-14 rounded-full" />
+                  : <HealthBadge status={status} />}
               </div>
             ))}
           </div>
         </div>
-      ) : messaging ? (
-        <div className="bg-white rounded-xl shadow-sm p-8 border border-slate-200 hover:shadow-lg transition-shadow">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Messaging Activity</h2>
-            <span className="text-2xl">📨</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-4 bg-slate-50 rounded-xl">
-              <p className="text-sm font-semibold text-slate-600 mb-1">Messages Sent (24h)</p>
-              <p className="text-3xl font-bold text-slate-900">{Number(messaging.sent24h ?? 0).toLocaleString()}</p>
-            </div>
-            <div className="p-4 bg-red-50 rounded-xl">
-              <p className="text-sm font-semibold text-slate-600 mb-1">Failed</p>
-              <p className="text-3xl font-bold text-red-600">{Number(messaging.failed24h ?? 0).toLocaleString()}</p>
-            </div>
-            <div className="p-4 bg-green-50 rounded-xl">
-              <p className="text-sm font-semibold text-slate-600 mb-1">Success Rate</p>
-              <p className="text-3xl font-bold text-green-600">{Number(messaging.successRate ?? 0).toFixed(2)}%</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
-      {/* Component Health */}
-      {isLoading ? (
-        <div className="bg-white rounded-xl shadow-sm p-8 border border-slate-200">
-          <div className="h-6 w-44 bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200 rounded animate-pulse mb-6" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-20 bg-gradient-to-r from-slate-100 via-slate-200 to-slate-100 rounded-xl animate-pulse" />
+        {/* Quick Actions */}
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+          <h2 className="text-lg font-bold text-white mb-5">Quick Actions</h2>
+          <div className="space-y-2">
+            {[
+              { label: 'View Tenants', href: ROUTES.TENANTS, icon: '🏢' },
+              { label: 'Manage Plans', href: ROUTES.PLANS, icon: '💎' },
+              { label: 'Browse Orders', href: ROUTES.ORDERS, icon: '📦' },
+              { label: 'Browse Customers', href: ROUTES.CUSTOMERS, icon: '👤' },
+              { label: 'Operations', href: ROUTES.OPS, icon: '⚙️' },
+            ].map(({ label, href, icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="flex items-center gap-3 px-4 py-3 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-slate-500 rounded-xl text-sm text-slate-200 hover:text-white transition-all group"
+              >
+                <span className="text-lg">{icon}</span>
+                <span className="font-medium">{label}</span>
+                <span className="ml-auto text-slate-500 group-hover:text-slate-300">→</span>
+              </Link>
             ))}
           </div>
         </div>
-      ) : health ? (
-        <div className="bg-white rounded-xl shadow-sm p-8 border border-slate-200 hover:shadow-lg transition-shadow">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-900">Component Health</h2>
-            <span className="text-2xl">💚</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="flex items-center justify-between p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-                  <svg className="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
-                  </svg>
-                </div>
-                <span className="font-semibold text-slate-700">Database</span>
-              </div>
-              <HealthBadge status={health.components.database} label="" />
-            </div>
-            <div className="flex items-center justify-between p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-                  <svg className="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
-                  </svg>
-                </div>
-                <span className="font-semibold text-slate-700">Redis</span>
-              </div>
-              <HealthBadge status={health.components.redis} label="" />
-            </div>
-            <div className="flex items-center justify-between p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-                  <svg className="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                  </svg>
-                </div>
-                <span className="font-semibold text-slate-700">Messaging</span>
-              </div>
-              <HealthBadge status={health.components.messaging} label="" />
-            </div>
-            <div className="flex items-center justify-between p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
-                  <svg className="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                </div>
-                <span className="font-semibold text-slate-700">AI Engine</span>
-              </div>
-              <HealthBadge status={health.components.ai} label="" />
-            </div>
-          </div>
-        </div>
-      ) : null}
+      </div>
     </div>
   )
 }

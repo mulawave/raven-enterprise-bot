@@ -13,12 +13,16 @@ const navItems = [
   { label: 'Billing', href: ROUTES.BILLING, icon: '💳', description: 'Revenue & payments' },
   { label: 'Ops', href: ROUTES.OPS, icon: '⚙️', description: 'Operations center' },
   { label: 'Orders', href: ROUTES.ORDERS, icon: '📦', description: 'Order management' },
+  { label: 'Customers', href: ROUTES.CUSTOMERS, icon: '👤', description: 'Customer directory' },
   { label: 'Bookings', href: ROUTES.BOOKINGS, icon: '📅', description: 'Booking analytics' },
   { label: 'System Health', href: ROUTES.SYSTEM, icon: '🏥', description: 'System status' },
   { label: 'Admin Users', href: ROUTES.USERS, icon: '👥', description: 'User management' },
 ]
 
 const bottomNavItems = [
+  { label: 'API Keys', href: ROUTES.API_KEYS, icon: '🔑', description: 'Integration keys & config' },
+  { label: 'Payment', href: ROUTES.PAYMENT_CONFIG, icon: '💰', description: 'Paystack sandbox & live keys' },
+  { label: 'Email', href: ROUTES.EMAIL_CONFIG, icon: '📧', description: 'SMTP & email templates' },
   { label: 'Profile', href: ROUTES.PROFILE, icon: '👤', description: 'Your profile' },
   { label: 'Settings', href: ROUTES.SETTINGS, icon: '⚙️', description: 'Configuration' },
 ]

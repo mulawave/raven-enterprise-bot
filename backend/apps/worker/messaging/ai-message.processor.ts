@@ -9,6 +9,9 @@ import { FallbackHandler } from '../../../libs/ai-engine/ai.service'
 import { AuditLogger } from '../../../libs/monitoring/audit.logger'
 import { SubscriptionsService } from '../../../libs/billing/subscriptions.service'
 import { BrandingService } from '../../../libs/tenant/branding/branding.service'
+import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
+import { OpenAIResponseGenerator } from '../../../libs/ai-engine/openai-response.generator'
+import type { OutboundMessageJob } from './outbound-message.worker'
 import Redis from 'ioredis'
 
 export interface AiMessageJob {
@@ -39,10 +42,13 @@ class RedisAdapter implements RedisClient {
 export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(AiMessageProcessor.name)
   private queue!: Queue<AiMessageJob>
+  private outboundQueue!: Queue<OutboundMessageJob>
   private worker!: Worker<AiMessageJob, ProcessOutput>
   private aiService!: AiService
+  private openaiGenerator!: OpenAIResponseGenerator
   private readonly subscriptionsService: SubscriptionsService
   private readonly brandingService: BrandingService
+  private readonly configLoader: ConfigLoaderService
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -50,15 +56,20 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
   ) {
     this.subscriptionsService = new SubscriptionsService(this.prisma)
     this.brandingService = new BrandingService(this.prisma)
+    this.configLoader = new ConfigLoaderService(this.prisma)
   }
 
   onModuleInit(): void {
-    // Initialize queue
+    // Initialize queues
     this.queue = new Queue<AiMessageJob>('ai-messages', {
       connection: this.redisConnection,
     })
 
-    // Initialize AI service with dependencies
+    this.outboundQueue = new Queue<OutboundMessageJob>('outbound-messages', {
+      connection: this.redisConnection,
+    })
+
+    // Initialize AI service
     const redisAdapter = new RedisAdapter(this.redisConnection)
     const sessionStore = new RedisSessionStore(redisAdapter)
     const router = new IntentRouter()
@@ -67,6 +78,7 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
     const auditLogger = new AuditLogger(this.prisma)
 
     this.aiService = new AiService(router, stateMachine, sessionStore, fallback, auditLogger)
+    this.openaiGenerator = new OpenAIResponseGenerator(this.configLoader)
 
     // Initialize worker with retry logic
     this.worker = new Worker<AiMessageJob, ProcessOutput>(
@@ -136,18 +148,52 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
       // Don't fail the job if billing tracking fails
     }
 
-    // 
-    // For now, just log the AI response
-    // In a real system, this would enqueue an outbound message job
-    this.logger.log(`AI response: "${output.text}" (intent: ${output.intent}, state: ${output.state})`)
+    this.logger.log(`AI intent: ${output.intent}, state: ${output.state}`)
 
-    // TODO PHASE 5: Enqueue outbound message
-    // await this.outboundQueue.enqueue({
-    //   conversationId,
-    //   tenantId,
-    //   customerId,
-    //   content: output.text,
-    // })
+    // Look up customer phone for outbound delivery
+    const convo = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: { customer: { select: { phone: true } } },
+    })
+    const customerPhone = (convo as any)?.customer?.phone as string | undefined
+
+    // Try OpenAI-enhanced response; fall back to rule-based output.text
+    let responseText = output.text
+    try {
+      const aiResponse = await this.openaiGenerator.generate({
+        businessName: branding.name ?? 'Raven AI',
+        userMessage: content,
+        intent: output.intent,
+        conversationHistory: [],
+      })
+      if (aiResponse) responseText = aiResponse
+    } catch (err) {
+      this.logger.warn(`OpenAI generate failed, using rule-based: ${(err as Error).message}`)
+    }
+
+    // Enqueue outbound message to WhatsApp
+    if (customerPhone) {
+      await this.outboundQueue.add(
+        'send-message',
+        {
+          conversationId,
+          tenantId,
+          customerId,
+          content: responseText,
+          platform: 'whatsapp',
+          to: customerPhone,
+        },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+          removeOnComplete: 100,
+          removeOnFail: 500,
+        },
+      )
+      this.logger.log(`Enqueued outbound message to ${customerPhone} for conversation ${conversationId}`)
+    } else {
+      this.logger.warn(`No phone number for customer ${customerId} — outbound message skipped`)
+    }
 
     return output
   }
@@ -155,5 +201,6 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
   async close(): Promise<void> {
     await this.worker.close()
     await this.queue.close()
+    await this.outboundQueue.close()
   }
 }
