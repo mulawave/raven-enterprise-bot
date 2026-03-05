@@ -1,9 +1,10 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { API_ENDPOINTS } from '@/lib/constants'
 import { Button } from '@/components/Button'
+import { CreditCard, Eye, EyeOff, CheckCircle2, AlertCircle, ExternalLink, Info, ShieldCheck, FlaskConical } from 'lucide-react'
 
 interface ConfigKey {
   key: string
@@ -14,26 +15,13 @@ interface ConfigKey {
   updated_at: string
 }
 
-const PAYMENT_KEYS = [
-  'PAYSTACK_SECRET_KEY',
-  'PAYSTACK_PUBLIC_KEY',
-  'PAYSTACK_TEST_SECRET_KEY',
-  'PAYSTACK_TEST_PUBLIC_KEY',
-  'PAYMENT_CALLBACK_URL',
-  'PAYMENT_LIVE_MODE',
-]
-
-// Keys shown only in live mode tab
 const LIVE_KEYS = ['PAYSTACK_SECRET_KEY', 'PAYSTACK_PUBLIC_KEY']
-// Keys shown only in test mode tab
 const TEST_KEYS = ['PAYSTACK_TEST_SECRET_KEY', 'PAYSTACK_TEST_PUBLIC_KEY']
 
 export default function PaymentConfigPage() {
   const [keys, setKeys] = useState<Record<string, ConfigKey>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
-
-  // Draft values (one per key)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [show, setShow] = useState<Record<string, boolean>>({})
   const [saving, setSaving] = useState<Record<string, boolean>>({})
@@ -43,15 +31,14 @@ export default function PaymentConfigPage() {
   const isLive = (keys['PAYMENT_LIVE_MODE']?.value ?? 'false') === 'true'
 
   async function fetchKeys() {
-    setIsLoading(true)
-    setFetchError(null)
+    setIsLoading(true); setFetchError(null)
     try {
       const res = await api.get<Record<string, ConfigKey[]>>(API_ENDPOINTS.CONFIG_KEYS)
       const flat: Record<string, ConfigKey> = {}
       Object.values(res).flat().forEach((k) => { flat[k.key] = k })
       setKeys(flat)
       const d: Record<string, string> = {}
-      Object.values(flat).forEach((k) => { d[k.key] = '' }) // drafts start empty (don't show masked vals)
+      Object.values(flat).forEach((k) => { d[k.key] = '' })
       setDrafts(d)
     } catch (err: any) {
       setFetchError(err.message || 'Failed to load config')
@@ -80,161 +67,176 @@ export default function PaymentConfigPage() {
   }
 
   async function toggleLiveMode() {
-    const next = isLive ? 'false' : 'true'
-    await save('PAYMENT_LIVE_MODE', next)
+    await save('PAYMENT_LIVE_MODE', isLive ? 'false' : 'true')
   }
 
-  const SHIMMER = 'animate-pulse bg-slate-700 rounded'
+  const S = 'animate-pulse bg-slate-700 rounded'
 
-  function KeyRow({ keyName }: { keyName: string }) {
+  function KeyField({ keyName }: { keyName: string }) {
     const cfg = keys[keyName]
-    if (!cfg) return null
-    const isSaving = saving[keyName]
+    if (!cfg) return <div className={`${S} h-16 w-full`} />
+    const isSav = saving[keyName]
     const err = saveErrors[keyName]
     const ok = saveSuccess[keyName]
 
     return (
-      <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4">
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <div>
-            <span className="font-mono text-xs text-indigo-300">{keyName}</span>
-            {cfg.has_value && (
-              <span className="ml-2 text-xs text-green-400 bg-green-900/30 px-2 py-0.5 rounded-full">● Set</span>
-            )}
-          </div>
-          {cfg.is_secret && (
-            <button
-              onClick={() => setShow((s) => ({ ...s, [keyName]: !s[keyName] }))}
-              className="text-xs text-slate-400 hover:text-white transition-colors shrink-0"
-            >
-              {show[keyName] ? 'Hide' : 'Show'}
-            </button>
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <code className="text-xs font-mono text-sky-300 bg-sky-950/60 px-2 py-0.5 rounded border border-sky-800/40">{keyName}</code>
+          {cfg.has_value && (
+            <span className="text-[10px] text-emerald-400 bg-emerald-900/20 px-1.5 py-0.5 rounded border border-emerald-700/30 inline-flex items-center gap-1">
+              <CheckCircle2 className="h-2.5 w-2.5" /> set
+            </span>
           )}
         </div>
-        {cfg.description && <p className="text-xs text-slate-500 mb-3">{cfg.description}</p>}
-
+        {cfg.description && <p className="text-xs text-slate-500">{cfg.description}</p>}
         <div className="flex gap-2">
-          <input
-            type={cfg.is_secret && !show[keyName] ? 'password' : 'text'}
-            value={drafts[keyName] ?? ''}
-            onChange={(e) => setDrafts((d) => ({ ...d, [keyName]: e.target.value }))}
-            className="flex-1 bg-slate-900 text-white text-sm rounded-lg px-3 py-2 border border-slate-600 focus:border-indigo-500 outline-none placeholder-slate-500"
-            placeholder={cfg.has_value ? '(keep existing — type to replace)' : 'Enter value…'}
-          />
-          <Button
-            size="sm"
-            variant="primary"
-            isLoading={isSaving}
-            loadingText="Saving…"
-            onClick={() => save(keyName, drafts[keyName] ?? '')}
-            disabled={!drafts[keyName]?.trim()}
-          >
+          <div className="relative flex-1">
+            <input
+              type={cfg.is_secret && !show[keyName] ? 'password' : 'text'}
+              value={drafts[keyName] ?? ''}
+              onChange={(e) => setDrafts((d) => ({ ...d, [keyName]: e.target.value }))}
+              className="w-full bg-slate-900 text-white text-sm rounded-lg px-3 py-2 border border-slate-600 focus:border-sky-500 outline-none placeholder-slate-600 font-mono pr-10"
+              placeholder={cfg.has_value ? '(keep existing)' : 'Enter value...'}
+            />
+            {cfg.is_secret && (
+              <button type="button" onClick={() => setShow((s) => ({ ...s, [keyName]: !s[keyName] }))}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                {show[keyName] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            )}
+          </div>
+          <Button size="sm" isLoading={isSav} loadingText="Saving..." onClick={() => save(keyName, drafts[keyName] ?? '')} disabled={!drafts[keyName]?.trim()}>
             Save
           </Button>
         </div>
-        {err && <p className="text-red-400 text-xs mt-2">{err}</p>}
-        {ok && <p className="text-green-400 text-xs mt-2">Saved</p>}
+        {err && <p className="text-red-400 text-xs flex items-center gap-1"><AlertCircle className="h-3 w-3" />{err}</p>}
+        {ok && <p className="text-emerald-400 text-xs flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Saved</p>}
       </div>
     )
   }
 
   return (
-    <div className="space-y-8 max-w-2xl">
-      {/* Header */}
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Payment Configuration</h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Configure Paystack keys for sandbox testing and live production payments
-        </p>
+        <h1 className="text-3xl font-bold text-white">Payment Configuration</h1>
+        <p className="text-sm text-slate-400 mt-1">Configure Paystack API keys for sandbox testing and live transactions.</p>
       </div>
 
       {fetchError && (
-        <div className="bg-red-900/40 border border-red-700 rounded-lg p-4 flex items-center justify-between">
-          <span className="text-red-300 text-sm">{fetchError}</span>
-          <Button size="sm" variant="secondary" onClick={fetchKeys}>Retry</Button>
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-900/40 border border-red-600/50 text-sm text-red-300">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <span>{fetchError}</span>
+          <Button size="sm" variant="secondary" onClick={fetchKeys} className="ml-auto">Retry</Button>
         </div>
       )}
 
-      {/* Live / Test mode toggle */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
-        <div className="flex items-center justify-between">
+      {/* Mode banner */}
+      <div className={`rounded-2xl border p-5 flex items-center justify-between ${isLive ? 'bg-green-900/20 border-green-600/40' : 'bg-amber-900/20 border-amber-600/40'}`}>
+        <div className="flex items-center gap-3">
+          {isLive
+            ? <ShieldCheck className="h-6 w-6 text-green-400" />
+            : <FlaskConical className="h-6 w-6 text-amber-400" />
+          }
           <div>
-            <h2 className="text-white font-semibold">Payment Mode</h2>
-            <p className="text-slate-400 text-sm mt-1">
-              {isLoading
-                ? 'Loading…'
-                : isLive
-                ? '🟢 Live — real money transactions enabled'
-                : '🟡 Sandbox — test mode, no real charges'}
+            <p className={`font-semibold ${isLive ? 'text-green-300' : 'text-amber-300'}`}>
+              {isLoading ? 'Loading...' : isLive ? 'Live Mode Active' : 'Sandbox / Test Mode Active'}
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {isLive ? 'Real money transactions are enabled. Charges are live.' : 'No real charges. Use Paystack test cards.'}
             </p>
           </div>
-          {isLoading ? (
-            <div className={`${SHIMMER} h-8 w-24`} />
-          ) : (
-            <Button
-              variant={isLive ? 'danger' : 'primary'}
-              size="sm"
-              isLoading={saving['PAYMENT_LIVE_MODE']}
-              loadingText="Switching…"
-              onClick={toggleLiveMode}
-            >
-              {isLive ? 'Switch to Sandbox' : 'Enable Live Mode'}
-            </Button>
-          )}
         </div>
-
-        {!isLoading && isLive && (
-          <div className="mt-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-3">
-            <p className="text-yellow-300 text-xs">
-              ⚠️ Live mode is active. Transactions will charge real cards. Ensure your live Paystack keys are correctly set.
-            </p>
-          </div>
+        {!isLoading && (
+          <Button
+            variant={isLive ? 'danger' : 'primary'}
+            size="sm"
+            isLoading={saving['PAYMENT_LIVE_MODE']}
+            loadingText="Switching..."
+            onClick={toggleLiveMode}
+            className="shrink-0 ml-4"
+          >
+            {isLive ? 'Switch to Sandbox' : 'Enable Live Mode'}
+          </Button>
         )}
       </div>
 
-      {/* Live keys */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className={`h-2.5 w-2.5 rounded-full ${isLive ? 'bg-green-400' : 'bg-slate-600'}`} />
-          <h2 className="text-white font-semibold">Live Keys</h2>
-          {isLive && <span className="text-xs bg-green-900/40 text-green-300 px-2 py-0.5 rounded-full">Active</span>}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* LEFT: Live keys + Test keys + Callback */}
+        <div className="space-y-5">
+          {/* Live keys */}
+          <div className={`rounded-2xl border bg-slate-800/60 p-5 space-y-4 ${isLive ? 'border-green-600/40' : 'border-slate-700/40'}`}>
+            <div className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full ${isLive ? 'bg-green-400' : 'bg-slate-600'}`} />
+              <h3 className="font-semibold text-white">Live Keys</h3>
+              {isLive && <span className="text-xs bg-green-900/40 text-green-300 px-2 py-0.5 rounded-full border border-green-700/30">Active</span>}
+            </div>
+            <p className="text-xs text-slate-500">sk_live_ / pk_live_ — used when Live Mode is on.</p>
+            {isLoading
+              ? [1, 2].map((i) => <div key={i} className={`${S} h-16 w-full`} />)
+              : LIVE_KEYS.map((k) => <KeyField key={k} keyName={k} />)
+            }
+          </div>
+
+          {/* Test keys */}
+          <div className={`rounded-2xl border bg-slate-800/60 p-5 space-y-4 ${!isLive ? 'border-amber-600/40' : 'border-slate-700/40'}`}>
+            <div className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full ${!isLive ? 'bg-amber-400' : 'bg-slate-600'}`} />
+              <h3 className="font-semibold text-white">Sandbox / Test Keys</h3>
+              {!isLive && <span className="text-xs bg-amber-900/40 text-amber-300 px-2 py-0.5 rounded-full border border-amber-700/30">Active</span>}
+            </div>
+            <p className="text-xs text-slate-500">sk_test_ / pk_test_ — used when Sandbox Mode is on.</p>
+            {isLoading
+              ? [1, 2].map((i) => <div key={i} className={`${S} h-16 w-full`} />)
+              : TEST_KEYS.map((k) => <KeyField key={k} keyName={k} />)
+            }
+          </div>
+
+          {/* Callback URL */}
+          <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-5 space-y-3">
+            <h3 className="font-semibold text-white">Callback URL</h3>
+            <p className="text-xs text-slate-500">Paystack redirects here after payment completes. Must match the Paystack dashboard setting.</p>
+            {isLoading ? <div className={`${S} h-16 w-full`} /> : <KeyField keyName="PAYMENT_CALLBACK_URL" />}
+          </div>
         </div>
-        <p className="text-slate-400 text-xs -mt-2">Used when live mode is enabled. Starts with sk_live_... / pk_live_...</p>
-        {isLoading
-          ? [1, 2].map((i) => <div key={i} className={`${SHIMMER} h-16 w-full`} />)
-          : LIVE_KEYS.map((k) => <KeyRow key={k} keyName={k} />)
-        }
-      </div>
 
-      {/* Test / Sandbox keys */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className={`h-2.5 w-2.5 rounded-full ${!isLive ? 'bg-yellow-400' : 'bg-slate-600'}`} />
-          <h2 className="text-white font-semibold">Sandbox / Test Keys</h2>
-          {!isLive && <span className="text-xs bg-yellow-900/40 text-yellow-300 px-2 py-0.5 rounded-full">Active</span>}
+        {/* RIGHT: Reference & tips */}
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 space-y-4">
+            <h3 className="font-semibold text-white flex items-center gap-2">
+              <Info className="h-4 w-4 text-sky-400" />Setup Guide
+            </h3>
+            <ol className="text-xs text-slate-400 space-y-3 list-none">
+              <li className="flex gap-2"><span className="bg-indigo-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center shrink-0 mt-0.5">1</span>
+                <span>Log in to your <span className="text-sky-300">Paystack Dashboard</span> and go to <strong className="text-slate-200">Settings ➜ API Keys and Webhooks</strong>.</span></li>
+              <li className="flex gap-2"><span className="bg-indigo-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center shrink-0 mt-0.5">2</span>
+                <span>Copy your <strong className="text-amber-300">Test Secret Key</strong> and <strong className="text-amber-300">Test Public Key</strong> for sandbox testing.</span></li>
+              <li className="flex gap-2"><span className="bg-indigo-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center shrink-0 mt-0.5">3</span>
+                <span>When ready for production, copy the <strong className="text-green-300">Live Secret Key</strong> and <strong className="text-green-300">Live Public Key</strong> and toggle to Live Mode.</span></li>
+              <li className="flex gap-2"><span className="bg-indigo-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center shrink-0 mt-0.5">4</span>
+                <span>Set the <strong className="text-slate-200">Callback URL</strong> to match the one in your Paystack Webhook settings (e.g. <code className="font-mono text-sky-300">https://app.raven-ai.online/payments/verify</code>).</span></li>
+            </ol>
+            <a
+              href="https://dashboard.paystack.com/#/settings/developers"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 hover:underline"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />Open Paystack Developer Settings
+            </a>
+          </div>
+
+          <div className="rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 space-y-2">
+            <p className="text-xs font-medium text-amber-400">Important Notes</p>
+            <ul className="text-xs text-slate-400 space-y-1.5 list-disc list-inside">
+              <li>Never share secret keys. They authorize charges directly.</li>
+              <li>Keys are applied within 60 seconds of saving (config cache).</li>
+              <li>Test mode and Live mode use completely separate key sets.</li>
+              <li>Paystack test card: <code className="font-mono text-slate-300">4084 0840 8408 4081</code> (any future exp, CVV 408).</li>
+            </ul>
+          </div>
         </div>
-        <p className="text-slate-400 text-xs -mt-2">Used in sandbox mode. Starts with sk_test_... / pk_test_...</p>
-        {isLoading
-          ? [1, 2].map((i) => <div key={i} className={`${SHIMMER} h-16 w-full`} />)
-          : TEST_KEYS.map((k) => <KeyRow key={k} keyName={k} />)
-        }
       </div>
-
-      {/* Callback URL */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-4">
-        <h2 className="text-white font-semibold">Callback URL</h2>
-        <p className="text-slate-400 text-xs">Paystack redirects here after payment. Must match what is set in the Paystack dashboard.</p>
-        {isLoading
-          ? <div className={`${SHIMMER} h-16 w-full`} />
-          : <KeyRow keyName="PAYMENT_CALLBACK_URL" />
-        }
-      </div>
-
-      {/* Info */}
-      <p className="text-slate-500 text-xs">
-        Keys are cached for up to 60 seconds after saving. Restart the backend for immediate effect.
-        Get your keys from <a href="https://dashboard.paystack.com/#/settings/developers" target="_blank" rel="noreferrer" className="text-indigo-400 hover:underline">Paystack Dashboard → Developer</a>.
-      </p>
     </div>
   )
 }

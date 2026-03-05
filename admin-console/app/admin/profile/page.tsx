@@ -1,12 +1,13 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import ImageUpload from '@/components/ImageUpload'
-import { User, Mail, Lock, Shield } from 'lucide-react'
+import { User, Mail, Lock, Shield, Camera } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/Button'
 import { API_BASE_URL } from '@/lib/constants'
 import { getAdminToken } from '@/lib/auth'
+import { CheckCircle2, AlertCircle } from 'lucide-react'
 
 interface AdminProfile {
   id: string
@@ -19,285 +20,212 @@ interface AdminProfile {
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<AdminProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState<string | null>(null)
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  })
+  const [isLoading, setIsLoading] = useState(true)
+  const [nameDraft, setNameDraft] = useState('')
+  const [emailDraft, setEmailDraft] = useState('')
+  const [isSavingInfo, setIsSavingInfo] = useState(false)
+  const [infoSuccess, setInfoSuccess] = useState(false)
+  const [infoError, setInfoError] = useState<string | null>(null)
+  const [passwordData, setPasswordData] = useState({ newPassword: '', confirmPassword: '' })
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSuccess, setPasswordSuccess] = useState(false)
+  const [isSavingPw, setIsSavingPw] = useState(false)
 
-  useEffect(() => {
-    fetchProfile()
-  }, [])
+  useEffect(() => { fetchProfile() }, [])
 
   const fetchProfile = async () => {
     try {
       const data = await api.get<AdminProfile>('/admin/profile')
       setProfile(data)
-    } catch (error) {
-      console.error('Failed to fetch profile:', error)
+      setNameDraft(data.name ?? '')
+      setEmailDraft(data.email ?? '')
+    } catch {
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
-  const updateField = async (field: keyof AdminProfile, value: string) => {
+  const handleSaveInfo = async () => {
     if (!profile) return
-
-    setSaving(field)
+    setIsSavingInfo(true); setInfoError(null); setInfoSuccess(false)
     try {
-      const updated = await api.patch<AdminProfile>('/admin/profile', { [field]: value })
-      setProfile(updated)
-    } catch (error) {
-      console.error('Failed to update profile:', error)
+      const updated = await api.patch<AdminProfile>('/admin/profile', { name: nameDraft, email: emailDraft })
+      setProfile(updated); setInfoSuccess(true)
+      setTimeout(() => setInfoSuccess(false), 3000)
+    } catch (err: any) {
+      setInfoError(err?.message ?? 'Save failed')
     } finally {
-      setSaving(null)
+      setIsSavingInfo(false)
     }
-  }
-
-  const handleInputChange = (field: keyof AdminProfile, value: string) => {
-    if (!profile) return
-    setProfile({ ...profile, [field]: value })
-  }
-
-  const handleInputBlur = (field: keyof AdminProfile, value: string) => {
-    updateField(field, value)
   }
 
   const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setPasswordError(null)
-    setPasswordSuccess(false)
-
+    e.preventDefault(); setPasswordError(null); setPasswordSuccess(false)
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError('New passwords do not match')
-      return
+      setPasswordError('Passwords do not match'); return
     }
-
     if (passwordData.newPassword.length < 8) {
-      setPasswordError('Password must be at least 8 characters')
-      return
+      setPasswordError('Password must be at least 8 characters'); return
     }
-
-    setSaving('password')
+    setIsSavingPw(true)
     try {
       await api.patch('/admin/profile', { password: passwordData.newPassword })
-        setPasswordSuccess(true)
-        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
-        setTimeout(() => setPasswordSuccess(false), 3000)
-    } catch (error) {
-      setPasswordError(error instanceof Error ? error.message : 'Failed to update password')
+      setPasswordSuccess(true)
+      setPasswordData({ newPassword: '', confirmPassword: '' })
+      setTimeout(() => setPasswordSuccess(false), 3000)
+    } catch (err: any) {
+      setPasswordError(err?.message ?? 'Failed to update password')
     } finally {
-      setSaving(null)
+      setIsSavingPw(false)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="space-y-6 max-w-4xl">
-        <div className="h-9 w-36 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded animate-pulse" />
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
-          <div className="flex items-start gap-6">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 animate-pulse" />
-            <div className="flex-1 space-y-3">
-              <div className="h-4 w-1/2 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded animate-pulse" />
-              <div className="h-4 w-1/3 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded animate-pulse" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 space-y-4">
-          <div className="h-6 w-44 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded animate-pulse" />
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <div className="h-4 w-24 bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded animate-pulse" />
-              <div className="h-10 w-full bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 rounded-lg animate-pulse" />
-            </div>
-          ))}
-        </div>
-      </div>
-    )
+  const handleAvatarChange = async (url: string) => {
+    setProfile((prev) => prev ? { ...prev, avatar_url: url } : prev)
+    try { await api.patch('/admin/profile', { avatar_url: url }) } catch {}
   }
 
-  if (!profile) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-400">Failed to load profile</p>
-      </div>
-    )
-  }
+  const S = 'animate-pulse bg-slate-700/60 rounded'
+  const token = getAdminToken()
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <h1 className="text-3xl font-bold text-white">Admin Profile</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-white">Admin Profile</h1>
+        <p className="text-sm text-slate-400 mt-1">Manage your account information and security settings.</p>
+      </div>
 
-      {/* Profile Picture Section */}
-      <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Profile Picture</h2>
-        
-        <div className="flex items-start gap-6">
-          <div className="flex-shrink-0">
-            {profile.avatar_url ? (
-              <img
-                src={`${API_BASE_URL}${profile.avatar_url}?t=${getAdminToken() ?? ''}`}
-                alt="Profile"
-                className="w-24 h-24 rounded-full object-cover border-2 border-gray-700"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* LEFT COL: Avatar + Account Info */}
+        <div className="space-y-5">
+          {/* Avatar card */}
+          <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-6 space-y-5">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Camera className="h-5 w-5 text-indigo-400" />Profile Photo
+            </h2>
+            <div className="flex flex-col items-center gap-4">
+              {isLoading ? (
+                <div className={`${S} w-28 h-28 rounded-full`} />
+              ) : profile?.avatar_url ? (
+                <img
+                  src={`${API_BASE_URL}${profile.avatar_url}?t=${token ?? ''}`}
+                  alt="Avatar"
+                  className="w-28 h-28 rounded-full object-cover border-4 border-slate-600 ring-2 ring-indigo-500/30"
+                  onError={(e) => { (e.target as HTMLImageElement).src = '' }}
+                />
+              ) : (
+                <div className="w-28 h-28 rounded-full bg-slate-700 border-4 border-slate-600 ring-2 ring-indigo-500/20 flex items-center justify-center">
+                  <User className="h-14 w-14 text-slate-400" />
+                </div>
+              )}
+              <ImageUpload
+                value={null}
+                onChange={handleAvatarChange}
+                endpoint="/admin/profile/upload/avatar"
+                label="Upload New Photo"
+                maxSize={5 * 1024 * 1024}
               />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center border-2 border-gray-600">
-                <User className="h-12 w-12 text-gray-400" />
-              </div>
-            )}
+            </div>
           </div>
 
-          <div className="flex-1">
-            <ImageUpload
-              value={profile.avatar_url}
-              onChange={(url) => {
-                setProfile({ ...profile, avatar_url: url })
-              }}
-              endpoint="/admin/profile/upload/avatar"
-              label="Upload New Avatar"
-              maxSize={5 * 1024 * 1024}
-            />
+          {/* Role / metadata card */}
+          <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-6 space-y-3">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Shield className="h-5 w-5 text-indigo-400" />Account Details
+            </h2>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between py-2 border-b border-slate-700/40">
+                <span className="text-slate-400">Role</span>
+                <span className="text-white font-medium capitalize">{isLoading ? <span className={`${S} inline-block h-4 w-20`} /> : (profile?.role ?? 'admin')}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-700/40">
+                <span className="text-slate-400">Account ID</span>
+                <span className="text-slate-300 font-mono text-xs">{isLoading ? <span className={`${S} inline-block h-4 w-28`} /> : profile?.id?.slice(0, 16)}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-slate-400">Created</span>
+                <span className="text-slate-300 text-xs">{isLoading ? <span className={`${S} inline-block h-4 w-28`} /> : (profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : '')}</span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Account Information Section */}
-      <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 space-y-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Account Information</h2>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Name
-                {saving === 'name' && (
-                  <span className="ml-2 text-xs text-blue-400">Saving...</span>
-                )}
-              </div>
-            </label>
-            <input
-              type="text"
-              value={profile.name || ''}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              onBlur={(e) => handleInputBlur('name', e.target.value)}
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
-              placeholder="Enter your name"
-            />
+        {/* RIGHT COL: Account info form + password */}
+        <div className="space-y-5">
+          {/* Account info */}
+          <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <User className="h-5 w-5 text-indigo-400" />Account Information
+            </h2>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5 text-slate-500" />Display Name
+              </label>
+              {isLoading ? <div className={`${S} h-10 w-full`} /> : (
+                <input
+                  type="text"
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 outline-none transition-colors"
+                  placeholder="Enter your name"
+                />
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-slate-500" />Email Address
+              </label>
+              {isLoading ? <div className={`${S} h-10 w-full`} /> : (
+                <input
+                  type="email"
+                  value={emailDraft}
+                  onChange={(e) => setEmailDraft(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 outline-none transition-colors"
+                  placeholder="admin@example.com"
+                />
+              )}
+            </div>
+            {infoError && <div className="flex items-center gap-2 text-sm text-red-300"><AlertCircle className="h-4 w-4" />{infoError}</div>}
+            {infoSuccess && <div className="flex items-center gap-2 text-sm text-emerald-300"><CheckCircle2 className="h-4 w-4" />Profile updated</div>}
+            <Button isLoading={isSavingInfo} loadingText="Saving..." onClick={handleSaveInfo} disabled={isLoading} className="w-full">
+              Save Profile
+            </Button>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Email
-                {saving === 'email' && (
-                  <span className="ml-2 text-xs text-blue-400">Saving...</span>
-                )}
+          {/* Password change */}
+          <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Lock className="h-5 w-5 text-indigo-400" />Change Password
+            </h2>
+            <form onSubmit={handlePasswordChange} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">New Password</label>
+                <input
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 outline-none transition-colors"
+                  placeholder="At least 8 characters"
+                />
               </div>
-            </label>
-            <input
-              type="email"
-              value={profile.email || ''}
-              onChange={(e) => handleInputChange('email', e.target.value)}
-              onBlur={(e) => handleInputBlur('email', e.target.value)}
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
-              placeholder="admin@example.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Role
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 outline-none transition-colors"
+                  placeholder="Repeat new password"
+                />
               </div>
-            </label>
-            <input
-              type="text"
-              value={profile.role || 'admin'}
-              disabled
-              className="w-full px-4 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-gray-400 cursor-not-allowed"
-            />
+              {passwordError && <div className="flex items-center gap-2 text-sm text-red-300"><AlertCircle className="h-4 w-4" />{passwordError}</div>}
+              {passwordSuccess && <div className="flex items-center gap-2 text-sm text-emerald-300"><CheckCircle2 className="h-4 w-4" />Password updated</div>}
+              <Button type="submit" isLoading={isSavingPw} loadingText="Updating..." disabled={!passwordData.newPassword} className="w-full">
+                Update Password
+              </Button>
+            </form>
           </div>
         </div>
-      </div>
-
-      {/* Password Change Section */}
-      <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">
-          <div className="flex items-center gap-2">
-            <Lock className="h-5 w-5" />
-            Change Password
-          </div>
-        </h2>
-
-        <form onSubmit={handlePasswordChange} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              New Password
-            </label>
-            <input
-              type="password"
-              value={passwordData.newPassword}
-              onChange={(e) =>
-                setPasswordData({ ...passwordData, newPassword: e.target.value })
-              }
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
-              placeholder="Enter new password"
-              minLength={8}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Confirm New Password
-            </label>
-            <input
-              type="password"
-              value={passwordData.confirmPassword}
-              onChange={(e) =>
-                setPasswordData({ ...passwordData, confirmPassword: e.target.value })
-              }
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
-              placeholder="Confirm new password"
-              minLength={8}
-            />
-          </div>
-
-          {passwordError && (
-            <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-3">
-              <p className="text-sm text-red-300">{passwordError}</p>
-            </div>
-          )}
-
-          {passwordSuccess && (
-            <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-3">
-              <p className="text-sm text-green-300">Password updated successfully!</p>
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            isLoading={saving === 'password'}
-            loadingText="Updating…"
-            disabled={saving === 'password' || !passwordData.newPassword || !passwordData.confirmPassword}
-            className="px-6 py-2"
-          >
-            Update Password
-          </Button>
-        </form>
-      </div>
-
-      <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
-        <p className="text-sm text-blue-300">
-          <strong>Auto-save:</strong> Name and email changes are saved automatically. Password changes require clicking the Update Password button.
-        </p>
       </div>
     </div>
   )

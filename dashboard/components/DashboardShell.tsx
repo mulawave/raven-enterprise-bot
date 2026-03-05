@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -6,6 +6,8 @@ import { isAuthenticated } from '@/lib/auth'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import TenantProvider from '@/components/TenantProvider'
+
+const PUBLIC_ROUTES = ['/', '/privacy', '/terms', '/guide']
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -23,24 +25,31 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     const auth = isAuthenticated()
     setAuthed(auth)
 
-    if (!auth && pathname !== '/login') {
+    // Authenticated users visiting the public landing are sent to the dashboard
+    if (auth && pathname === '/') {
+      router.replace('/overview')
+      return
+    }
+
+    // Unauthenticated users visiting protected routes go to login
+    if (!auth && pathname !== '/login' && !PUBLIC_ROUTES.includes(pathname)) {
       router.replace('/login')
     }
 
+    // Already logged-in users don't need the login page
     if (auth && pathname === '/login') {
-      router.replace('/')
+      router.replace('/overview')
     }
   }, [mounted, pathname, router])
 
-  // Prevent flash of content before hydration
   if (!mounted) return null
 
-  // Login page renders completely standalone — no sidebar, no header, no TenantProvider
-  if (pathname === '/login') {
+  // Public routes and login render standalone — no sidebar, no header
+  if (pathname === '/login' || PUBLIC_ROUTES.includes(pathname)) {
     return <>{children}</>
   }
 
-  // Not yet confirmed as authenticated — show nothing while redirect is in-flight
+  // Protected route — wait for auth confirmation
   if (!authed) return null
 
   return (

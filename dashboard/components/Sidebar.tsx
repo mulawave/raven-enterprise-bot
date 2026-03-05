@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -6,13 +6,13 @@ import { useState, useTransition } from 'react'
 import { useTenantContext } from '@/lib/tenant-context'
 
 const navigation = [
-  { name: 'Overview', href: '/', icon: '📊' },
-  { name: 'Conversations', href: '/conversations', icon: '💬' },
-  { name: 'Orders', href: '/orders', icon: '🛒' },
-  { name: 'Bookings', href: '/bookings', icon: '🏨' },
-  { name: 'Payments', href: '/payments', icon: '💳' },
-  { name: 'Subscription', href: '/subscription', icon: '📦' },
-  { name: 'Settings', href: '/settings', icon: '⚙️' },
+  { name: 'Overview', href: '/overview', icon: 'ðŸ“Š' },
+  { name: 'Conversations', href: '/conversations', icon: 'ðŸ’¬' },
+  { name: 'Orders', href: '/orders', icon: 'ðŸ›’' },
+  { name: 'Bookings', href: '/bookings', icon: 'ðŸ¨' },
+  { name: 'Payments', href: '/payments', icon: 'ðŸ’³' },
+  { name: 'Subscription', href: '/subscription', icon: 'ðŸ“¦' },
+  { name: 'Settings', href: '/settings', icon: 'âš™ï¸' },
 ]
 
 export default function Sidebar() {
@@ -86,3 +86,4 @@ export default function Sidebar() {
     </div>
   )
 }
+
