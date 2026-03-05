@@ -63,7 +63,7 @@ su - ${CPANEL_USER} -c "
   export PATH=\$HOME/.local/bin:\$PATH
   cd ~/raven-enterprise-bot
   pm2 delete all 2>/dev/null || true
-  pm2 start ecosystem.config.js
+  pm2 start deploy/ecosystem.config.js
   pm2 save
   pm2 list
 "

@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Migration: 20260305000002_add_extra_config_keys
 -- Adds payment sandbox keys, PAYMENT_LIVE_MODE toggle, and email template keys
 
