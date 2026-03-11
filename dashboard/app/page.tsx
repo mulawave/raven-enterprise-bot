@@ -38,9 +38,9 @@ const FEATURES = [
 ]
 
 const STEPS = [
-  { step: '01', title: 'Sign up', desc: 'Request access and receive your Tenant ID by email.' },
-  { step: '02', title: 'Connect WhatsApp', desc: 'Link your WhatsApp Business number via the API key setup.' },
-  { step: '03', title: 'Configure your AI', desc: 'Upload products, set tone, define business hours.' },
+  { step: '01', title: 'Create account', desc: 'Sign up in 60 seconds — choose your plan, confirm your email.' },
+  { step: '02', title: 'Set up your profile', desc: 'Add your business name, logo, and WhatsApp number.' },
+  { step: '03', title: 'Connect WhatsApp', desc: 'Enter your Meta API keys — we walk you through every field.' },
   { step: '04', title: 'Go live', desc: 'Your AI assistant starts handling customer chats immediately.' },
 ]
 
@@ -57,13 +57,17 @@ export default function LandingPage() {
           <span className="text-lg font-bold tracking-tight">
             <span className="text-indigo-400">Raven</span> AI
           </span>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link href="/guide" className="hidden sm:block text-sm text-slate-400 hover:text-white transition-colors">
               User Guide
             </Link>
             <Link href="/login"
-              className="px-4 py-1.5 rounded-lg border border-indigo-500/50 text-indigo-300 text-sm font-medium hover:bg-indigo-500/10 transition-colors">
-              Sign In
+              className="px-4 py-1.5 rounded-lg text-slate-300 text-sm font-medium hover:text-white transition-colors">
+              Sign in
+            </Link>
+            <Link href="/register"
+              className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors">
+              Get started free
             </Link>
           </div>
         </div>
@@ -90,13 +94,13 @@ export default function LandingPage() {
             Raven AI handles customer conversations, orders, bookings, and follow-ups — automatically, at scale.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-            <Link href="/login"
+            <Link href="/register"
               className="px-7 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors shadow-lg shadow-indigo-900/40">
-              Get started free
+              Start for free →
             </Link>
-            <Link href="/guide"
+            <Link href="/login"
               className="px-7 py-3 rounded-xl border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white font-semibold text-sm transition-colors">
-              Read the guide
+              Sign in
             </Link>
           </div>
         </div>
@@ -146,11 +150,17 @@ export default function LandingPage() {
       <section className="py-16 px-6">
         <div className="max-w-2xl mx-auto text-center rounded-2xl border border-indigo-700/30 bg-indigo-900/20 p-10 space-y-5">
           <h2 className="text-2xl font-bold">Ready to automate your WhatsApp?</h2>
-          <p className="text-slate-400 text-sm">Sign in with your Tenant ID to access the dashboard.</p>
-          <Link href="/login"
-            className="inline-block px-8 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors">
-            Go to dashboard &rarr;
-          </Link>
+          <p className="text-slate-400 text-sm">Create your account in 60 seconds. No credit card required to sign up.</p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link href="/register"
+              className="inline-block px-8 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-colors">
+              Create free account →
+            </Link>
+            <Link href="/login"
+              className="inline-block px-8 py-3 rounded-xl border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white font-semibold text-sm transition-colors">
+              Sign in
+            </Link>
+          </div>
         </div>
       </section>
 

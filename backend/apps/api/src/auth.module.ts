@@ -11,6 +11,7 @@ import { AdminAuthController } from '../admin/auth/admin-auth.controller'
 import { AdminProfileController } from '../admin/profile/admin-profile.controller'
 import { AdminUsersController } from '../admin/users/admin-users.controller'
 import { TenantAuthController } from './tenant-auth.controller'
+import { SelfRegistrationController } from './self-registration.controller'
 
 // Services
 import { UserService } from '../../../libs/auth/services/user.service'
@@ -21,6 +22,10 @@ import { TenantMiddleware } from '../../../libs/auth/middleware/tenant.middlewar
 import { BranchPermissionMiddleware } from '../../../libs/auth/permissions.guard'
 import { BranchResolverMiddleware } from '../../../libs/tenant/branch.middleware'
 import { BranchService } from '../../../libs/tenant/branch.service'
+import { TenantProvisionService } from '../admin/onboarding/tenant.provision.service'
+import { SubscriptionsService } from '../../../libs/billing/subscriptions.service'
+import { EmailService } from '../../../libs/email/email.service'
+import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
 
 @Module({
   imports: [
@@ -29,7 +34,7 @@ import { BranchService } from '../../../libs/tenant/branch.service'
       signOptions: { expiresIn: '24h' },
     }),
   ],
-  controllers: [AdminAuthController, TenantAuthController, AdminProfileController, AdminUsersController],
+  controllers: [AdminAuthController, TenantAuthController, AdminProfileController, AdminUsersController, SelfRegistrationController],
   providers: [
     UserService,
     AuthService,
@@ -39,6 +44,10 @@ import { BranchService } from '../../../libs/tenant/branch.service'
     BranchPermissionMiddleware,
     BranchResolverMiddleware,
     BranchService,
+    TenantProvisionService,
+    SubscriptionsService,
+    EmailService,
+    ConfigLoaderService,
   ],
   exports: [
     JwtModule,

@@ -1,5 +1,252 @@
 # Tenant Onboarding Plan — Raven Enterprise Bot
 
+**Last Updated:** 2026-03-11  
+**Live Platform:** https://app.raven-ai.online
+
+---
+
+## Philosophy
+
+Tenants sign themselves up. The admin console exists for internal operations (support, suspension, billing oversight) — it is not the primary provisioning path. The platform should sell itself: a clean self-service registration flow, instant email confirmation, a guided onboarding wizard, and a persistent beginners guide that walks tenants from zero to a live WhatsApp AI assistant with no external help needed.
+
+---
+
+## Full Onboarding Flow
+
+```
+Register → Email confirmation → Onboarding wizard (profile + WhatsApp keys)
+         → Dashboard → First-time tour → Beginners guide checklist
+```
+
+---
+
+## Stage 1 — Registration
+
+**Page:** `https://app.raven-ai.online/register`  
+**Route:** `dashboard/app/register/page.tsx`  
+**Backend:** `POST /api/auth/register`
+
+### Step 1.1 — Account details
+The registration page is a two-step form (no page reload between steps).
+
+**Step 1 collects:**
+- Full name
+- Email address
+- Password (min 8 chars, confirm field, show/hide toggle)
+
+Clicking **Continue** validates client-side and advances to Step 2.
+
+**Step 2 — Plan selection:**
+Three plan cards are shown: Starter (₦49k), Growth (₦199k), Enterprise (₦799k). Clicking a card selects it. **Create account** submits.
+
+### What happens on submit
+1. `POST /api/auth/register` receives `{ name, email, password, planTier }`.
+2. Checks email uniqueness in the `User` table.
+3. Checks for any still-in-flight pending registration for the same email.
+4. Generates a 32-byte random hex confirmation token.
+5. Stores `{ name, email, password, planTier, expiresAt: +24h }` as a `SystemConfig` entry with key `PENDING_REG_<token>` and `is_secret: true`. **No tenant is created yet.**
+6. Sends a branded confirmation email to the user with a link to `https://app.raven-ai.online/confirm-email?token=<token>`.
+7. Redirects the browser to `/register/check-email?email=<email>`.
+
+**Error responses:**
+- `409 Conflict` — email already registered
+- `400 Bad Request` — missing fields or password too short
+
+---
+
+## Stage 2 — Email Confirmation
+
+**Page:** `https://app.raven-ai.online/confirm-email?token=...`  
+**Route:** `dashboard/app/confirm-email/page.tsx`  
+**Backend:** `GET /api/auth/confirm-email?token=...`
+
+When the user clicks the link in their email:
+1. The page immediately calls `GET /api/auth/confirm-email?token=<token>`.
+2. Backend validates the token (exists, not expired).
+3. **Atomically provisions** the tenant:
+   - Creates `Tenant` record
+   - Creates owner `User` (role: `owner`)
+   - Creates temp staff user
+   - Creates default Branch, seed MenuCategory, MenuItem, RoomType
+4. Creates a `Subscription` for the chosen plan tier.
+5. Sets `onboardingStep: 'profile'` in the tenant's `theme` JSON.
+6. Deletes the `PENDING_REG_<token>` SystemConfig entry (consumed, one-time use).
+7. Issues a JWT and returns it.
+8. Sends a "You're in!" welcome email.
+9. Saves the JWT session to `localStorage` and redirects to `/onboarding`.
+
+**Error states shown on the page:**
+- No token in URL → error state
+- Token not found or expired → error state with link to `/register`
+
+---
+
+## Stage 3 — Onboarding Wizard
+
+**Page:** `https://app.raven-ai.online/onboarding`  
+**Route:** `dashboard/app/onboarding/page.tsx`
+
+A 4-step wizard (`Welcome → Profile → WhatsApp & AI → Done`) shown in a full-screen layout (no sidebar/header). Progress is shown by a numbered step bar.
+
+### Step 1 — Welcome
+- Explains the 3-minute setup in plain language.
+- Three visual cards: Business profile / WhatsApp & AI / Go live.
+- Single CTA: **Let's set up your profile →**
+
+### Step 2 — Business profile (3 field groups)
+
+| Group | Fields |
+|-------|--------|
+| **Identity** | Business name *, Industry (dropdown), Logo URL |
+| **Contact** | WhatsApp number *, Website |
+| **Brand colour** | Color picker + hex input |
+
+\* Required. Saves via `POST /tenant/branding`.
+
+### Step 3 — WhatsApp & AI keys
+
+| Field | Source | Required |
+|-------|--------|----------|
+| Meta App Secret | App Settings → Basic | ✅ |
+| Webhook Verify Token | User-defined (pre-filled with a suggestion) | ✅ |
+| Meta Access Token | System User → Generate token | ✅ |
+| Phone Number ID | WhatsApp → API Setup | ✅ |
+| OpenAI API Key | platform.openai.com | Optional |
+
+An amber info box shows the webhook URL to paste into Meta:
+`https://app.raven-ai.online/api/messaging/webhook/whatsapp`
+
+A **Skip for now** link lets users proceed without AI keys (they can add them later in Settings).
+
+### Step 4 — Done
+- Celebratory screen with four benefit tiles.
+- Single CTA: **Go to dashboard →** (navigates to `/overview`).
+
+---
+
+## Stage 4 — First-time Dashboard Tour
+
+**Component:** `dashboard/components/DashboardTour.tsx`
+
+On the first visit to `/overview` after a new login:
+1. A dimmed backdrop appears over the dashboard.
+2. A floating card anchored next to the sidebar walks through 8 stops:
+
+| Stop | Section | What it explains |
+|------|---------|-----------------|
+| 1 | Overview | KPI tiles, live conversation feed |
+| 2 | Conversations | All WhatsApp chats, read/reply/escalate |
+| 3 | Orders | Status pipeline: pending → confirmed → ready → delivered |
+| 4 | Menu / Catalogue | Products the AI uses to answer and take orders |
+| 5 | Customers | Full contact history and conversation threads |
+| 6 | Broadcast | One-to-many messaging campaigns |
+| 7 | Analytics | Volume, intents, peak hours |
+| 8 | Settings | Branding, WhatsApp number, API keys |
+
+Progress bar across the top of the card. **Back / Next** navigation. **Skip tour** at the bottom. Once dismissed (or completed), the flag is stored in `localStorage` under `dashboard_tour_seen` and the tour never shows again.
+
+---
+
+## Stage 5 — Beginners Guide (Onboarding Checklist)
+
+**Component:** `dashboard/components/OnboardingChecklist.tsx`  
+**Location:** Shown above page content on the `/overview` page until all 5 steps are marked complete.
+
+A collapsible card with a circular progress ring and 5 trackable steps:
+
+| # | Step | Action link |
+|---|------|------------|
+| 1 | ✅ Connect WhatsApp | → /settings |
+| 2 | ✅ Set up your catalogue | → /menu |
+| 3 | ✅ Configure FAQs | → /settings |
+| 4 | ✅ Send your first message | → /conversations |
+| 5 | ✅ Test the ordering flow | → /orders |
+
+Each step can be manually checked off (ticking the circle) or auto-marked when the action link is visited. Clicking an action link marks the step complete AND navigates to it. Completion state is persisted in `localStorage` under `onboarding_checklist`. Once all 5 are complete, the card collapses into a success badge that can be dismissed.
+
+---
+
+## Admin Operations (Internal Only)
+
+The Admin Console at `https://admin.raven-ai.online` is used for:
+- Viewing all tenant accounts and their subscription status
+- Manually suspending / unsuspending tenants (non-payment, abuse)
+- Changing a tenant's plan tier
+- Entering global platform keys (Paystack, SMTP, etc.)
+- Investigating billing issues
+
+Admin-created tenants (via the console) should only be used for internal test accounts or enterprise contracts negotiated off-platform.
+
+---
+
+## Email Templates
+
+| Trigger | Subject | Content |
+|---------|---------|---------|
+| Registration | "Confirm your Raven account" | Name, confirm link, 24h expiry warning |
+| Email confirmed | "🎉 Your Raven account is ready!" | Plan name, onboarding link, login email |
+
+Both emails are sent via `EmailService` (nodemailer). SMTP is configured in Admin Console → API Keys → Email/SMTP. Until SMTP is configured, emails use Ethereal (test/preview only).
+
+---
+
+## Quick-Start Checklist
+
+### For the platform operator (before launch)
+- [ ] SMTP keys configured in Admin Console → API Keys → Email
+- [ ] Paystack keys configured (so subscription payments work)
+- [ ] `NEXT_PUBLIC_DASHBOARD_URL` set to `https://app.raven-ai.online`
+- [ ] Confirm `/register` page loads on the live domain
+- [ ] Confirm confirmation email is received after test registration
+- [ ] Confirm `/confirm-email?token=...` creates tenant and redirects to `/onboarding`
+
+### What the tenant does (entirely self-service)
+- [ ] Visit `https://app.raven-ai.online` and click **Get started free**
+- [ ] Fill in name, email, password — select plan — click **Create account**
+- [ ] Check email → click confirmation link
+- [ ] Onboarding wizard: enter business name, WhatsApp number, brand colour
+- [ ] Onboarding wizard: enter Meta API keys and OpenAI key (or skip)
+- [ ] First-time tour: understand each dashboard section
+- [ ] Beginners guide: complete all 5 steps to go fully live
+
+---
+
+## Technical Reference
+
+### New routes added
+| Route | File | Public? |
+|-------|------|---------|
+| `GET /register` | `dashboard/app/register/page.tsx` | ✅ Yes |
+| `GET /register/check-email` | `dashboard/app/register/check-email/page.tsx` | ✅ Yes |
+| `GET /confirm-email` | `dashboard/app/confirm-email/page.tsx` | ✅ Yes |
+| `GET /onboarding` | `dashboard/app/onboarding/page.tsx` | ✅ Yes |
+
+### New API endpoints
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/api/auth/register` | None | Submit registration; sends confirmation email |
+| `GET` | `/api/auth/confirm-email?token=` | None | Validate token, provision tenant, return JWT |
+
+### Key components
+| Component | File | Purpose |
+|-----------|------|---------|
+| `DashboardTour` | `dashboard/components/DashboardTour.tsx` | First-login tour overlay |
+| `OnboardingChecklist` | `dashboard/components/OnboardingChecklist.tsx` | Persistent 5-step beginners guide |
+
+### Auth flow summary
+```
+Register form → POST /api/auth/register
+             → Email with token link
+             → GET /api/auth/confirm-email?token=
+             → Tenant provisioned → JWT issued
+             → setSession() in localStorage
+             → Redirect to /onboarding
+             → Onboarding complete → Redirect to /overview
+             → DashboardTour shown once
+             → OnboardingChecklist persists until all 5 done
+```
+
+
 **Audience:** Platform administrators and new tenant business owners  
 **Last Updated:** 2026-03-11  
 **Live Platform:** https://app.raven-ai.online (tenant dashboard) | https://admin.raven-ai.online (admin console)
