@@ -79,24 +79,31 @@ if ($Service -eq "all" -or $Service -eq "api") {
 function Publish-Standalone {
     param([string]$Name, [string]$LocalDir, [string]$RemoteDir, [string]$Port, [string]$Pm2Name)
 
-    Log "Uploading $Name standalone to server..."
+    Log "Uploading $Name standalone to server (tar archive)..."
 
-    # Upload the compiled standalone directory
-    $local  = "$Root\$LocalDir\.next\standalone"
-    $remote = "raven-user:$RemoteDir/.next/standalone_new"
+    # Use tar to avoid SCP disconnects with thousands of small node_modules files
+    $tarFile = "$env:TEMP\$Name-standalone.tar.gz"
+    Push-Location "$Root\$LocalDir\.next"
+    try {
+        tar --format=pax -czf $tarFile standalone
+        if ($LASTEXITCODE -ne 0) { Err "tar failed for $Name standalone" }
+    } finally { Pop-Location }
 
-    ssh raven-user "rm -rf $RemoteDir/.next/standalone_new" 2>&1 | Out-Null
-    & scp -r $local $remote
+    & scp $tarFile "raven-user:~/$Name-standalone.tar.gz"
     if ($LASTEXITCODE -ne 0) { Err "SCP failed for $Name" }
+    Remove-Item $tarFile -ErrorAction SilentlyContinue
     Ok "$Name uploaded"
 
     Log "Atomically swapping $Name on server..."
     ssh raven-user @"
 set -e
-cd $RemoteDir
-rm -rf .next/standalone_old
-mv .next/standalone .next/standalone_old
-mv .next/standalone_new .next/standalone
+rm -rf /tmp/${Name}-standalone-new
+mkdir -p /tmp/${Name}-standalone-new
+tar -xzf ~/${Name}-standalone.tar.gz -C /tmp/${Name}-standalone-new
+cd $RemoteDir/.next
+rm -rf standalone_old
+mv standalone standalone_old 2>/dev/null || true
+mv /tmp/${Name}-standalone-new/standalone .
 echo SWAPPED
 "@ 2>&1 | Out-Null
     Ok "$Name swapped"
@@ -107,11 +114,10 @@ echo SWAPPED
         ssh raven-user "pm2 restart $Pm2Name" 2>&1 | Out-Null
         Ok "$Name PM2 restarted"
     } else {
-        Log "Restarting $Name via Passenger restart.txt..."
-        # Kill old port process + touch restart.txt
+        Log "Restarting $Name via port kill..."
         ssh raven-user @"
-pid=`$(ss -tlnp 2>/dev/null | grep ':$Port' | grep -oP 'pid=\K[0-9]+' | head -1 || true)
-[[ -n "`$pid" ]] && kill -9 "`$pid" && echo "Killed PID `$pid" || echo "No process on $Port"
+pid=\$(ss -tlnp 2>/dev/null | grep ':$Port' | grep -oP 'pid=\K[0-9]+' | head -1 || true)
+[[ -n "\$pid" ]] && kill -9 "\$pid" && echo "Killed PID \$pid" || echo "No process on $Port"
 mkdir -p $RemoteDir/tmp
 touch $RemoteDir/tmp/restart.txt
 echo RESTARTED
@@ -120,18 +126,27 @@ echo RESTARTED
 }
 
 function Publish-Backend {
-    Log "Uploading backend dist to server..."
-    $local  = "$Root\backend\dist"
-    $remote = "raven-user:~/raven-enterprise-bot/backend/dist_new"
+    Log "Uploading backend dist to server (tar archive)..."
 
-    ssh raven-user 'rm -rf ~/raven-enterprise-bot/backend/dist_new' 2>&1 | Out-Null
-    & scp -r $local $remote
-    if ($LASTEXITCODE -ne 0) { Err "SCP failed for backend" }
+    # Use tar to avoid SCP disconnects with many small files
+    $tarFile = "$env:TEMP\backend-dist.tar.gz"
+    Push-Location "$Root\backend\dist"
+    try {
+        tar --format=pax -czf $tarFile .
+        if ($LASTEXITCODE -ne 0) { Err "tar failed for backend dist" }
+    } finally { Pop-Location }
 
-    Log "Running migrations and swapping backend..."
+    & scp $tarFile "raven-user:~/backend-dist.tar.gz"
+    if ($LASTEXITCODE -ne 0) { Err "SCP failed for backend dist archive" }
+    Remove-Item $tarFile -ErrorAction SilentlyContinue
+
+    Log "Extracting, migrating, and swapping backend..."
     ssh raven-user @'
 set -e
 cd ~/raven-enterprise-bot/backend
+rm -rf dist_new
+mkdir -p dist_new
+tar -xzf ~/backend-dist.tar.gz -C dist_new
 rm -rf dist_old
 mv dist dist_old 2>/dev/null || true
 mv dist_new dist
