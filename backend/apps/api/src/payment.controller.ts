@@ -3,7 +3,9 @@ import { RawBodyRequest } from '@nestjs/common'
 import { Request } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { PaymentService } from '../../../libs/payments/payment.service'
+import { PaymentProvider } from '../../../libs/payments/payment.service'
 import { PaystackService } from '../../../libs/payments/paystack.service'
+import { FlutterwaveService } from '../../../libs/payments/flutterwave.service'
 import { WebhookHandler } from '../../../libs/payments/webhook.handler'
 import { AuditLogger } from '../../../libs/monitoring/audit.logger'
 import { JwtAuthGuard } from '../../../libs/auth/guards/jwt-auth.guard'
@@ -18,7 +20,10 @@ export class PaymentController {
     const auditLogger = new AuditLogger(prisma)
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY!
     const paystack = new PaystackService(paystackSecret)
-    this.paymentService = new PaymentService(prisma, paystack, auditLogger)
+    const flutterwave = process.env.FLUTTERWAVE_SECRET_KEY
+      ? new FlutterwaveService(process.env.FLUTTERWAVE_SECRET_KEY)
+      : undefined
+    this.paymentService = new PaymentService(prisma, paystack, auditLogger, flutterwave)
     this.webhookHandler = new WebhookHandler(prisma, paystackSecret)
   }
 
@@ -29,11 +34,14 @@ export class PaymentController {
       tenantId?: string
       amountKobo: number
       email: string
-      provider: 'paystack'
+      provider: PaymentProvider
       orderId?: string
       bookingId?: string
     },
   ) {
+    if (body.provider !== 'paystack' && body.provider !== 'flutterwave') {
+      throw new BadRequestException('provider must be paystack or flutterwave')
+    }
     if (!body.orderId && !body.bookingId) {
       throw new BadRequestException('orderId or bookingId is required')
     }
@@ -71,9 +79,9 @@ export class PaymentController {
   @Get('verify')
   async verifyPayment(
     @Query('reference') reference: string,
-    @Query('provider') provider: 'paystack',
+    @Query('provider') provider: PaymentProvider,
   ) {
-    return this.paymentService.verifyPayment(reference, provider)
+    return this.paymentService.verifyPayment(reference, provider ?? 'paystack')
   }
 
   @Get('status')

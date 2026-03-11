@@ -1,8 +1,9 @@
-import { PrismaClient, Payment } from '@prisma/client'
+﻿import { PrismaClient, Payment } from '@prisma/client'
 import { PaystackService } from './paystack.service'
+import { FlutterwaveService } from './flutterwave.service'
 import { AuditLogger } from '../monitoring/audit.logger'
 
-export type PaymentProvider = 'paystack'
+export type PaymentProvider = 'paystack' | 'flutterwave'
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'cancelled'
 
 export interface InitializePaymentResult {
@@ -16,6 +17,7 @@ export class PaymentService {
     private readonly prisma: PrismaClient,
     private readonly paystack: PaystackService,
     private readonly auditLogger: AuditLogger,
+    private readonly flutterwave?: FlutterwaveService,
   ) {}
 
   async initializePayment(
@@ -54,18 +56,33 @@ export class PaymentService {
       timestamp: new Date(),
     })
 
+    const callbackBase = process.env.PAYMENT_CALLBACK_URL || 'http://localhost:3000'
+
     if (provider === 'paystack') {
       const result = await this.paystack.initialize(
         amountKobo,
         email,
         reference,
-        `${process.env.PAYMENT_CALLBACK_URL || 'http://localhost:3000'}/payment/callback`,
+        `${callbackBase}/payment/callback`,
       )
-
       return {
         payment,
         authorizationUrl: result.data.authorization_url,
         accessCode: result.data.access_code,
+      }
+    }
+
+    if (provider === 'flutterwave') {
+      if (!this.flutterwave) throw new Error('FLUTTERWAVE_NOT_CONFIGURED')
+      const result = await this.flutterwave.initialize(
+        amountKobo,
+        email,
+        reference,
+        `${callbackBase}/payment/callback?provider=flutterwave`,
+      )
+      return {
+        payment,
+        authorizationUrl: result.data?.link ?? result.link,
       }
     }
 
@@ -81,8 +98,18 @@ export class PaymentService {
 
     if (provider === 'paystack') {
       const result = await this.paystack.verify(reference)
-
       if (result.data.status === 'success') {
+        return this.updatePaymentStatus(payment.tenant_id, payment.id, 'paid')
+      } else {
+        return this.updatePaymentStatus(payment.tenant_id, payment.id, 'failed')
+      }
+    }
+
+    if (provider === 'flutterwave') {
+      if (!this.flutterwave) throw new Error('FLUTTERWAVE_NOT_CONFIGURED')
+      // For Flutterwave, tx_id is passed as reference after redirect
+      const result = await this.flutterwave.verify(reference)
+      if (result.data?.status === 'successful') {
         return this.updatePaymentStatus(payment.tenant_id, payment.id, 'paid')
       } else {
         return this.updatePaymentStatus(payment.tenant_id, payment.id, 'failed')

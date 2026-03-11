@@ -10,6 +10,7 @@ import { TenantContextController } from './tenant-context.controller'
 import { BrandingController } from '../admin/branding.controller'
 import { AdminTenantsController } from '../admin/tenants/admin-tenants.controller'
 import { OnboardingController } from '../admin/onboarding/onboarding.controller'
+import { TenantBankingController } from './tenant-banking.controller'
 
 // Services
 import { BrandingService } from '../../../libs/tenant/branding/branding.service'
@@ -22,6 +23,7 @@ import { TenantProvisionService } from '../admin/onboarding/tenant.provision.ser
     BrandingController,
     AdminTenantsController,
     OnboardingController,
+    TenantBankingController,
   ],
   providers: [BrandingService, TenantProvisionService],
   exports: [BrandingService, TenantProvisionService],

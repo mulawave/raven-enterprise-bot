@@ -45,7 +45,6 @@ const GROUP_META: Record<string, {
 }
 
 const VISIBLE_GROUPS = ['whatsapp', 'ai']
-const MASKED = '••••••••••••••••'
 
 function KeyRow({ item, onSaved }: { item: ConfigKey; onSaved: (updated: ConfigKey) => void }) {
   const [value, setValue] = useState(item.has_value && item.is_secret ? '' : (item.value ?? ''))
@@ -74,13 +73,6 @@ function KeyRow({ item, onSaved }: { item: ConfigKey; onSaved: (updated: ConfigK
     }
   }
 
-  const displayed = () => {
-    if (!item.is_secret) return value
-    if (show) return value
-    if (item.has_value && value === '') return MASKED
-    return value
-  }
-
   return (
     <div className="py-3.5 border-b border-slate-700/40 last:border-0">
       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -94,7 +86,7 @@ function KeyRow({ item, onSaved }: { item: ConfigKey; onSaved: (updated: ConfigK
         )}
         {item.has_value && (
           <span className="text-[10px] text-emerald-400 bg-emerald-900/20 px-1.5 py-0.5 rounded border border-emerald-700/30 inline-flex items-center gap-1">
-            <Check className="h-2.5 w-2.5" /> set
+            <Check className="h-2.5 w-2.5" /> saved
           </span>
         )}
       </div>
@@ -105,9 +97,9 @@ function KeyRow({ item, onSaved }: { item: ConfigKey; onSaved: (updated: ConfigK
         <div className="relative flex-1">
           <input
             type={item.is_secret && !show ? 'password' : 'text'}
-            value={displayed()}
+            value={value}
             onChange={(e) => handleChange(e.target.value)}
-            placeholder={item.has_value && item.is_secret ? '(keep existing — type to replace)' : `Enter ${item.key}`}
+            placeholder={item.has_value && item.is_secret ? 'Saved \u2014 type a new value to replace' : `Enter ${item.key}`}
             className="w-full px-3 py-2 bg-slate-900/80 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-600 focus:border-sky-500 focus:ring-1 focus:ring-sky-500/40 outline-none font-mono pr-10 transition-colors"
           />
           {item.is_secret && (

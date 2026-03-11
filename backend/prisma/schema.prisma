@@ -38,6 +38,9 @@ model Tenant {
   invoices            Invoice[]
   usages              Usage[]
   featureFlags        FeatureFlag[]
+  kyc                 TenantKyc?
+  bankAccount         TenantBankAccount?
+  withdrawals         Withdrawal[]
 
   @@index([created_at])
 }
@@ -544,4 +547,66 @@ model FeatureFlag {
 
   @@unique([tenant_id, flag])
   @@index([tenant_id])
+}
+// ---------------------------------------------------------------------------
+// Payouts: KYC status per tenant
+// ---------------------------------------------------------------------------
+model TenantKyc {
+  id           String    @id @default(uuid())
+  tenant_id    String    @unique
+  status       String    @default("pending") // pending | submitted | verified | rejected
+  full_name    String?
+  id_type      String?   // nin | bvn | passport
+  id_number    String?
+  submitted_at DateTime?
+  verified_at  DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+}
+
+// ---------------------------------------------------------------------------
+// Payouts: Saved bank account per tenant
+// ---------------------------------------------------------------------------
+model TenantBankAccount {
+  id             String   @id @default(uuid())
+  tenant_id      String   @unique
+  bank_name      String
+  bank_code      String
+  account_number String
+  account_name   String
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+}
+
+// ---------------------------------------------------------------------------
+// Payouts: Withdrawal records
+// ---------------------------------------------------------------------------
+model Withdrawal {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  amount_kobo    Int
+  account_number String
+  bank_code      String
+  bank_name      String
+  account_name   String
+  status         String   @default("pending") // pending | success | failed
+  provider       String   @default("flutterwave") // flutterwave | paystack
+  reference      String   @unique
+  provider_ref   String?
+  failure_reason String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([status])
 }

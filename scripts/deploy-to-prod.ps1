@@ -37,13 +37,13 @@ if ($sshTest -notmatch "OK") { Err "SSH to raven-user failed. Check your SSH con
 Ok "SSH connected"
 
 # ── Step 2: Build services that need it ──────────────────────────────────────
-function Build-Service {
+function Invoke-ServiceBuild {
     param([string]$Name, [string]$Dir)
     Log "Building $Name..."
     Push-Location "$Root\$Dir"
     try {
         npm ci --prefer-offline 2>&1 | Out-Null
-        npm run build 2>&1 | Tail-Output
+        npm run build 2>&1 | Select-FilteredOutput
         # Copy static assets into standalone so they serve correctly
         if (Test-Path ".next\standalone") {
             if (Test-Path ".next\static") {
@@ -59,24 +59,24 @@ function Build-Service {
     }
 }
 
-function Tail-Output {
+function Select-FilteredOutput {
     process { if ($_ -match "error|Error|ERROR") { Write-Host "  $_" -ForegroundColor Yellow } }
 }
 
-if ($Service -eq "all" -or $Service -eq "admin") { Build-Service "admin-console" "admin-console" }
-if ($Service -eq "all" -or $Service -eq "dash")  { Build-Service "dashboard"     "dashboard" }
+if ($Service -eq "all" -or $Service -eq "admin") { Invoke-ServiceBuild "admin-console" "admin-console" }
+if ($Service -eq "all" -or $Service -eq "dash")  { Invoke-ServiceBuild "dashboard"     "dashboard" }
 if ($Service -eq "all" -or $Service -eq "api") {
     Log "Building backend..."
     Push-Location "$Root\backend"
     try {
         npm ci --prefer-offline 2>&1 | Out-Null
-        npm run build:all 2>&1 | Tail-Output
+        npm run build:all 2>&1 | Select-FilteredOutput
         Ok "backend built"
     } finally { Pop-Location }
 }
 
 # ── Step 3: SCP updated service files to server ──────────────────────────────
-function Deploy-Standalone {
+function Publish-Standalone {
     param([string]$Name, [string]$LocalDir, [string]$RemoteDir, [string]$Port, [string]$Pm2Name)
 
     Log "Uploading $Name standalone to server..."
@@ -119,7 +119,7 @@ echo RESTARTED
     }
 }
 
-function Deploy-Backend {
+function Publish-Backend {
     Log "Uploading backend dist to server..."
     $local  = "$Root\backend\dist"
     $remote = "raven-user:~/raven-enterprise-bot/backend/dist_new"
@@ -143,7 +143,7 @@ echo BACKEND_DONE
 }
 
 if ($Service -eq "all" -or $Service -eq "admin") {
-    Deploy-Standalone `
+    Publish-Standalone `
         -Name       "admin-console" `
         -LocalDir   "admin-console" `
         -RemoteDir  "~/raven-enterprise-bot/admin-console" `
@@ -151,7 +151,7 @@ if ($Service -eq "all" -or $Service -eq "admin") {
         -Pm2Name    ""
 }
 if ($Service -eq "all" -or $Service -eq "dash") {
-    Deploy-Standalone `
+    Publish-Standalone `
         -Name       "dashboard" `
         -LocalDir   "dashboard" `
         -RemoteDir  "~/raven-enterprise-bot/dashboard" `
@@ -159,7 +159,7 @@ if ($Service -eq "all" -or $Service -eq "dash") {
         -Pm2Name    "raven-dashboard"
 }
 if ($Service -eq "all" -or $Service -eq "api") {
-    Deploy-Backend
+    Publish-Backend
 }
 
 # ── Step 4: Clear nginx cache ─────────────────────────────────────────────────

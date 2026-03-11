@@ -38,7 +38,9 @@ export default function PaymentConfigPage() {
       Object.values(res).flat().forEach((k) => { flat[k.key] = k })
       setKeys(flat)
       const d: Record<string, string> = {}
-      Object.values(flat).forEach((k) => { d[k.key] = '' })
+      Object.values(flat).forEach((k) => {
+        d[k.key] = k.is_secret ? (k.has_value ? '••••••••' : '') : (k.value ?? '')
+      })
       setDrafts(d)
     } catch (err: any) {
       setFetchError(err.message || 'Failed to load config')
@@ -58,7 +60,6 @@ export default function PaymentConfigPage() {
       setSaveSuccess((s) => ({ ...s, [key]: true }))
       setTimeout(() => setSaveSuccess((s) => ({ ...s, [key]: false })), 3000)
       await fetchKeys()
-      setDrafts((d) => ({ ...d, [key]: '' }))
     } catch (err: any) {
       setSaveErrors((e) => ({ ...e, [key]: err.message || 'Save failed' }))
     } finally {
@@ -72,12 +73,16 @@ export default function PaymentConfigPage() {
 
   const S = 'animate-pulse bg-slate-700 rounded'
 
+  const MASK = '••••••••'
+
   function KeyField({ keyName }: { keyName: string }) {
     const cfg = keys[keyName]
     if (!cfg) return <div className={`${S} h-16 w-full`} />
     const isSav = saving[keyName]
     const err = saveErrors[keyName]
     const ok = saveSuccess[keyName]
+    const draft = drafts[keyName] ?? ''
+    const isUnchangedMask = cfg.is_secret && draft === MASK
 
     return (
       <div className="space-y-1.5">
@@ -85,7 +90,7 @@ export default function PaymentConfigPage() {
           <code className="text-xs font-mono text-sky-300 bg-sky-950/60 px-2 py-0.5 rounded border border-sky-800/40">{keyName}</code>
           {cfg.has_value && (
             <span className="text-[10px] text-emerald-400 bg-emerald-900/20 px-1.5 py-0.5 rounded border border-emerald-700/30 inline-flex items-center gap-1">
-              <CheckCircle2 className="h-2.5 w-2.5" /> set
+              <CheckCircle2 className="h-2.5 w-2.5" /> saved
             </span>
           )}
         </div>
@@ -94,10 +99,13 @@ export default function PaymentConfigPage() {
           <div className="relative flex-1">
             <input
               type={cfg.is_secret && !show[keyName] ? 'password' : 'text'}
-              value={drafts[keyName] ?? ''}
+              value={draft}
               onChange={(e) => setDrafts((d) => ({ ...d, [keyName]: e.target.value }))}
+              onFocus={() => {
+                if (isUnchangedMask) setDrafts((d) => ({ ...d, [keyName]: '' }))
+              }}
               className="w-full bg-slate-900 text-white text-sm rounded-lg px-3 py-2 border border-slate-600 focus:border-sky-500 outline-none placeholder-slate-600 font-mono pr-10"
-              placeholder={cfg.has_value ? '(keep existing)' : 'Enter value...'}
+              placeholder={cfg.has_value ? 'Click to replace existing value' : 'Enter value...'}
             />
             {cfg.is_secret && (
               <button type="button" onClick={() => setShow((s) => ({ ...s, [keyName]: !s[keyName] }))}
@@ -106,7 +114,7 @@ export default function PaymentConfigPage() {
               </button>
             )}
           </div>
-          <Button size="sm" isLoading={isSav} loadingText="Saving..." onClick={() => save(keyName, drafts[keyName] ?? '')} disabled={!drafts[keyName]?.trim()}>
+          <Button size="sm" isLoading={isSav} loadingText="Saving..." onClick={() => save(keyName, draft)} disabled={!draft.trim() || isUnchangedMask}>
             Save
           </Button>
         </div>
