@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { API_ENDPOINTS } from '@/lib/constants'
 import { Button } from '@/components/Button'
-import { CreditCard, Eye, EyeOff, CheckCircle2, AlertCircle, ExternalLink, Info, ShieldCheck, FlaskConical } from 'lucide-react'
+import { CreditCard, Eye, EyeOff, CheckCircle2, AlertCircle, ExternalLink, Info, ShieldCheck, FlaskConical, Zap } from 'lucide-react'
 
 interface ConfigKey {
   key: string
@@ -17,6 +17,7 @@ interface ConfigKey {
 
 const LIVE_KEYS = ['PAYSTACK_SECRET_KEY', 'PAYSTACK_PUBLIC_KEY']
 const TEST_KEYS = ['PAYSTACK_TEST_SECRET_KEY', 'PAYSTACK_TEST_PUBLIC_KEY']
+const FLW_KEYS = ['FLUTTERWAVE_SECRET_KEY']
 
 export default function PaymentConfigPage() {
   const [keys, setKeys] = useState<Record<string, ConfigKey>>({})
@@ -208,8 +209,26 @@ export default function PaymentConfigPage() {
           </div>
         </div>
 
-        {/* RIGHT: Reference & tips */}
+        {/* RIGHT: Flutterwave + tips */}
         <div className="space-y-5">
+
+          {/* Flutterwave keys */}
+          <div className="rounded-2xl border border-orange-700/40 bg-slate-800/60 p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-orange-400" />
+              <h3 className="font-semibold text-white">Flutterwave</h3>
+              <span className="text-xs bg-orange-900/30 text-orange-300 px-2 py-0.5 rounded-full border border-orange-700/30">Payouts &amp; Transfers</span>
+            </div>
+            <p className="text-xs text-slate-500">
+              Used for bank withdrawals and payout transfers to tenant bank accounts.
+              Get your secret key from the <span className="text-orange-300">Flutterwave Dashboard → Settings → API</span>.
+            </p>
+            {isLoading
+              ? [1].map((i) => <div key={i} className={`${S} h-16 w-full`} />)
+              : FLW_KEYS.map((k) => <KeyField key={k} keyName={k} />)
+            }
+          </div>
+
           <div className="rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 space-y-4">
             <h3 className="font-semibold text-white flex items-center gap-2">
               <Info className="h-4 w-4 text-sky-400" />Setup Guide
@@ -223,15 +242,27 @@ export default function PaymentConfigPage() {
                 <span>When ready for production, copy the <strong className="text-green-300">Live Secret Key</strong> and <strong className="text-green-300">Live Public Key</strong> and toggle to Live Mode.</span></li>
               <li className="flex gap-2"><span className="bg-indigo-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center shrink-0 mt-0.5">4</span>
                 <span>Set the <strong className="text-slate-200">Callback URL</strong> to match the one in your Paystack Webhook settings (e.g. <code className="font-mono text-sky-300">https://app.raven-ai.online/payments/verify</code>).</span></li>
+              <li className="flex gap-2"><span className="bg-orange-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center shrink-0 mt-0.5">5</span>
+                <span>For <strong className="text-orange-300">Flutterwave payouts</strong>, log in to the <span className="text-orange-300">Flutterwave Dashboard</span> ➜ <strong className="text-slate-200">Settings ➜ API</strong> and copy your Secret Key (<code className="font-mono text-slate-300">FLWSECK_...</code>).</span></li>
             </ol>
-            <a
-              href="https://dashboard.paystack.com/#/settings/developers"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 hover:underline"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />Open Paystack Developer Settings
-            </a>
+            <div className="flex gap-3 flex-wrap">
+              <a
+                href="https://dashboard.paystack.com/#/settings/developers"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 hover:underline"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />Paystack Developer Settings
+              </a>
+              <a
+                href="https://app.flutterwave.com/dashboard/settings/apis"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300 hover:underline"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />Flutterwave API Settings
+              </a>
+            </div>
           </div>
 
           <div className="rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 space-y-2">
