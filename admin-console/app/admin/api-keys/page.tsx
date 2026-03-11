@@ -47,7 +47,7 @@ const GROUP_META: Record<string, {
 const VISIBLE_GROUPS = ['whatsapp', 'ai']
 
 function KeyRow({ item, onSaved }: { item: ConfigKey; onSaved: (updated: ConfigKey) => void }) {
-  const [value, setValue] = useState(item.has_value && item.is_secret ? '' : (item.value ?? ''))
+  const [value, setValue] = useState(item.value ?? '')
   const [show, setShow] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -99,7 +99,7 @@ function KeyRow({ item, onSaved }: { item: ConfigKey; onSaved: (updated: ConfigK
             type={item.is_secret && !show ? 'password' : 'text'}
             value={value}
             onChange={(e) => handleChange(e.target.value)}
-            placeholder={item.has_value && item.is_secret ? 'Saved \u2014 type a new value to replace' : `Enter ${item.key}`}
+            placeholder={`Enter ${item.key}`}
             className="w-full px-3 py-2 bg-slate-900/80 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-600 focus:border-sky-500 focus:ring-1 focus:ring-sky-500/40 outline-none font-mono pr-10 transition-colors"
           />
           {item.is_secret && (
@@ -213,7 +213,7 @@ export default function ApiKeysPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">API Keys</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Integration credentials for WhatsApp / Meta and OpenAI. Secret values are masked after saving.
+            Integration credentials for WhatsApp / Meta and OpenAI.
           </p>
         </div>
         <Button variant="secondary" size="sm" isLoading={isLoading} loadingText="Refreshing..." onClick={fetchConfig} disabled={isLoading} className="shrink-0">

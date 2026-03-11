@@ -17,7 +17,7 @@ interface ConfigKey {
 
 const LIVE_KEYS = ['PAYSTACK_SECRET_KEY', 'PAYSTACK_PUBLIC_KEY']
 const TEST_KEYS = ['PAYSTACK_TEST_SECRET_KEY', 'PAYSTACK_TEST_PUBLIC_KEY']
-const FLW_KEYS = ['FLUTTERWAVE_SECRET_KEY']
+const FLW_KEYS = ['FLUTTERWAVE_SECRET_KEY', 'FLUTTERWAVE_PUBLIC_KEY', 'FLUTTERWAVE_WEBHOOK_SECRET', 'FLUTTERWAVE_MERCHANT_ID']
 
 export default function PaymentConfigPage() {
   const [keys, setKeys] = useState<Record<string, ConfigKey>>({})
@@ -40,7 +40,7 @@ export default function PaymentConfigPage() {
       setKeys(flat)
       const d: Record<string, string> = {}
       Object.values(flat).forEach((k) => {
-        d[k.key] = k.is_secret ? (k.has_value ? '••••••••' : '') : (k.value ?? '')
+        d[k.key] = k.value ?? ''
       })
       setDrafts(d)
     } catch (err: any) {
@@ -74,8 +74,6 @@ export default function PaymentConfigPage() {
 
   const S = 'animate-pulse bg-slate-700 rounded'
 
-  const MASK = '••••••••'
-
   function KeyField({ keyName }: { keyName: string }) {
     const cfg = keys[keyName]
     if (!cfg) return <div className={`${S} h-16 w-full`} />
@@ -83,7 +81,6 @@ export default function PaymentConfigPage() {
     const err = saveErrors[keyName]
     const ok = saveSuccess[keyName]
     const draft = drafts[keyName] ?? ''
-    const isUnchangedMask = cfg.is_secret && draft === MASK
 
     return (
       <div className="space-y-1.5">
@@ -102,11 +99,8 @@ export default function PaymentConfigPage() {
               type={cfg.is_secret && !show[keyName] ? 'password' : 'text'}
               value={draft}
               onChange={(e) => setDrafts((d) => ({ ...d, [keyName]: e.target.value }))}
-              onFocus={() => {
-                if (isUnchangedMask) setDrafts((d) => ({ ...d, [keyName]: '' }))
-              }}
               className="w-full bg-slate-900 text-white text-sm rounded-lg px-3 py-2 border border-slate-600 focus:border-sky-500 outline-none placeholder-slate-600 font-mono pr-10"
-              placeholder={cfg.has_value ? 'Click to replace existing value' : 'Enter value...'}
+              placeholder="Enter value..."
             />
             {cfg.is_secret && (
               <button type="button" onClick={() => setShow((s) => ({ ...s, [keyName]: !s[keyName] }))}
@@ -115,7 +109,7 @@ export default function PaymentConfigPage() {
               </button>
             )}
           </div>
-          <Button size="sm" isLoading={isSav} loadingText="Saving..." onClick={() => save(keyName, draft)} disabled={!draft.trim() || isUnchangedMask}>
+          <Button size="sm" isLoading={isSav} loadingText="Saving..." onClick={() => save(keyName, draft)} disabled={!draft.trim()}>
             Save
           </Button>
         </div>
@@ -129,7 +123,7 @@ export default function PaymentConfigPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Payment Configuration</h1>
-        <p className="text-sm text-slate-400 mt-1">Configure Paystack API keys for sandbox testing and live transactions.</p>
+        <p className="text-sm text-slate-400 mt-1">Configure Paystack and Flutterwave API keys for payments, subscriptions, and payouts.</p>
       </div>
 
       {fetchError && (
@@ -217,14 +211,14 @@ export default function PaymentConfigPage() {
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-orange-400" />
               <h3 className="font-semibold text-white">Flutterwave</h3>
-              <span className="text-xs bg-orange-900/30 text-orange-300 px-2 py-0.5 rounded-full border border-orange-700/30">Payouts &amp; Transfers</span>
+              <span className="text-xs bg-orange-900/30 text-orange-300 px-2 py-0.5 rounded-full border border-orange-700/30">Payments, Plans &amp; Payouts</span>
             </div>
             <p className="text-xs text-slate-500">
-              Used for bank withdrawals and payout transfers to tenant bank accounts.
-              Get your secret key from the <span className="text-orange-300">Flutterwave Dashboard → Settings → API</span>.
+              Used for processing payments, managing subscription plans, and bank payout transfers.
+              Get your keys from the <span className="text-orange-300">Flutterwave Dashboard → Settings → API</span>.
             </p>
             {isLoading
-              ? [1].map((i) => <div key={i} className={`${S} h-16 w-full`} />)
+              ? [1, 2, 3, 4].map((i) => <div key={i} className={`${S} h-16 w-full`} />)
               : FLW_KEYS.map((k) => <KeyField key={k} keyName={k} />)
             }
           </div>
@@ -243,7 +237,7 @@ export default function PaymentConfigPage() {
               <li className="flex gap-2"><span className="bg-indigo-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center shrink-0 mt-0.5">4</span>
                 <span>Set the <strong className="text-slate-200">Callback URL</strong> to match the one in your Paystack Webhook settings (e.g. <code className="font-mono text-sky-300">https://app.raven-ai.online/payments/verify</code>).</span></li>
               <li className="flex gap-2"><span className="bg-orange-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center shrink-0 mt-0.5">5</span>
-                <span>For <strong className="text-orange-300">Flutterwave payouts</strong>, log in to the <span className="text-orange-300">Flutterwave Dashboard</span> ➜ <strong className="text-slate-200">Settings ➜ API</strong> and copy your Secret Key (<code className="font-mono text-slate-300">FLWSECK_...</code>).</span></li>
+                <span>For <strong className="text-orange-300">Flutterwave</strong> (payments, plans &amp; payouts), log in to the <span className="text-orange-300">Flutterwave Dashboard</span> ➜ <strong className="text-slate-200">Settings ➜ API</strong>. Copy your Secret Key (<code className="font-mono text-slate-300">FLWSECK_...</code>), Public Key (<code className="font-mono text-slate-300">FLWPUBK_...</code>), Webhook Secret, and Merchant ID.</span></li>
             </ol>
             <div className="flex gap-3 flex-wrap">
               <a

@@ -40,7 +40,7 @@ export class AdminConfigController {
       grouped[row.group].push({
         id: row.id,
         key: row.key,
-        value: row.is_secret ? maskValue(row.value) : (row.value ?? ''),
+        value: row.value ?? '',
         description: row.description,
         group: row.group,
         is_secret: row.is_secret,
@@ -71,7 +71,7 @@ export class AdminConfigController {
     return {
       id: updated.id,
       key: updated.key,
-      value: updated.is_secret ? maskValue(updated.value) : (updated.value ?? ''),
+      value: updated.value ?? '',
       description: updated.description,
       group: updated.group,
       is_secret: updated.is_secret,

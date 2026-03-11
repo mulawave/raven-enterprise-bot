@@ -72,8 +72,6 @@ export default function EmailConfigPage() {
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null)
   const previewRefs = useRef<Record<string, HTMLIFrameElement | null>>({})
 
-  const SMTP_MASK = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'
-
   const fetchAll = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true)
     setFetchError(null)
@@ -86,10 +84,9 @@ export default function EmailConfigPage() {
       Object.values(keysRes).flat().forEach((k) => { flat[k.key] = k })
       setKeys(flat)
       const d: Record<string, string> = {}
-      SMTP_FIELDS.forEach(({ key, type }) => {
+      SMTP_FIELDS.forEach(({ key }) => {
         const cfg = flat[key]
-        const isSecret = type === 'password' || cfg?.is_secret
-        d[key] = isSecret ? (cfg?.has_value ? SMTP_MASK : '') : (cfg?.value ?? '')
+        d[key] = cfg?.value ?? ''
       })
       d['SMTP_PROVIDER'] = flat['SMTP_PROVIDER']?.value ?? 'smtp'
       d['SMTP_SECURE'] = flat['SMTP_SECURE']?.value ?? 'false'
@@ -135,12 +132,7 @@ export default function EmailConfigPage() {
     setSmtpSaving(true); setSmtpSaved(false)
     try {
       await Promise.all([
-        ...SMTP_FIELDS.map(({ key, type }) => {
-          const val = drafts[key] ?? ''
-          // Skip secret fields whose draft is still the unchanged mask — do not overwrite the real value
-          if ((type === 'password' || keys[key]?.is_secret) && val === SMTP_MASK) return Promise.resolve()
-          return saveKey(key, val)
-        }),
+        ...SMTP_FIELDS.map(({ key }) => saveKey(key, drafts[key] ?? '')),
         saveKey('SMTP_PROVIDER', drafts['SMTP_PROVIDER'] ?? 'smtp'),
         saveKey('SMTP_SECURE', drafts['SMTP_SECURE'] ?? 'false'),
       ])
@@ -253,13 +245,8 @@ export default function EmailConfigPage() {
                             type={isPass && !showPass ? 'password' : type === 'password' ? 'text' : type}
                             value={drafts[key] ?? ''}
                             onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
-                            onFocus={() => {
-                              if ((isPass || keys[key]?.is_secret) && drafts[key] === SMTP_MASK) {
-                                setDrafts((d) => ({ ...d, [key]: '' }))
-                              }
-                            }}
                             className="w-full bg-slate-900 text-white text-sm rounded-lg px-3 py-2 border border-slate-600 focus:border-indigo-500 outline-none placeholder-slate-500"
-                            placeholder={keys[key]?.has_value && isPass ? 'Leave blank to keep existing password' : placeholder}
+                            placeholder={placeholder}
                           />
                         )}
                       </div>
