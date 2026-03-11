@@ -191,7 +191,7 @@ export default function EmailConfigPage() {
           <h1 className="text-3xl font-bold text-white">Email Configuration</h1>
           <p className="text-sm text-slate-400 mt-1">Configure SMTP delivery and manage email templates with live preview.</p>
         </div>
-        <Button variant="secondary" size="sm" isLoading={isLoading} loadingText="Loading..." onClick={fetchAll} disabled={isLoading} className="shrink-0">
+        <Button variant="secondary" size="sm" isLoading={isLoading} loadingText="Loading..." onClick={() => fetchAll()} disabled={isLoading} className="shrink-0">
           <RefreshCw className="h-4 w-4" />Refresh
         </Button>
       </div>
