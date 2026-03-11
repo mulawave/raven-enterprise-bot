@@ -1,4 +1,7 @@
-import { Controller, Get, Post, Body, HttpCode, HttpStatus, UnauthorizedException, UseGuards } from '@nestjs/common'
+import { Controller, Get, Post, Body, HttpCode, HttpStatus, UnauthorizedException, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
+import { diskStorage } from 'multer'
+import { extname } from 'path'
 import { BrandingService, BrandingConfig } from '../../../libs/tenant/branding/branding.service'
 import { JwtAuthGuard } from '../../../libs/auth/guards/jwt-auth.guard'
 import { CurrentUser } from '../../../libs/auth/decorators/current-user.decorator'
@@ -48,5 +51,36 @@ export class BrandingController {
 
     await this.brandingService.setBranding(tenantId, config)
     return { success: true, message: 'Branding updated successfully' }
+  }
+
+  /**
+   * Upload a logo image for the tenant
+   * POST /api/tenant/branding/upload/logo
+   * multipart/form-data with field name "file"
+   */
+  @Post('upload/logo')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/logos',
+        filename: (req: any, file: any, cb: any) => {
+          const unique = Date.now() + '-' + Math.round(Math.random() * 1e9)
+          cb(null, `logo-${unique}${extname(file.originalname)}`)
+        },
+      }),
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (req: any, file: any, cb: any) => {
+        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|svg\+xml|webp)$/)) {
+          return cb(new Error('Only image files are allowed'), false)
+        }
+        cb(null, true)
+      },
+    }),
+  )
+  async uploadLogo(@UploadedFile() file: any) {
+    if (!file) {
+      return { error: { code: 'NO_FILE', message: 'No file uploaded' } }
+    }
+    return { logoUrl: `/uploads/logos/${file.filename}` }
   }
 }

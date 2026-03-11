@@ -40,6 +40,30 @@ export class SelfRegistrationController {
   ) {}
 
   /**
+   * GET /api/auth/check-email?email=XXX
+   * Lightweight availability check — returns 200 { available: true } or
+   * 200 { available: false } so the client can show inline feedback before
+   * the user reaches the plan-selection step.
+   */
+  @Get('check-email')
+  @HttpCode(HttpStatus.OK)
+  async checkEmail(@Query('email') email: string) {
+    if (!email?.trim()) {
+      return { available: false }
+    }
+    const emailLower = email.trim().toLowerCase()
+    const existing = await this.prisma.user.findFirst({ where: { email: emailLower } })
+    if (existing) return { available: false, reason: 'account' }
+
+    const pending = await this.prisma.systemConfig.findFirst({
+      where: { key: { startsWith: 'PENDING_REG_' }, value: { contains: emailLower } },
+    })
+    if (pending) return { available: false, reason: 'pending' }
+
+    return { available: true }
+  }
+
+  /**
    * POST /api/auth/register
    * Public self-service registration. Stores a pending registration token and
    * sends an email confirmation link. No tenant is created yet.

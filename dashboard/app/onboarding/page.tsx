@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { api } from '@/lib/api'
@@ -25,6 +25,181 @@ interface WhatsAppForm {
   metaAccessToken: string
   metaPhoneNumberId: string
   openaiApiKey: string
+}
+
+// ─── Logo uploader ─────────────────────────────────────────────────────────────
+
+type UploadState = 'idle' | 'uploading' | 'done' | 'error'
+
+interface LogoUploaderProps {
+  value: string
+  onChange: (url: string) => void
+}
+
+function LogoUploader({ value, onChange }: LogoUploaderProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [uploadState, setUploadState] = useState<UploadState>('idle')
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  const upload = useCallback((file: File) => {
+    if (!file.type.match(/\/(jpg|jpeg|png|gif|svg\+xml|webp)$/)) {
+      setUploadError('Only JPG, PNG, SVG, or WEBP files are allowed.')
+      setUploadState('error')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('File must be under 5 MB.')
+      setUploadState('error')
+      return
+    }
+
+    setUploadError(null)
+    setProgress(0)
+    setUploadState('uploading')
+
+    // Read token at upload time — always fresh from storage
+    const token = (() => { try { return JSON.parse(localStorage.getItem('session') ?? '{}')?.accessToken } catch { return null } })()
+    if (!token) {
+      setUploadState('error')
+      setUploadError('Not authenticated — please refresh the page')
+      return
+    }
+
+    const xhr = new XMLHttpRequest()
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 100))
+    })
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText)
+          if (data.error) {
+            setUploadState('error')
+            setUploadError(data.error.message ?? 'Upload failed')
+          } else {
+            setUploadState('done')
+            onChange(data.logoUrl)
+          }
+        } catch {
+          setUploadState('error')
+          setUploadError('Invalid server response')
+        }
+      } else {
+        setUploadState('error')
+        setUploadError(`Upload failed (${xhr.status})`)
+      }
+    })
+    xhr.addEventListener('error', () => {
+      setUploadState('error')
+      setUploadError('Network error — please try again')
+    })
+
+    const form = new FormData()
+    form.append('file', file)
+    xhr.open('POST', `${API_BASE_URL}/tenant/branding/upload/logo`)
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+    xhr.send(form)
+  }, [onChange])
+
+  const handleFile = useCallback((file: File | null | undefined) => {
+    if (file) upload(file)
+  }, [upload])
+
+  function handleDragOver(e: React.DragEvent) { e.preventDefault(); setIsDragging(true) }
+  function handleDragLeave() { setIsDragging(false) }
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setIsDragging(false)
+    handleFile(e.dataTransfer.files?.[0])
+  }
+
+  const zoneClass = [
+    'relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-8 text-center transition-all select-none',
+    uploadState !== 'uploading' ? 'cursor-pointer' : 'cursor-not-allowed',
+    isDragging ? 'border-emerald-400 bg-emerald-500/10' :
+    uploadState === 'done' ? 'border-emerald-500/50 bg-emerald-500/5' :
+    uploadState === 'error' ? 'border-red-500/50 bg-red-500/5' :
+    'border-white/15 bg-white/5 hover:border-white/30',
+  ].join(' ')
+
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+        Logo <span className="text-slate-500 text-xs">(optional)</span>
+      </label>
+
+      <div
+        onClick={() => { if (uploadState !== 'uploading') inputRef.current?.click() }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={zoneClass}
+      >
+        {/* Image preview */}
+        {uploadState === 'done' && value && (
+          <img
+            src={`${API_BASE_URL}${value}`}
+            alt="Logo preview"
+            className="mx-auto mb-3 h-16 w-auto max-w-[120px] rounded-lg object-contain"
+          />
+        )}
+
+        {/* Icon when no preview */}
+        {uploadState !== 'done' && (
+          <div className="mb-3 text-3xl">
+            {uploadState === 'error' ? '⚠️' : uploadState === 'uploading' ? '📤' : '🖼️'}
+          </div>
+        )}
+
+        {uploadState === 'idle' && (
+          <>
+            <p className="text-sm font-medium text-slate-300">
+              Drag your logo here, or{' '}
+              <span className="text-emerald-400 underline underline-offset-2">click to browse</span>
+            </p>
+            <p className="text-xs text-slate-500 mt-1">PNG, JPG, SVG or WEBP · max 5 MB</p>
+          </>
+        )}
+
+        {uploadState === 'uploading' && (
+          <div className="w-full max-w-[220px]">
+            <p className="text-sm font-medium text-slate-300 mb-3">Uploading…</p>
+            <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-[width] duration-200 ease-linear"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-400 mt-1.5">{progress}%</p>
+          </div>
+        )}
+
+        {uploadState === 'done' && (
+          <>
+            <p className="text-sm font-medium text-emerald-400">✓ Logo uploaded</p>
+            <p className="text-xs text-slate-500 mt-1">Click to replace</p>
+          </>
+        )}
+
+        {uploadState === 'error' && (
+          <>
+            <p className="text-sm font-medium text-red-400">{uploadError}</p>
+            <p className="text-xs text-slate-400 mt-1">Click to try again</p>
+          </>
+        )}
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+        className="hidden"
+        onChange={e => handleFile(e.target.files?.[0])}
+      />
+    </div>
+  )
 }
 
 // ─── Step indicator ────────────────────────────────────────────────────────────
@@ -272,15 +447,11 @@ export default function OnboardingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5">Logo URL <span className="text-slate-500 text-xs">(optional)</span></label>
-                  <input
-                    type="url"
-                    value={profile.logoUrl}
-                    onChange={e => setProfile({ ...profile, logoUrl: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-slate-500 focus:border-emerald-500/50 focus:outline-none"
-                    placeholder="https://yoursite.com/logo.png"
-                  />
-                </div>
+                    <LogoUploader
+                      value={profile.logoUrl}
+                      onChange={url => setProfile({ ...profile, logoUrl: url })}
+                    />
+                  </div>
               </fieldset>
 
               {/* Group 2 — Contact */}
