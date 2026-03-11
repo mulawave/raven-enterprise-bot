@@ -1,14 +1,11 @@
-'use client'
+import { unstable_noStore as noStore } from 'next/cache'
+import { redirect } from 'next/navigation'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default function Home() {
-  const router = useRouter()
-  
-  useEffect(() => {
-    router.push('/admin/login')
-  }, [router])
+  noStore()
 
-  return null
+  redirect('/admin/login')
 }

@@ -1,8 +1,10 @@
-import { Controller, Get, Query, Headers, NotFoundException, BadRequestException } from '@nestjs/common'
+import { Controller, Get, NotFoundException, UnauthorizedException, UseGuards } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
 import { BrandingService } from '../../../libs/tenant/branding/branding.service'
-import { SubscriptionsService, PlanTier } from '../../../libs/billing/subscriptions.service'
+import { SubscriptionsService } from '../../../libs/billing/subscriptions.service'
 import { SuspensionService } from '../../../libs/billing/enforcement/suspension.service'
+import { JwtAuthGuard } from '../../../libs/auth/guards/jwt-auth.guard'
+import { CurrentUser } from '../../../libs/auth/decorators/current-user.decorator'
 
 @Controller('tenant/context')
 export class TenantContextController {
@@ -14,13 +16,11 @@ export class TenantContextController {
   ) {}
 
   @Get()
-  async getTenantContext(
-    @Query('tenantId') tenantIdQuery: string,
-    @Headers('x-tenant-id') tenantIdHeader: string,
-  ) {
-    const tenantId = tenantIdHeader || tenantIdQuery
+  @UseGuards(JwtAuthGuard)
+  async getTenantContext(@CurrentUser() user: any) {
+    const tenantId = user?.tenant_id
     if (!tenantId) {
-      throw new BadRequestException('tenantId is required')
+      throw new UnauthorizedException('Tenant credentials required')
     }
 
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } })
@@ -28,15 +28,7 @@ export class TenantContextController {
       throw new NotFoundException(`Tenant '${tenantId}' not found`)
     }
 
-    let subscription = await this.subscriptionsService.getSubscription(tenantId)
-    if (!subscription) {
-      await this.subscriptionsService.createSubscription(tenantId, 'starter' as PlanTier)
-      subscription = await this.subscriptionsService.getSubscription(tenantId)
-    }
-
-    if (!subscription) {
-      throw new NotFoundException('Subscription could not be created for this tenant')
-    }
+    const subscription = await this.subscriptionsService.getSubscription(tenantId)
 
     const branding = await this.brandingService.getBranding(tenantId)
 
@@ -69,11 +61,11 @@ export class TenantContextController {
         status: tenantStatus,
       },
       subscription: {
-        plan: subscription.plan_tier,
-        status: subscription.status,
-        conversations_used: subscription.conversations_used ?? 0,
-        conversations_limit: subscription.conversations_limit ?? 0,
-        current_period_end: subscription.current_period_end
+        plan: subscription?.plan_tier ?? 'starter',
+        status: subscription?.status ?? 'trial',
+        conversations_used: subscription?.conversations_used ?? 0,
+        conversations_limit: subscription?.conversations_limit ?? 0,
+        current_period_end: subscription?.current_period_end
           ? subscription.current_period_end.toISOString()
           : new Date().toISOString(),
       },

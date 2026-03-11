@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { TenantContext, TenantContextValue } from '@/lib/tenant-context'
-import { API_BASE_URL, TENANT_ID } from '@/lib/constants'
+import { API_BASE_URL } from '@/lib/constants'
+import { getAccessToken } from '@/lib/auth'
 import LoadingSpinner from '@/components/LoadingSpinner'
 
 function clamp(value: number, min: number, max: number) {
@@ -27,11 +28,6 @@ function adjustColor({ r, g, b }: { r: number; g: number; b: number }, amount: n
   }
 }
 
-function getStoredTenantId() {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem('tenant')
-}
-
 export default function TenantProvider({ children }: { children: React.ReactNode }) {
   const [contextValue, setContextValue] = useState<TenantContextValue | null>(null)
   const [loading, setLoading] = useState(true)
@@ -45,13 +41,16 @@ export default function TenantProvider({ children }: { children: React.ReactNode
         setLoading(true)
         setError(null)
 
-        const storedTenant = getStoredTenantId()
-        const tenantId = storedTenant || TENANT_ID
+        const accessToken = getAccessToken()
 
-        const response = await fetch(`${API_BASE_URL}/tenant/context?tenantId=${tenantId}`, {
+        if (!accessToken) {
+          throw new Error('Missing session token')
+        }
+
+        const response = await fetch(`${API_BASE_URL}/tenant/context`, {
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': tenantId,
+            Authorization: `Bearer ${accessToken}`,
           },
         })
 

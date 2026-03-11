@@ -6,8 +6,8 @@ import { User, Mail, Lock, Shield, Camera } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/Button'
 import { API_BASE_URL } from '@/lib/constants'
-import { getAdminToken } from '@/lib/auth'
 import { CheckCircle2, AlertCircle } from 'lucide-react'
+import AuthenticatedImage from '@/components/AuthenticatedImage'
 
 interface AdminProfile {
   id: string
@@ -86,8 +86,6 @@ export default function ProfilePage() {
   }
 
   const S = 'animate-pulse bg-slate-700/60 rounded'
-  const token = getAdminToken()
-
   return (
     <div className="space-y-6">
       <div>
@@ -107,11 +105,10 @@ export default function ProfilePage() {
               {isLoading ? (
                 <div className={`${S} w-28 h-28 rounded-full`} />
               ) : profile?.avatar_url ? (
-                <img
-                  src={`${API_BASE_URL}${profile.avatar_url}?t=${token ?? ''}`}
+                <AuthenticatedImage
+                  src={`${API_BASE_URL}${profile.avatar_url}`}
                   alt="Avatar"
                   className="w-28 h-28 rounded-full object-cover border-4 border-slate-600 ring-2 ring-indigo-500/30"
-                  onError={(e) => { (e.target as HTMLImageElement).src = '' }}
                 />
               ) : (
                 <div className="w-28 h-28 rounded-full bg-slate-700 border-4 border-slate-600 ring-2 ring-indigo-500/20 flex items-center justify-center">

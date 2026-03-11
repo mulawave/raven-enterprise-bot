@@ -19,6 +19,10 @@ export class BranchService {
 		return this.prisma.branch.findFirst({ where: { id: branchId, tenant_id: tenantId } })
 	}
 
+	async getDefaultBranch(tenantId: string): Promise<Branch | null> {
+		return this.prisma.branch.findFirst({ where: { tenant_id: tenantId, name: 'Default' } })
+	}
+
 	async updateBranch(tenantId: string, branchId: string, name: string): Promise<Branch> {
 		return this.prisma.branch.update({ where: { id: branchId, tenant_id: tenantId }, data: { name } })
 	}

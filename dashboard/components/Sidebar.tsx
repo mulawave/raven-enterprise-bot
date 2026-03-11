@@ -16,16 +16,13 @@ const navigation = [
 ]
 
 export default function Sidebar() {
-  const { branding, tenant } = useTenantContext()
+  const { branding } = useTenantContext()
   const pathname = usePathname()
   const [isPending, startTransition] = useTransition()
   const [loadingRoute, setLoadingRoute] = useState<string | null>(null)
 
-  // Append tenant ID to /uploads/ URLs so the gated static middleware allows the request
   const logoSrc = branding?.logoUrl
-    ? branding.logoUrl.startsWith('/uploads/')
-      ? `${branding.logoUrl}?t=${tenant?.id ?? ''}`
-      : branding.logoUrl
+    ? branding.logoUrl
     : null
 
   const handleNavClick = (href: string) => {

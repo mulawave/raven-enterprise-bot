@@ -1,7 +1,10 @@
-import { Controller, Get, Post, Put, Delete, Body, Query, HttpCode, HttpStatus } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Body, HttpCode, HttpStatus, UnauthorizedException, UseGuards } from '@nestjs/common'
 import { SubscriptionsService, PlanTier } from '../../../libs/billing/subscriptions.service'
+import { JwtAuthGuard } from '../../../libs/auth/guards/jwt-auth.guard'
+import { CurrentUser } from '../../../libs/auth/decorators/current-user.decorator'
 
 @Controller('subscriptions')
+@UseGuards(JwtAuthGuard)
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
@@ -10,9 +13,10 @@ export class SubscriptionsController {
    * GET /api/subscriptions?tenantId=xxx
    */
   @Get()
-  async getSubscription(@Query('tenantId') tenantId: string) {
+  async getSubscription(@CurrentUser() user: any) {
+    const tenantId = user?.tenant_id
     if (!tenantId) {
-      return { error: { code: 'VALIDATION_ERROR', message: 'tenantId is required' } }
+      throw new UnauthorizedException('Tenant credentials required')
     }
 
     const subscription = await this.subscriptionsService.getSubscription(tenantId)
@@ -28,9 +32,10 @@ export class SubscriptionsController {
    * GET /api/subscriptions/usage?tenantId=xxx
    */
   @Get('usage')
-  async getUsageStats(@Query('tenantId') tenantId: string) {
+  async getUsageStats(@CurrentUser() user: any) {
+    const tenantId = user?.tenant_id
     if (!tenantId) {
-      return { error: { code: 'VALIDATION_ERROR', message: 'tenantId is required' } }
+      throw new UnauthorizedException('Tenant credentials required')
     }
 
     const stats = await this.subscriptionsService.getUsageStats(tenantId)
@@ -46,9 +51,10 @@ export class SubscriptionsController {
    * GET /api/subscriptions/bill?tenantId=xxx
    */
   @Get('bill')
-  async calculateBill(@Query('tenantId') tenantId: string) {
+  async calculateBill(@CurrentUser() user: any) {
+    const tenantId = user?.tenant_id
     if (!tenantId) {
-      return { error: { code: 'VALIDATION_ERROR', message: 'tenantId is required' } }
+      throw new UnauthorizedException('Tenant credentials required')
     }
 
     try {
@@ -66,11 +72,12 @@ export class SubscriptionsController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async createSubscription(@Body() body: { tenantId: string; planTier: PlanTier }) {
-    const { tenantId, planTier } = body
+  async createSubscription(@CurrentUser() user: any, @Body() body: { planTier: PlanTier }) {
+    const tenantId = user?.tenant_id
+    const { planTier } = body
 
     if (!tenantId || !planTier) {
-      return { error: { code: 'VALIDATION_ERROR', message: 'tenantId and planTier are required' } }
+      throw new UnauthorizedException('Tenant credentials required')
     }
 
     if (!['starter', 'growth', 'enterprise'].includes(planTier)) {
@@ -91,11 +98,12 @@ export class SubscriptionsController {
    * Body: { tenantId: string, newPlanTier: 'starter' | 'growth' | 'enterprise' }
    */
   @Put('plan')
-  async changePlan(@Body() body: { tenantId: string; newPlanTier: PlanTier }) {
-    const { tenantId, newPlanTier } = body
+  async changePlan(@CurrentUser() user: any, @Body() body: { newPlanTier: PlanTier }) {
+    const tenantId = user?.tenant_id
+    const { newPlanTier } = body
 
     if (!tenantId || !newPlanTier) {
-      return { error: { code: 'VALIDATION_ERROR', message: 'tenantId and newPlanTier are required' } }
+      throw new UnauthorizedException('Tenant credentials required')
     }
 
     if (!['starter', 'growth', 'enterprise'].includes(newPlanTier)) {
@@ -115,9 +123,10 @@ export class SubscriptionsController {
    * DELETE /api/subscriptions?tenantId=xxx
    */
   @Delete()
-  async cancelSubscription(@Query('tenantId') tenantId: string) {
+  async cancelSubscription(@CurrentUser() user: any) {
+    const tenantId = user?.tenant_id
     if (!tenantId) {
-      return { error: { code: 'VALIDATION_ERROR', message: 'tenantId is required' } }
+      throw new UnauthorizedException('Tenant credentials required')
     }
 
     try {

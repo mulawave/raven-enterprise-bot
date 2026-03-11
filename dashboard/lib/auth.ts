@@ -2,8 +2,11 @@ const SESSION_KEY = 'session'
 const TENANT_KEY = 'tenant'
 
 export interface DashboardSession {
+  accessToken: string
   tenantId: string
   role: string
+  email?: string
+  name?: string | null
 }
 
 export function getSession(): DashboardSession | null {
@@ -17,11 +20,10 @@ export function getSession(): DashboardSession | null {
   }
 }
 
-export function setSession(tenantId: string): void {
+export function setSession(session: DashboardSession): void {
   if (typeof window === 'undefined') return
-  const session: DashboardSession = { tenantId, role: 'tenant' }
   localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-  localStorage.setItem(TENANT_KEY, tenantId)
+  localStorage.setItem(TENANT_KEY, session.tenantId)
 }
 
 export function clearSession(): void {
@@ -31,5 +33,9 @@ export function clearSession(): void {
 }
 
 export function isAuthenticated(): boolean {
-  return !!getSession()
+  return !!getSession()?.accessToken
+}
+
+export function getAccessToken(): string | null {
+  return getSession()?.accessToken ?? null
 }

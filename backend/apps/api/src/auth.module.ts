@@ -10,6 +10,7 @@ import { JwtModule } from '@nestjs/jwt'
 import { AdminAuthController } from '../admin/auth/admin-auth.controller'
 import { AdminProfileController } from '../admin/profile/admin-profile.controller'
 import { AdminUsersController } from '../admin/users/admin-users.controller'
+import { TenantAuthController } from './tenant-auth.controller'
 
 // Services
 import { UserService } from '../../../libs/auth/services/user.service'
@@ -28,7 +29,7 @@ import { BranchService } from '../../../libs/tenant/branch.service'
       signOptions: { expiresIn: '24h' },
     }),
   ],
-  controllers: [AdminAuthController, AdminProfileController, AdminUsersController],
+  controllers: [AdminAuthController, TenantAuthController, AdminProfileController, AdminUsersController],
   providers: [
     UserService,
     AuthService,

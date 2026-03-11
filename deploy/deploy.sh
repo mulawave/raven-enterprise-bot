@@ -1,24 +1,84 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Raven Enterprise — INCREMENTAL DEPLOY
-# Pulls latest code, rebuilds changed apps, and restarts Passenger.
+# Raven Enterprise — ARTIFACT DEPLOY
+# Deploys a release archive to the cPanel server without relying on git.
 #
-# Run on the cPanel server as the ravenai user, or via GitHub Actions SSH.
-# Redis runs as a user-space process compiled in ~/local/bin/redis-server
+# Usage:
+#   bash ~/raven-deploy.sh ~/raven-deploy.tar.gz
+#   bash deploy/deploy.sh ./raven-deploy.tar.gz
+#
+# The script stages the uploaded archive, restores production env files and
+# uploads, builds everything in staging, then swaps the release into place.
 # =============================================================================
 set -euo pipefail
 
-REPO_DIR="${HOME}/raven-enterprise-bot"
-DEPLOY_LOG="${REPO_DIR}/deploy/deploy.log"
+ARCHIVE_PATH="${1:-${DEPLOY_ARCHIVE_PATH:-${HOME}/raven-deploy.tar.gz}}"
+APP_DIR="${HOME}/raven-enterprise-bot"
+STAGING_DIR="${HOME}/raven-enterprise-bot.staging.$$"
+BACKUP_DIR="${HOME}/raven-enterprise-bot.backup.$(date +%Y%m%d-%H%M%S)"
+STATE_DIR="${HOME}/.raven-deploy-state.$$"
+DEPLOY_LOG="${HOME}/raven-deploy.log"
+KEEP_BACKUP="${KEEP_BACKUP:-false}"
 REDIS_BIN="${HOME}/local/bin/redis-server"
 REDIS_CLI="${HOME}/local/bin/redis-cli"
 REDIS_CONF="${HOME}/redis.conf"
-REDIS_PID="${HOME}/redis.pid"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$DEPLOY_LOG"; }
 
-cd "$REPO_DIR"
-log "Deploy started"
+cleanup() {
+  rm -rf "$STAGING_DIR" "$STATE_DIR"
+}
+
+trap cleanup EXIT
+
+backup_file() {
+  local relative_path="$1"
+  if [[ -f "${APP_DIR}/${relative_path}" ]]; then
+    mkdir -p "${STATE_DIR}/$(dirname "${relative_path}")"
+    cp "${APP_DIR}/${relative_path}" "${STATE_DIR}/${relative_path}"
+  fi
+}
+
+restore_file() {
+  local relative_path="$1"
+  if [[ -f "${STATE_DIR}/${relative_path}" ]]; then
+    mkdir -p "${STAGING_DIR}/$(dirname "${relative_path}")"
+    cp "${STATE_DIR}/${relative_path}" "${STAGING_DIR}/${relative_path}"
+  fi
+}
+
+restart_app() {
+  local dir="$1"
+  local port="$2"
+  mkdir -p "${APP_DIR}/${dir}/tmp"
+  touch "${APP_DIR}/${dir}/tmp/restart.txt"
+  # Force-kill any existing next-server on this port so Passenger spawns fresh
+  if [[ -n "${port:-}" ]]; then
+    local pid
+    pid=$(ss -tlnp 2>/dev/null | grep ":${port}" | grep -oP 'pid=\K[0-9]+' | head -1 || true)
+    if [[ -n "$pid" ]]; then
+      kill -9 "$pid" 2>/dev/null && log "Killed old process PID=${pid} on port ${port}" || true
+    fi
+  fi
+  log "Restarted Passenger for ${dir}"
+}
+
+# Clear nginx proxy cache so stale pre-deploy responses are purged
+clear_nginx_cache() {
+  local cache_dir="/var/cache/ea-nginx/proxy/ravenai"
+  if [[ -d "$cache_dir" ]]; then
+    rm -rf "${cache_dir:?}"/* 2>/dev/null && log "Nginx cache cleared" || log "WARNING: Could not clear nginx cache (permission denied)"
+  fi
+}
+
+log "Artifact deploy started"
+
+if [[ ! -f "$ARCHIVE_PATH" ]]; then
+  log "ERROR: Deployment archive not found at ${ARCHIVE_PATH}"
+  exit 1
+fi
+
+mkdir -p "$STATE_DIR"
 
 # ── Ensure Redis is running (user-space) ──────────────────────────────────────
 if [[ -x "$REDIS_BIN" ]]; then
@@ -30,76 +90,87 @@ if [[ -x "$REDIS_BIN" ]]; then
   fi
 fi
 
-# ── Pull latest ───────────────────────────────────────────────────────────────
-log "Pulling latest from origin/main..."
-git fetch origin
-BEFORE="$(git rev-parse HEAD)"
-git reset --hard origin/main
-AFTER="$(git rev-parse HEAD)"
+# ── Preserve production-only files ────────────────────────────────────────────
+backup_file "backend/.env"
+backup_file "dashboard/.env"
+backup_file "admin-console/.env"
 
-if [[ "$BEFORE" == "$AFTER" ]]; then
-  log "No changes detected — deploy skipped."
-  exit 0
+if [[ -d "${APP_DIR}/backend/uploads" ]]; then
+  mkdir -p "${STATE_DIR}/backend"
+  cp -a "${APP_DIR}/backend/uploads" "${STATE_DIR}/backend/uploads"
 fi
 
-CHANGED="$(git diff --name-only "$BEFORE" "$AFTER")"
-log "Changed files:"
-echo "$CHANGED" | tee -a "$DEPLOY_LOG"
+# ── Stage incoming release ────────────────────────────────────────────────────
+mkdir -p "$STAGING_DIR"
+tar -xzf "$ARCHIVE_PATH" -C "$STAGING_DIR"
+rm -rf "${STAGING_DIR}/.git"
 
-# ── Helper: touch Passenger restart file ─────────────────────────────────────
-restart_app() {
-  local dir="$1"
-  mkdir -p "${REPO_DIR}/${dir}/tmp"
-  touch "${REPO_DIR}/${dir}/tmp/restart.txt"
-  log "Restarting Passenger for $dir"
-}
+restore_file "backend/.env"
+restore_file "dashboard/.env"
+restore_file "admin-console/.env"
 
-# ── Backend ───────────────────────────────────────────────────────────────────
-BACKEND_CHANGED=false
-if echo "$CHANGED" | grep -qE '^backend/|^libs/|^shared/'; then
-  BACKEND_CHANGED=true
+rm -f "${STAGING_DIR}/backend/.env.local"
+rm -f "${STAGING_DIR}/dashboard/.env.local"
+rm -f "${STAGING_DIR}/admin-console/.env.local"
+
+if [[ -d "${STATE_DIR}/backend/uploads" ]]; then
+  mkdir -p "${STAGING_DIR}/backend"
+  rm -rf "${STAGING_DIR}/backend/uploads"
+  cp -a "${STATE_DIR}/backend/uploads" "${STAGING_DIR}/backend/uploads"
 fi
 
-if $BACKEND_CHANGED; then
-  log "Rebuilding backend..."
-  cd "${REPO_DIR}/backend"
-  npm ci --prefer-offline --omit=dev 2>&1 | tail -5
-  npm run build:all 2>&1 | tail -10
-  log "Running Prisma migrations..."
-  npx prisma migrate deploy 2>&1 | tail -10
-  restart_app backend
-fi
+for required_env in backend/.env dashboard/.env admin-console/.env; do
+  if [[ ! -f "${STAGING_DIR}/${required_env}" ]]; then
+    log "ERROR: Missing required env file ${required_env} in staged release."
+    exit 1
+  fi
+done
 
-# ── Dashboard ─────────────────────────────────────────────────────────────────
-DASHBOARD_CHANGED=false
-if echo "$CHANGED" | grep -qE '^dashboard/|^shared/'; then
-  DASHBOARD_CHANGED=true
-fi
+# ── Build release in staging ──────────────────────────────────────────────────
+log "Building backend in staging..."
+cd "${STAGING_DIR}/backend"
+npm ci --prefer-offline
+npm run build:all
+log "Running Prisma migrations..."
+npx prisma migrate deploy
+mkdir -p tmp
 
-if $DASHBOARD_CHANGED; then
-  log "Rebuilding dashboard..."
-  cd "${REPO_DIR}/dashboard"
-  npm ci --prefer-offline 2>&1 | tail -5
-  npm run build 2>&1 | tail -10
-  cp -r .next/static .next/standalone/.next/static 2>/dev/null || true
-  [[ -d public ]] && cp -r public .next/standalone/public 2>/dev/null || true
-  restart_app dashboard
-fi
+log "Building dashboard in staging..."
+cd "${STAGING_DIR}/dashboard"
+npm ci --prefer-offline
+npm run build
+# Copy static assets — symlinks break when staging dir is renamed to APP_DIR
+cp -r .next/static .next/standalone/.next/static 2>/dev/null || true
+[[ -d public ]] && cp -r public .next/standalone/public 2>/dev/null || true
+mkdir -p tmp
 
-# ── Admin console ─────────────────────────────────────────────────────────────
-ADMIN_CHANGED=false
-if echo "$CHANGED" | grep -qE '^admin-console/|^shared/'; then
-  ADMIN_CHANGED=true
-fi
+log "Building admin console in staging..."
+cd "${STAGING_DIR}/admin-console"
+npm ci --prefer-offline
+npm run build
+# Copy static assets — symlinks break when staging dir is renamed to APP_DIR
+cp -r .next/static .next/standalone/.next/static 2>/dev/null || true
+[[ -d public ]] && cp -r public .next/standalone/public 2>/dev/null || true
+mkdir -p tmp
 
-if $ADMIN_CHANGED; then
-  log "Rebuilding admin console..."
-  cd "${REPO_DIR}/admin-console"
-  npm ci --prefer-offline 2>&1 | tail -5
-  npm run build 2>&1 | tail -10
-  cp -r .next/static .next/standalone/.next/static 2>/dev/null || true
-  [[ -d public ]] && cp -r public .next/standalone/public 2>/dev/null || true
-  restart_app admin-console
+# ── Swap staged release into place ────────────────────────────────────────────
+if [[ -d "$APP_DIR" ]]; then
+  mv "$APP_DIR" "$BACKUP_DIR"
 fi
+mv "$STAGING_DIR" "$APP_DIR"
+STAGING_DIR=""
 
-log "Deploy complete (${BEFORE:0:8} → ${AFTER:0:8})"
+restart_app backend "" 
+restart_app dashboard "4011"
+restart_app admin-console "4012"
+
+clear_nginx_cache
+
+rm -f "$ARCHIVE_PATH"
+
+if [[ "$KEEP_BACKUP" == "true" ]]; then
+  log "Deploy complete. Backup retained at ${BACKUP_DIR}"
+else
+  rm -rf "$BACKUP_DIR"
+  log "Deploy complete. Previous release removed."
+fi

@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useRef, DragEvent } from 'react'
+import Image from 'next/image'
+import { useEffect, useState, useRef, DragEvent } from 'react'
 import { Upload, X, CheckCircle2, AlertCircle } from 'lucide-react'
 import { API_BASE_URL } from '@/lib/constants'
 import { getAdminToken } from '@/lib/auth'
+import AuthenticatedImage from '@/components/AuthenticatedImage'
 
 interface ImageUploadProps {
   value?: string | null
@@ -29,7 +31,12 @@ export default function ImageUpload({
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uploadSuccess, setUploadSuccess] = useState(false)
+  const [previewFailed, setPreviewFailed] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setPreviewFailed(false)
+  }, [value])
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -158,20 +165,36 @@ export default function ImageUpload({
     }
   }
 
+  const isProtectedPreview = !!value && value.startsWith('/uploads/avatars/')
+
   return (
     <div className={`space-y-2 ${className}`}>
       <label className="block text-sm font-medium text-gray-300">{label}</label>
 
       {/* Preview or Upload Zone */}
-      {value && !isUploading ? (
+      {value && !isUploading && !previewFailed ? (
         <div className="relative inline-block">
-          <img
-            src={`${API_BASE_URL}${value}?t=${getAdminToken() ?? ''}`}
-            alt={label}
-            className="max-w-xs max-h-40 rounded-lg border border-gray-700 object-contain bg-gray-800"
-          />
+          {isProtectedPreview ? (
+            <AuthenticatedImage
+              src={`${API_BASE_URL}${value}`}
+              alt={label}
+              className="max-w-xs max-h-40 rounded-lg border border-gray-700 object-contain bg-gray-800"
+              onError={() => setPreviewFailed(true)}
+            />
+          ) : (
+            <Image
+              src={`${API_BASE_URL}${value}`}
+              alt={label}
+              width={320}
+              height={160}
+              unoptimized
+              className="max-w-xs max-h-40 rounded-lg border border-gray-700 object-contain bg-gray-800"
+              onError={() => setPreviewFailed(true)}
+            />
+          )}
           <button
             onClick={handleRemove}
+            type="button"
             className="absolute -top-2 -right-2 p-1 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors"
           >
             <X className="h-4 w-4" />

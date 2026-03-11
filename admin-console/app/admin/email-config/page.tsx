@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { api } from '@/lib/api'
 import { API_ENDPOINTS } from '@/lib/constants'
 import { Button } from '@/components/Button'
@@ -72,7 +72,7 @@ export default function EmailConfigPage() {
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null)
   const previewRefs = useRef<Record<string, HTMLIFrameElement | null>>({})
 
-  async function fetchAll() {
+  const fetchAll = useCallback(async () => {
     setIsLoading(true); setFetchError(null)
     try {
       const [keysRes, tmplRes] = await Promise.all([
@@ -91,15 +91,15 @@ export default function EmailConfigPage() {
       const td: Record<string, string> = {}
       tmplRes.forEach((t) => { td[t.key] = t.value })
       setTemplateDrafts(td)
-      if (!activeTemplate && tmplRes.length > 0) setActiveTemplate(tmplRes[0].key)
+      setActiveTemplate((current) => current ?? tmplRes[0]?.key ?? null)
     } catch (err: any) {
       setFetchError(err.message || 'Failed to load')
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => { void fetchAll() }, [fetchAll])
 
   // Update preview iframe whenever draft changes
   useEffect(() => {

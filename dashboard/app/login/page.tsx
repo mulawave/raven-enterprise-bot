@@ -5,31 +5,58 @@ import { useRouter } from 'next/navigation'
 import { setSession } from '@/lib/auth'
 import { API_BASE_URL } from '@/lib/constants'
 
+interface TenantLoginResponse {
+  access_token: string
+  user: {
+    id: string
+    email: string
+    name?: string | null
+    role: string
+    tenant_id: string
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter()
-  const [tenantId, setTenantId] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const id = tenantId.trim()
-    if (!id) return
+    const normalizedEmail = email.trim()
+    if (!normalizedEmail || !password) return
 
     setIsLoading(true)
     setError(null)
 
     try {
-      const res = await fetch(`${API_BASE_URL}/tenant/context?tenantId=${encodeURIComponent(id)}`, {
-        headers: { 'x-tenant-id': id },
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password,
+        }),
       })
 
       if (!res.ok) {
-        throw new Error(res.status === 404 ? 'Tenant not found. Check your Tenant ID.' : `API error (${res.status})`)
+        throw new Error(res.status === 401 ? 'Invalid tenant credentials.' : `API error (${res.status})`)
       }
 
-      setSession(id)
-      router.replace('/')
+      const data = await res.json() as TenantLoginResponse
+
+      setSession({
+        accessToken: data.access_token,
+        tenantId: data.user.tenant_id,
+        role: data.user.role,
+        email: data.user.email,
+        name: data.user.name ?? null,
+      })
+      router.replace('/overview')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not connect to the API')
       setIsLoading(false)
@@ -71,23 +98,44 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="tenantId" className="mb-3 block text-sm font-bold text-white">
-                Tenant ID
+              <label htmlFor="email" className="mb-3 block text-sm font-bold text-white">
+                Work Email
               </label>
               <div className="group relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
                   <svg className="h-5 w-5 text-teal-300 transition-colors group-focus-within:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12H8m8 0l-3-3m3 3l-3 3M4 6h16M4 18h16" />
                   </svg>
                 </div>
                 <input
-                  id="tenantId"
-                  type="text"
-                  value={tenantId}
-                  onChange={(e) => setTenantId(e.target.value)}
-                  placeholder="e.g. test-tenant-1"
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  disabled={isLoading}
+                  required
+                  className="w-full rounded-xl border-2 border-white/30 bg-white/10 py-4 pl-12 pr-4 text-white placeholder-teal-300/60 backdrop-blur-sm outline-none transition-all focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400 disabled:opacity-50"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="password" className="mb-3 block text-sm font-bold text-white">
+                Password
+              </label>
+              <div className="group relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                  <svg className="h-5 w-5 text-teal-300 transition-colors group-focus-within:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2h-1V9a5 5 0 00-10 0v2H6a2 2 0 00-2 2v6a2 2 0 002 2zm3-10V9a3 3 0 016 0v2H9z" />
+                  </svg>
+                </div>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
                   disabled={isLoading}
                   required
                   className="w-full rounded-xl border-2 border-white/30 bg-white/10 py-4 pl-12 pr-4 text-white placeholder-teal-300/60 backdrop-blur-sm outline-none transition-all focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400 disabled:opacity-50"
@@ -103,7 +151,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={isLoading || !tenantId.trim()}
+              disabled={isLoading || !email.trim() || !password}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 transition-all hover:from-emerald-400 hover:to-teal-400 hover:shadow-emerald-400/40 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-transparent disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (

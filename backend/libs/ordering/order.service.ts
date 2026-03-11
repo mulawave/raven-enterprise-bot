@@ -72,16 +72,23 @@ export class OrderService {
     return { order, items: orderItems }
   }
 
-  async getOrder(tenantId: string, branchId: string, orderId: string): Promise<Order | null> {
+  async getOrder(tenantId: string, orderId: string, branchIds?: string[]): Promise<Order | null> {
     return this.prisma.order.findFirst({
-      where: { id: orderId, tenant_id: tenantId, branch_id: branchId },
+      where: {
+        id: orderId,
+        tenant_id: tenantId,
+        ...(branchIds?.length ? { branch_id: { in: branchIds } } : {}),
+      },
       include: { orderItems: true },
     })
   }
 
-  async listOrders(tenantId: string, branchId: string): Promise<Order[]> {
+  async listOrders(tenantId: string, branchIds?: string[]): Promise<Order[]> {
     return this.prisma.order.findMany({
-      where: { tenant_id: tenantId, branch_id: branchId },
+      where: {
+        tenant_id: tenantId,
+        ...(branchIds?.length ? { branch_id: { in: branchIds } } : {}),
+      },
       include: { orderItems: true, customer: true },
       orderBy: { created_at: 'desc' },
     })

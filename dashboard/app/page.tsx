@@ -1,7 +1,8 @@
-﻿'use client'
+﻿import Link from 'next/link'
+import { unstable_noStore as noStore } from 'next/cache'
 
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 const FEATURES = [
   {
@@ -44,8 +45,9 @@ const STEPS = [
 ]
 
 export default function LandingPage() {
-  const [year, setYear] = useState(2024)
-  useEffect(() => { setYear(new Date().getFullYear()) }, [])
+  noStore()
+
+  const year = new Date().getFullYear()
 
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white">

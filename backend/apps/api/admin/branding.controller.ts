@@ -1,7 +1,10 @@
-import { Controller, Get, Post, Body, Query, HttpCode, HttpStatus } from '@nestjs/common'
+import { Controller, Get, Post, Body, HttpCode, HttpStatus, UnauthorizedException, UseGuards } from '@nestjs/common'
 import { BrandingService, BrandingConfig } from '../../../libs/tenant/branding/branding.service'
+import { JwtAuthGuard } from '../../../libs/auth/guards/jwt-auth.guard'
+import { CurrentUser } from '../../../libs/auth/decorators/current-user.decorator'
 
 @Controller('tenant/branding')
+@UseGuards(JwtAuthGuard)
 export class BrandingController {
   constructor(private readonly brandingService: BrandingService) {}
 
@@ -10,9 +13,10 @@ export class BrandingController {
    * GET /api/tenant/branding?tenantId=xxx
    */
   @Get()
-  async getBranding(@Query('tenantId') tenantId: string) {
+  async getBranding(@CurrentUser() user: any) {
+    const tenantId = user?.tenant_id
     if (!tenantId) {
-      return { error: { code: 'VALIDATION_ERROR', message: 'tenantId is required' } }
+      throw new UnauthorizedException('Tenant credentials required')
     }
 
     const branding = await this.brandingService.getBranding(tenantId)
@@ -26,11 +30,11 @@ export class BrandingController {
    */
   @Post()
   @HttpCode(HttpStatus.OK)
-  async setBranding(@Body() body: { tenantId: string } & BrandingConfig) {
-    const { tenantId, ...config } = body
+  async setBranding(@CurrentUser() user: any, @Body() config: BrandingConfig) {
+    const tenantId = user?.tenant_id
 
     if (!tenantId) {
-      return { error: { code: 'VALIDATION_ERROR', message: 'tenantId is required' } }
+      throw new UnauthorizedException('Tenant credentials required')
     }
 
     // Validate theme JSON if provided

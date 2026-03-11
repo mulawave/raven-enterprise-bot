@@ -19,8 +19,11 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
-      const payload = this.jwtService.verify(token)
-      request.user = payload
+      const payload = this.jwtService.verify(token) as Record<string, unknown>
+      request.user = {
+        ...payload,
+        id: (payload.sub as string | undefined) ?? (payload.id as string | undefined),
+      }
       return true
     } catch {
       throw new UnauthorizedException('Unauthorized')

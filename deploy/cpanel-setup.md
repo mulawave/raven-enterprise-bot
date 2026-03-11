@@ -191,6 +191,23 @@ ssh-keygen -t ed25519 -C "raven-deploy" -f raven-deploy-key -N ""
 # raven-deploy-key.pub  → append to ~/.ssh/authorized_keys on the server
 ```
 
+The production workflow now uploads a release tarball and the latest
+`deploy/deploy.sh` over SSH, then deploys from that archive on the server.
+It does not require a git checkout or remote on the production machine.
+
+### Manual redeploy without git
+
+You can run the same flow manually from a workstation:
+
+```bash
+bash deploy/create-release-archive.sh ./raven-deploy.tar.gz
+scp ./raven-deploy.tar.gz deploy/deploy.sh ravenai@raven-ai.online:~/
+ssh ravenai@raven-ai.online 'bash ~/deploy.sh ~/raven-deploy.tar.gz'
+```
+
+The server deploy script preserves the existing `backend/uploads` directory and
+the app `.env` / `.env.local` files while replacing the release contents.
+
 ---
 
 ## What cPanel auto-generates

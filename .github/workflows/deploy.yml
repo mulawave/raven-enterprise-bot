@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - master
   workflow_dispatch:
 
 concurrency:
@@ -17,7 +18,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout (for health check only)
+      - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 2
@@ -32,12 +33,24 @@ jobs:
           ssh-keyscan -p ${{ secrets.DEPLOY_PORT || 22 }} \
             -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Build deployment archive
+        run: |
+          chmod +x deploy/create-release-archive.sh
+          bash deploy/create-release-archive.sh "$RUNNER_TEMP/raven-deploy.tar.gz"
+
+      - name: Upload deployment assets
+        run: |
+          scp -P ${{ secrets.DEPLOY_PORT || 22 }} \
+            "$RUNNER_TEMP/raven-deploy.tar.gz" \
+            deploy/deploy.sh \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:~/
+
       - name: Run deploy script on server
         run: |
           ssh -p ${{ secrets.DEPLOY_PORT || 22 }} \
             -o StrictHostKeyChecking=yes \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-            "bash ~/raven-enterprise-bot/deploy/deploy.sh"
+            "bash ~/deploy.sh ~/raven-deploy.tar.gz"
 
       - name: Health check — API
         run: |

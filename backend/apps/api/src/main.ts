@@ -13,7 +13,7 @@ import { ValidationPipe, Logger } from '@nestjs/common'
 import * as express from 'express'
 import { join } from 'path'
 import helmet from 'helmet'
-import * as jwt from 'jsonwebtoken'
+import { createUploadsAuthMiddleware } from './uploads-auth.middleware'
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap')
@@ -32,29 +32,7 @@ async function bootstrap() {
   const jwtSecret = process.env.JWT_SECRET!
   app.use(
     '/uploads',
-    (req: express.Request, res: express.Response, next: express.NextFunction) => {
-      // Accept Authorization: Bearer <jwt>  (admin console)
-      const authHeader = req.headers.authorization
-      if (authHeader?.startsWith('Bearer ')) {
-        const token = authHeader.slice(7)
-        try {
-          jwt.verify(token, jwtSecret)
-          return next()
-        } catch {
-          return res.status(401).json({ statusCode: 401, message: 'Unauthorized' })
-        }
-      }
-
-      // Accept x-tenant-id header or ?t= query param  (dashboard)
-      const tenantId =
-        (req.headers['x-tenant-id'] as string | undefined) ??
-        (req.query.t as string | undefined)
-      if (tenantId && tenantId.trim().length > 0) {
-        return next()
-      }
-
-      return res.status(401).json({ statusCode: 401, message: 'Unauthorized' })
-    },
+    createUploadsAuthMiddleware(jwtSecret),
     express.static(join(process.cwd(), 'uploads')),
   )
 

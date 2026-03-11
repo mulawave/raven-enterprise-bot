@@ -1,10 +1,11 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
+import NextImage from 'next/image'
 import ImageUpload from '@/components/ImageUpload'
 import Button from '@/components/Button'
 import { api } from '@/lib/api'
-import { CheckCircle2, AlertCircle, Building2, Globe, Mail, Phone, Image, Star } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Building2, Globe, Mail, Phone, ImageIcon, Star } from 'lucide-react'
 import { API_BASE_URL } from '@/lib/constants'
 
 interface AppSettings {
@@ -25,8 +26,12 @@ export default function SettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [showLogoPreview, setShowLogoPreview] = useState(true)
+  const [showFaviconPreview, setShowFaviconPreview] = useState(true)
 
   useEffect(() => { fetchSettings() }, [])
+  useEffect(() => { setShowLogoPreview(true) }, [settings?.logo_url])
+  useEffect(() => { setShowFaviconPreview(true) }, [settings?.favicon_url])
 
   const fetchSettings = async () => {
     setIsLoading(true); setFetchError(null)
@@ -189,20 +194,23 @@ export default function SettingsPage() {
           {/* App Logo card */}
           <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-6 space-y-4">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Image className="h-5 w-5 text-indigo-400" />App Logo
+              <ImageIcon className="h-5 w-5 text-indigo-400" />App Logo
             </h2>
             <p className="text-xs text-slate-400">Displayed in the admin sidebar and tenant-facing pages. Recommended: 200x60px PNG/SVG.</p>
 
             {isLoading ? (
               <div className={`${S} h-36 w-full rounded-xl`} />
-            ) : settings?.logo_url ? (
+            ) : settings?.logo_url && showLogoPreview ? (
               <div className="space-y-3">
                 <div className="bg-slate-900 rounded-xl border border-slate-700 p-4 flex items-center justify-center min-h-[100px]">
-                  <img
+                  <NextImage
                     src={`${API_BASE_URL}${settings.logo_url}`}
                     alt="App logo"
+                    width={400}
+                    height={120}
+                    unoptimized
                     className="max-h-20 max-w-full object-contain"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                    onError={() => setShowLogoPreview(false)}
                   />
                 </div>
                 <ImageUpload
@@ -233,14 +241,17 @@ export default function SettingsPage() {
 
             {isLoading ? (
               <div className={`${S} h-36 w-full rounded-xl`} />
-            ) : settings?.favicon_url ? (
+            ) : settings?.favicon_url && showFaviconPreview ? (
               <div className="space-y-3">
                 <div className="bg-slate-900 rounded-xl border border-slate-700 p-4 flex items-center justify-center min-h-[80px]">
-                  <img
+                  <NextImage
                     src={`${API_BASE_URL}${settings.favicon_url}`}
                     alt="Favicon"
+                    width={64}
+                    height={64}
+                    unoptimized
                     className="h-12 w-12 object-contain"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                    onError={() => setShowFaviconPreview(false)}
                   />
                 </div>
                 <ImageUpload

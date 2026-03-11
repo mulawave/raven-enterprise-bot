@@ -1,19 +1,33 @@
-// Phusion Passenger entry point for the Next.js admin console
-// cPanel "Setup Node.js App" → Application startup file: server.js
-//
-// Requires: `npm run build` with output: 'standalone' in next.config.js
-// After build, run once:
-//   cp -r .next/static .next/standalone/.next/static
-//   cp -r public .next/standalone/public   (if public/ dir exists)
+// Phusion Passenger entry point for the Next.js admin console.
+// Runs the built app from the project root so the active build manifest and
+// static chunk directory stay in sync.
 
 'use strict';
 
-const path = require('path');
+const http = require('http');
+const next = require('next');
 
-// Passenger supplies process.env.PORT automatically.
-process.env.PORT = process.env.PORT || '3001';
-process.env.HOSTNAME = '0.0.0.0';
+const port = parseInt(process.env.PORT, 10) || 3001;
+const hostname = process.env.HOSTNAME || '0.0.0.0';
 
-process.chdir(path.join(__dirname, '.next', 'standalone'));
+const app = next({
+	dev: false,
+	dir: __dirname,
+	hostname,
+	port,
+});
 
-require('./.next/standalone/server.js');
+const handle = app.getRequestHandler();
+
+app.prepare()
+	.then(() => {
+		http
+			.createServer((request, response) => handle(request, response))
+			.listen(port, hostname, (error) => {
+				if (error) throw error;
+			});
+	})
+	.catch((error) => {
+		console.error(error);
+		process.exit(1);
+	});

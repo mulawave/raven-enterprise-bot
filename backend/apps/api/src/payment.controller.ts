@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query, Headers, HttpCode, HttpStatus, UnauthorizedException, Req } from '@nestjs/common'
+import { Controller, Post, Get, Body, Query, Headers, HttpCode, HttpStatus, UnauthorizedException, Req, BadRequestException, ForbiddenException, UseGuards } from '@nestjs/common'
 import { RawBodyRequest } from '@nestjs/common'
 import { Request } from 'express'
 import { PrismaClient } from '@prisma/client'
@@ -6,6 +6,8 @@ import { PaymentService } from '../../../libs/payments/payment.service'
 import { PaystackService } from '../../../libs/payments/paystack.service'
 import { WebhookHandler } from '../../../libs/payments/webhook.handler'
 import { AuditLogger } from '../../../libs/monitoring/audit.logger'
+import { JwtAuthGuard } from '../../../libs/auth/guards/jwt-auth.guard'
+import { CurrentUser } from '../../../libs/auth/decorators/current-user.decorator'
 
 @Controller('api/payments')
 export class PaymentController {
@@ -24,7 +26,7 @@ export class PaymentController {
   async initializePayment(
     @Body()
     body: {
-      tenantId: string
+      tenantId?: string
       amountKobo: number
       email: string
       provider: 'paystack'
@@ -32,8 +34,32 @@ export class PaymentController {
       bookingId?: string
     },
   ) {
+    if (!body.orderId && !body.bookingId) {
+      throw new BadRequestException('orderId or bookingId is required')
+    }
+
+    const order = body.orderId
+      ? await this.prisma.order.findUnique({ where: { id: body.orderId } })
+      : null
+    const booking = body.bookingId
+      ? await this.prisma.booking.findUnique({ where: { id: body.bookingId } })
+      : null
+
+    const resource = order ?? booking
+    if (!resource) {
+      throw new BadRequestException('Referenced order or booking not found')
+    }
+
+    if (body.orderId && body.bookingId && order && booking && order.tenant_id !== booking.tenant_id) {
+      throw new ForbiddenException('Cross-tenant payment initialization is not allowed')
+    }
+
+    if (body.amountKobo !== resource.total_kobo) {
+      throw new BadRequestException('Payment amount does not match referenced resource total')
+    }
+
     return this.paymentService.initializePayment(
-      body.tenantId,
+      resource.tenant_id,
       body.amountKobo,
       body.email,
       body.provider,
@@ -44,20 +70,38 @@ export class PaymentController {
 
   @Get('verify')
   async verifyPayment(
-    @Query('tenantId') tenantId: string,
     @Query('reference') reference: string,
     @Query('provider') provider: 'paystack',
   ) {
-    return this.paymentService.verifyPayment(tenantId, reference, provider)
+    return this.paymentService.verifyPayment(reference, provider)
   }
 
   @Get('status')
+  @UseGuards(JwtAuthGuard)
   async checkPaymentStatus(
-    @Query('tenantId') tenantId: string,
+    @CurrentUser() user: any,
     @Query('orderId') orderId?: string,
     @Query('bookingId') bookingId?: string,
   ) {
-    const isPaid = await this.paymentService.isOrderOrBookingPaid(tenantId, orderId, bookingId)
+    if (!user?.tenant_id || user.scope === 'SYSTEM') {
+      throw new ForbiddenException('Tenant credentials required')
+    }
+
+    if (orderId) {
+      const order = await this.prisma.order.findFirst({ where: { id: orderId, tenant_id: user.tenant_id } })
+      if (!order) {
+        throw new ForbiddenException('Order access denied')
+      }
+    }
+
+    if (bookingId) {
+      const booking = await this.prisma.booking.findFirst({ where: { id: bookingId, tenant_id: user.tenant_id } })
+      if (!booking) {
+        throw new ForbiddenException('Booking access denied')
+      }
+    }
+
+    const isPaid = await this.paymentService.isOrderOrBookingPaid(user.tenant_id, orderId, bookingId)
     return { isPaid }
   }
 

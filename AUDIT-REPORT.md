@@ -1,9 +1,9 @@
 # Raven Enterprise Bot — Full Audit Report
 
 **Initial Audit:** March 1, 2026  
-**Last Updated:** March 4, 2026 — Deployment infrastructure complete (see §16)  
+**Last Updated:** March 9, 2026 — Follow-up remediation delta (tenant JWT auth, uploads hardening, branch/rate-limit fixes, dependency refresh)  
 **Scope:** Full repository — backend, admin-console, dashboard, shared, infrastructure.  
-**Build Status:** Backend `tsc --noEmit` exits clean. All three packages build successfully. 15 unit tests pass across 4 suites. **21/23 production-readiness items complete — deployment infrastructure ready.**
+**Build Status:** Backend `tsc --noEmit` exits clean. All three packages build successfully. 44 unit tests pass across 12 suites. **21/23 production-readiness items complete — deployment infrastructure ready.**
 
 ---
 
@@ -140,24 +140,19 @@ The NestJS app is registered as a single `AppModule` that manually wires everyth
 
 ### 4.2 API Routes
 
+> **Follow-up correction (March 9, 2026):** Tenant-facing staff routes are now explicitly JWT-protected; public-safe reads/writes remain limited to the intended customer flows. See §6.10.
+
 | Group | Controller | Auth |
 |---|---|---|
 | Health / Readiness | `HealthController`, `ReadinessController` | None |
-| Ordering | `OrderingController` | JWT |
-| Booking | `BookingController` | JWT |
-| Payment | `PaymentController` | JWT |
-| Webhooks | `WebhookController` | HMAC Signature |
-| Subscriptions (tenant) | `SubscriptionsController` | JWT |
-| Branding | `BrandingController` | JWT |
-| Tenant Context | `TenantContextController` | JWT |
-| Admin Auth | `AdminAuthController` | None (login endpoint) |
-| Admin Tenants | `AdminTenantsController` | JWT + SuperAdmin |
-| Admin Subscriptions | `AdminSubscriptionsController` | JWT + SuperAdmin |
-| Admin Billing | `AdminBillingController` | JWT + SuperAdmin |
-| Admin Ops | `AdminOpsController` | JWT + SuperAdmin |
-| Admin System | `AdminSystemController` | JWT + SuperAdmin |
-| Admin Settings | `AdminSettingsController` | JWT + SuperAdmin |
-| Admin Profile | `AdminProfileController` | JWT + SuperAdmin |
+| Tenant Context | `TenantContextController` | JWT (tenant-scoped) |
+| Ordering | `OrderingController` | Public menu/order-create routes; JWT for order listing/details |
+| Booking | `BookingController` | Public room/availability/create routes; JWT for booking listing/details |
+| Payment | `PaymentController` | Public initialize/verify + webhook signature; JWT for payment status |
+| Webhooks (messaging) | `WebhookController` | HMAC signature |
+| Admin Auth | `AdminAuthController` | None (login/refresh endpoints) |
+| Tenant Auth | `TenantAuthController` | None for login; JWT for `/api/auth/me` |
+| Admin (most controllers) | Various under `backend/apps/api/admin/**` | JWT + role guards (SuperAdmin/SYSTEM scope) |
 
 ✅ **Phase 4 — All 10 previously missing controllers are now registered in `AppModule`:**
 - `AnalyticsController`
@@ -246,19 +241,19 @@ A Next.js 14 App Router application for tenant owners and staff.
 
 | Route | Purpose | Status |
 |---|---|---|
-| `/login` | Tenant authentication (tenant ID lookup) | ✅ Implemented (Phase 6) |
+| `/login` | Tenant authentication (email/password JWT login) | ✅ Updated (March 9) |
 | `/` | Main overview — plan, usage meter, revenue | ✅ Functional |
 | `/conversations` | Conversation list | ✅ Functional |
-| `/orders` | Orders table | ⚠️ Uses hardcoded `TENANT_ID` constant — not session-driven |
-| `/bookings` | Bookings table | ⚠️ Uses hardcoded `TENANT_ID` constant — not session-driven |
-| `/payments` | Payment history table | ⚠️ Uses hardcoded `TENANT_ID` constant — not session-driven |
+| `/orders` | Orders table | ✅ Functional |
+| `/bookings` | Bookings table | ✅ Functional |
+| `/payments` | Payment history table | ✅ Functional |
 | `/settings` | Branding form | ✅ Functional |
 | `/subscription` | Subscription & billing details | ✅ Functional |
-| `/analytics` | Usage analytics | ⚠️ Stub — `<pre>` dump of raw JSON, no UI |
-| `/broadcast` | Broadcast messaging | ⚠️ Stub — bare `<ul>` list, no UI |
-| `/customers` | Customer list | ⚠️ Stub — bare `<ul>` list, no UI |
+| `/analytics` | Usage analytics | ✅ Functional |
+| `/broadcast` | Broadcast messaging | ✅ Functional |
+| `/customers` | Customer list | ✅ Functional |
 
-**Authentication:** Client-side localStorage session guard via `DashboardShell` component. All routes except `/login` redirect unauthenticated users. Login validates tenant ID against the `/tenant/context` API endpoint before storing session.
+**Authentication:** Client-side route guard via `DashboardShell` plus JWT-backed tenant auth. `/login` now calls `POST /api/auth/login`; the dashboard stores the returned access token and sends `Authorization: Bearer <token>` on protected requests.
 
 **Known Dashboard Issues (open):**
 
@@ -266,7 +261,7 @@ A Next.js 14 App Router application for tenant owners and staff.
 |---|---|---|
 | D-1 | `orders`, `bookings`, `payments` pages are server components using hardcoded `TENANT_ID` — they will show the wrong data for any tenant other than `test-tenant-1` | HIGH |
 | D-2 | `analytics`, `broadcast`, `customers` pages are placeholder stubs — no production UI | HIGH |
-| D-3 | Dashboard `api()` helper sends no auth header — backend JWT guard will reject requests in production | HIGH |
+| D-3 | Dashboard `api()` helper sent no auth header | ✅ Fixed |
 | D-4 | `TenantContextController` returns HTTP 200 with an `error` body (not HTTP 4xx) when tenant is not found — dashboard's `TenantProvider` treats it as success and stores `undefined` sub-objects | MEDIUM |
 | D-5 | `orders`, `bookings`, `payments` server components still contain `console.error` calls | LOW |
 
@@ -310,21 +305,25 @@ The `'temp123'` fallback has been replaced with `crypto.randomBytes(16).toString
 
 `helmet()` is now applied before any route handlers. This sets `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Strict-Transport-Security`, and `Referrer-Policy` on all HTTP responses.
 
-### 6.7 — MEDIUM: HMAC Signature Not Always Validated
+### 6.7 — ✅ FIXED: Webhook Signature Validation Requires `META_APP_SECRET`
 
-**File:** `backend/apps/api/messaging/webhook.controller.ts`
+**Files:**
+- `backend/apps/api/messaging/webhook.controller.ts`
+- `backend/apps/api/src/env.validator.ts`
 
-Signature validation in `validateSignature` throws `UnauthorizedException` if `META_APP_SECRET` is not set. However, if the environment is misconfigured (secret missing), the intent is to reject the request, but because `META_APP_SECRET` is an optional variable (not in `REQUIRED_VARS`), the app boots without it and the webhook becomes permanently inaccessible rather than selectively protected.
+`META_APP_SECRET` is now required by `EnvValidator.REQUIRED_VARS`, preventing the API from booting in an insecure/misconfigured state. Webhook handlers reject missing signatures and invalid signatures via `UnauthorizedException`.
 
-### 6.8 — MEDIUM: `uploads/` Served with No Authentication
+### 6.8 — ✅ FIXED: `uploads/` No Longer Accepts Fake Tenant Headers / Query Tokens
 
 **File:** `backend/apps/api/src/main.ts`
 
-```typescript
-app.use('/uploads', express.static(join(process.cwd(), 'uploads')))
-```
+Upload retrieval now follows an explicit policy:
 
-All uploaded files (logos, avatars, favicons) are publicly accessible with no authentication. Tenant-specific assets are visible to anyone with a URL.
+- `/uploads/settings/*` remains public by design for branding assets.
+- other upload paths (such as `/uploads/avatars/*`) require a valid Bearer JWT.
+- `x-tenant-id` and `?t=` are no longer accepted as authorization mechanisms.
+
+Admin avatar rendering was aligned accordingly via authenticated fetch-based image loading in the admin console.
 
 ### 6.9 — ✅ FIXED: All `// @ts-nocheck` Directives Removed (Phase 4)
 
@@ -341,6 +340,59 @@ Key type-level bugs uncovered and fixed during removal:
 - `libs/compliance/retention.service.ts` — dynamic `this.prisma[model]` replaced with typed `PurgeableModel` delegate lookup map.
 - `libs/auth/services/auth.service.ts` — `user.role === 'customer'` compared against a `UserRole` enum that has no `customer` member; replaced with explicit allowed-roles array.
 - `libs/billing/usage.tracker.ts` — duplicate class definition found and removed.
+
+---
+
+### 6.10 — ✅ FIXED: Tenant-Facing Staff APIs Now Require JWT and Derive Tenant Context Server-Side
+
+**Files:**
+- `backend/apps/api/src/ordering.controller.ts`
+- `backend/apps/api/src/booking.controller.ts`
+- `backend/apps/api/src/payment.controller.ts`
+- `backend/apps/api/src/tenant-context.controller.ts`
+
+The backend now enforces an explicit split:
+
+- staff-only routes (`GET /api/ordering/orders`, `GET /api/ordering/orders/:id`, `GET /api/bookings`, `GET /api/bookings/:id`, `GET /api/payments/status`, `GET /tenant/context`, `GET/POST /tenant/branding`, and `/subscriptions/*`) require `JwtAuthGuard`
+- tenant identity for protected routes is derived from the verified JWT payload, not from client query/header values
+- the dashboard now authenticates through `POST /api/auth/login` and sends Bearer tokens on protected requests
+
+Public write/read flows that remain open were tightened in-place:
+
+- `POST /api/ordering/orders` validates that `branchId` belongs to `cart.tenantId`
+- `POST /api/bookings` validates tenant ↔ branch and tenant ↔ room-type ownership
+- `POST /api/payments/initialize` derives tenant ownership from the referenced order/booking and rejects mismatched amounts
+- `GET /api/payments/verify` now resolves by payment `reference` rather than trusted `tenantId`
+
+---
+
+### 6.11 — ✅ FIXED: Rate Limiting No Longer Keys Off Spoofable Headers
+
+**File:** `backend/apps/api/rate-limit.middleware.ts`
+
+Rate limiting now derives the tenant bucket from a **verified Bearer JWT** when present and falls back to client IP for unauthenticated traffic. Channel/webhook throttling also falls back to IP rather than spoofable headers.
+
+---
+
+### 6.12 — ✅ FIXED: Branch Context Resolver Is Non-Mutating and Uses Verified Tenant Context
+
+**Files:**
+- `backend/libs/tenant/branch.middleware.ts`
+- `backend/libs/tenant/branch.service.ts`
+
+`BranchResolverMiddleware` no longer creates a default branch during request handling. It only uses verified tenant context already attached to the request, validates any supplied branch, and may resolve an **existing** default branch without mutating the database.
+
+---
+
+### 6.13 — ✅ FIXED: Admin Console Embedded Admin JWT in Image Preview URL
+
+**File:** `admin-console/components/ImageUpload.tsx`
+
+The image preview `<img src>` previously appended the admin JWT into a query string (`?t=<token>`). Query strings are commonly captured in browser history, reverse-proxy access logs, and monitoring tools; this creates avoidable credential exposure.
+
+**Fix applied:** The preview URL no longer embeds the admin token in the query string.
+
+**Note:** The underlying `/uploads` gate was also corrected in the March 9 remediation delta (§6.8).
 
 ---
 
@@ -390,7 +442,7 @@ Completely rewritten to document all required and optional variables, grouped by
 
 `jest`, `ts-jest`, `@types/jest`, and `@nestjs/testing` added to `backend/package.json`. Test scripts added: `test`, `test:watch`, `test:cov`, `test:ci`. Jest configured in `package.json` with `ts`-first `moduleFileExtensions` to prevent stale `.js` compiled files from shadowing TypeScript sources.
 
-**4 test suites, 15 tests — all passing:**
+**12 test suites, 44 tests — all passing:**
 
 | Suite | Tests |
 |---|---|
@@ -398,6 +450,14 @@ Completely rewritten to document all required and optional variables, grouped by
 | `libs/billing/enforcement/suspension.service.spec.ts` | 3 — suspend, unsuspend, isSuspended |
 | `libs/billing/subscriptions.service.spec.ts` | 2 — getSubscription (found / null) |
 | `libs/billing/tenant-provision.service.spec.ts` | 1 — provision() runs inside DB transaction |
+| `libs/tenant/branch.middleware.spec.ts` | 3 — verified tenant context only, invalid branch rejected, no create-on-read |
+| `apps/api/rate-limit.middleware.spec.ts` | 2 — JWT tenant keying, IP fallback when JWT invalid |
+| `apps/api/src/uploads-auth.middleware.spec.ts` | 3 — public branding allowed, header/query bypasses rejected, Bearer auth accepted |
+| `apps/api/src/tenant-context.controller.spec.ts` | 3 — auth required, missing tenant rejected, no subscription auto-create |
+| `apps/api/src/tenant-auth.controller.spec.ts` | 4 — missing credentials rejected, non-tenant login rejected, non-tenant `/me` rejected, staff branch IDs returned |
+| `apps/api/src/ordering.controller.spec.ts` | 4 — tenant credentials required, staff branch scope enforced, listings constrained to assigned branches, forged branch ownership rejected on create |
+| `apps/api/src/booking.controller.spec.ts` | 4 — tenant credentials required, staff branch scope enforced, listings constrained to assigned branches, forged room-type ownership rejected on create |
+| `apps/api/src/payment.controller.spec.ts` | 6 — tenant credentials required, cross-tenant order access rejected, paid status checked only after ownership validation, invalid initialize paths rejected |
 
 ### 7.9 — ✅ FIXED: Plan Limits Now in Single Source of Truth
 
@@ -456,7 +516,7 @@ Hardcoded plan limits in `AdminTenantsController` have been removed. All plan li
 | M-17 | Dashboard login page — plain form with no branding | ✅ Fixed — full-page dark emerald/teal design (Phase 6) |
 | M-18 | Dashboard `orders`, `bookings`, `payments` pages use hardcoded `TENANT_ID` | ✅ Fixed — all three pages rewritten as `'use client'` components using `useTenantContext()` (P-5) |
 | M-19 | Dashboard `analytics`, `broadcast`, `customers` pages are placeholder stubs | ✅ Fixed — analytics: 3 stat cards with shimmer; customers: 4-column shimmer table; broadcast: channel-picker + form (P-6) |
-| M-20 | Dashboard `api()` helper sends no JWT/auth header | ✅ Fixed — `lib/api.ts` attaches `x-tenant-id` header from localStorage session on every request (P-4) |
+| M-20 | Dashboard `api()` helper sends no JWT/auth header | ✅ Fixed — `lib/api.ts` now attaches `Authorization: Bearer <token>` from the dashboard session |
 | M-21 | `TenantContextController` returns HTTP 200 with error body instead of HTTP 4xx | ✅ Fixed — throws `BadRequestException` (400) and `NotFoundException` (404) via NestJS exception filters (P-7) |
 
 ---
@@ -465,7 +525,12 @@ Hardcoded plan limits in `AdminTenantsController` have been removed. All plan li
 
 ### 10.1 Docker
 
-A `docker/docker-compose.yml` exists. No assessment was made of its contents in this audit.
+`docker/docker-compose.yml` appears intended as a developer convenience stack, but it is **not production-ready** in its current form:
+
+- Postgres and Redis are exposed on host ports (`5432`, `6379`) and include placeholder credentials (`POSTGRES_PASSWORD: change_me`).
+- The `api` service bind-mounts the full repo (`../:/app`) and runs `npm install && npm run build && npm run start:prod` on container start (non-reproducible and slow); it also mixes `NODE_ENV=development` with a production start command.
+- `worker` and `dashboard` services are placeholders (`node -e setInterval(...)`) and do not run the real applications.
+- `DATABASE_URL` values are inconsistent with the configured Postgres service credentials and will likely fail without manual edits.
 
 ### 10.2 Builds
 
@@ -494,6 +559,32 @@ Multiple `.bat` scripts exist for development (`start.bat`, `start-all.bat`, `st
 
 The `docs/` directory contains over 30 markdown files covering incident response, runbooks, SLAs, and governance. However, this operational documentation describes idealized behaviour. Several documented features (suspension, billing enforcement, AI routing) are non-functional in the current codebase.
 
+### 10.6 Dependency Vulnerability Audit
+
+`npm audit --omit=dev` results (captured March 9, 2026 after non-breaking dependency upgrades):
+
+| Package | Result | Notes |
+|---|---|---|
+| Repo root | ✅ 0 vulnerabilities | None |
+| `backend/` | ❌ 3 high | Non-breaking updates applied: `axios` upgraded to `1.13.6`, `qs` forced to `6.15.0`, Nest 10 packages moved to latest 10.x patch line. Remaining advisories are tied to `@nestjs/platform-express` / `@nestjs/core` / `multer` and require a planned Nest 11 upgrade path. |
+| `admin-console/` | ❌ 1 high | Upgraded to `next@14.2.35`; advisory still applies to all supported `<15.5.10` releases exposed by `npm audit`, so full remediation requires a coordinated Next major upgrade window. |
+| `dashboard/` | ❌ 1 high | Upgraded to `next@14.2.35`; advisory still applies to all supported `<15.5.10` releases exposed by `npm audit`, so full remediation requires a coordinated Next major upgrade window. |
+
+**Status:** Partial remediation complete. The low-risk/non-breaking dependency upgrades have been applied and validated with successful backend tests plus dashboard/admin builds. The remaining advisories are now framework-major items: NestJS 11 for backend upload-path dependencies, and a deliberate Next.js major upgrade window for both frontends.
+
+**Recommendation:** Treat `S-10.6` as narrowed but still open. Schedule a controlled framework-upgrade workstream rather than forcing those upgrades inside the audit hardening pass.
+
+### 10.7 Production Deploy Automation
+
+Production deploy is SSH-driven:
+
+- `.github/workflows/deploy.yml` runs on pushes to `main` (and manually) and executes `deploy/deploy.sh` on the server over SSH, then performs HTTP health checks for API, dashboard, and admin console.
+- `deploy/deploy.sh` performs an incremental deploy by `git fetch` + `git reset --hard origin/main`, rebuilds only the changed apps, runs `npx prisma migrate deploy` when backend changes, and restarts Phusion Passenger apps by touching `tmp/restart.txt`.
+
+**Operational notes:**
+- The deploy script truncates command output via `tail`, which can make debugging harder when a step fails.
+- The script uses `set -euo pipefail`, so failed build/migrate steps still abort the deploy.
+
 ---
 
 ## 11. Severity Matrix
@@ -510,6 +601,9 @@ The `docs/` directory contains over 30 markdown files covering incident response
 | S-6.4 | Insecure JWT secret default | HIGH | Security | ✅ Fixed |
 | S-6.5 | Temp staff `temp123` password | HIGH | Security | ✅ Fixed |
 | S-6.6 | No security headers | HIGH | Security | ✅ Fixed |
+| S-6.10 | Tenant-facing APIs have no effective auth enforcement | CRITICAL | Security | ✅ Fixed — tenant JWT auth + protected staff routes (March 9) |
+| S-6.11 | Rate limiting identity is header-controlled (bypassable) | HIGH | Security | ✅ Fixed — verified JWT tenant ID or IP-based fallback (March 9) |
+| S-6.12 | Branch resolver trusts `x-tenant-id` and can create DB state | HIGH | Security | ✅ Fixed — verified tenant context only; no create-on-read (March 9) |
 | S-7.2 | 10 controllers not registered | HIGH | Functionality | ✅ Fixed (Phase 4) |
 | S-7.3 | Subscription logic duplicated | HIGH | Correctness | ✅ Fixed |
 | S-8.4 | Provision inserts non-existent `description` fields | HIGH | Functionality | ✅ Fixed |
@@ -517,19 +611,21 @@ The `docs/` directory contains over 30 markdown files covering incident response
 | S-DB-4 | RoomType schema missing `description` | HIGH | Database | ✅ Fixed (field removed from insert) |
 | D-1 | Dashboard `orders`/`bookings`/`payments` use hardcoded `TENANT_ID` | HIGH | Dashboard | ✅ Fixed (P-5) |
 | D-2 | Dashboard `analytics`/`broadcast`/`customers` are stubs | HIGH | Dashboard | ✅ Fixed (P-6) |
-| D-3 | Dashboard `api()` sends no auth header | HIGH | Dashboard/Security | ✅ Fixed (P-4) |
+| D-3 | Dashboard `api()` sends no auth header | HIGH | Dashboard/Security | ✅ Fixed — Bearer JWT on protected requests (March 9) |
 | S-7.1 | Rate limit middleware not applied | MEDIUM | Performance | ✅ Fixed |
 | S-6.7 | Webhook signature misconfiguration | MEDIUM | Security | ✅ Fixed — raw body HMAC-SHA512; HTTP 401 on bad sig (P-10) |
-| S-6.8 | Uploads served without auth | MEDIUM | Security | ✅ Fixed — Bearer JWT / x-tenant-id / ?t= auth gate on `/uploads` (P-9) |
+| S-6.8 | `/uploads` access control bypassable via arbitrary `x-tenant-id` / `?t=` | HIGH | Security | ✅ Fixed — public branding only; other uploads require Bearer JWT (March 9) |
+| S-6.13 | Admin JWT embedded in image preview query string | MEDIUM | Security | ✅ Fixed |
 | S-7.4 | No validation pipe | MEDIUM | Correctness | ✅ Fixed |
 | S-7.5 | `AiMessageProcessor` outside DI | MEDIUM | Architecture | ✅ Fixed (Phase 4) |
 | S-7.6 | Rate limiter own Redis connection | MEDIUM | Resources | ✅ Fixed |
 | S-7.7 | `env.example` incomplete | MEDIUM | DevOps | ✅ Fixed |
+| S-10.6 | Dependency vulnerabilities present (`npm audit`) | HIGH | Security/DevOps | ❌ Open — reduced on March 9; residual findings require major NestJS / Next.js upgrades |
 | S-8.5 | `AuthService`/`UserService` not wired | MEDIUM | Auth | ✅ Fixed (Phase 4) |
 | D-4 | `TenantContextController` returns HTTP 200 with error body | MEDIUM | Dashboard/API | ✅ Fixed (P-7) |
 | S-9.* | 15 features implemented but non-functional | MEDIUM | Functionality | 14/15 Fixed |
 | M-16 | Dashboard auth gate not enforced (sidebar visible pre-login) | MEDIUM | Dashboard/Security | ✅ Fixed (Phase 6) |
-| S-7.8 | No test suite | LOW | Quality | ✅ Fixed — 15 tests, 4 suites (Phase 5) |
+| S-7.8 | No test suite | LOW | Quality | ✅ Fixed — 44 tests, 12 suites (including March 9 auth/uploads/order/booking/payment/tenant-auth regression coverage) |
 | S-7.9 | Plan limits hardcoded in multiple places | LOW | Maintainability | ✅ Fixed |
 | S-7.10 | `@ts-nocheck` retained in fixed files | LOW | Code Quality | ✅ Fixed (all 37 files) |
 | S-6.9 | 37 files with `@ts-nocheck` | LOW | Code Quality | ✅ Fixed — all 37 removed (Phase 4) |
@@ -574,7 +670,7 @@ The `docs/` directory contains over 30 markdown files covering incident response
 
 19. ✅ Implemented full AI intent routing in `AiService.processMessage` — 12 intents, state machine, session, audit log, branded responses.
 20. ✅ `BillingLifecycleService` created — wires `ChargeScheduler`, `GracePeriodChecker`, `DataRetentionService` to periodic timers (1h / 24h / 7d intervals).
-21. ✅ Jest test suite added — 4 suites, 15 tests, all passing.
+21. ✅ Jest test suite added — now 12 suites, 44 tests, all passing.
 22. ✅ GitHub Actions CI/CD pipeline added — `.github/workflows/ci.yml`.
 
 ### Remaining Open Items
@@ -582,11 +678,13 @@ The `docs/` directory contains over 30 markdown files covering incident response
 | Priority | Item |
 |---|---|
 | **CRITICAL** | Run DB migration: `npx prisma migrate dev --name phase4_new_models` — no new schema models are live until this runs |
+| ~~**CRITICAL**~~ ✅ | Enforce authentication + tenant isolation on tenant-facing APIs (`/api/ordering`, `/api/bookings`, `/api/payments`, `/tenant/context`) — **Fixed (March 9)** |
 | ~~**HIGH**~~ ✅ | Dashboard `orders`, `bookings`, `payments` pages use hardcoded `TENANT_ID` — wrong data for all tenants (M-18) — **Fixed (P-5)** |
 | ~~**HIGH**~~ ✅ | Dashboard `analytics`, `broadcast`, `customers` pages are stubs — no production UI (M-19) — **Fixed (P-6)** |
-| ~~**HIGH**~~ ✅ | Dashboard `api()` helper sends no auth header — all data calls will be rejected by JWT guards in production (M-20) — **Fixed (P-4)** |
+| ~~**HIGH**~~ ✅ | Dashboard `api()` helper sends no auth header — **Fixed (March 9)** |
 | ~~**HIGH**~~ ✅ | `TenantContextController` returns HTTP 200 with error body — must return proper HTTP 4xx (M-21) — **Fixed (P-7)** |
-| ~~MEDIUM~~ ✅ | `uploads/` endpoint still unauthenticated (§6.8) — **Fixed (P-9)** |
+| ~~**HIGH**~~ ✅ | `/uploads` access control is bypassable via arbitrary `x-tenant-id` / `?t=` — **Fixed (March 9)** |
+| **HIGH** | Complete the remaining framework-major `npm audit` remediation in `backend`, `admin-console`, and `dashboard` (see §10.6) |
 | ~~MEDIUM~~ ✅ | `META_APP_SECRET` not in `REQUIRED_VARS` — webhook inaccessible if unset (§6.7) — **Fixed (P-8)** |
 | ~~LOW~~ ✅ | Reseller/partner management — no API for `ResellerAccount` / `TenantAssignment` (M-14) — **Fixed (P-22)** |
 | ~~LOW~~ ✅ | `AppModule` still monolithic — consider decomposition into `AuthModule`, `BillingModule`, `MessagingModule` — **Fixed (P-23)** |
@@ -806,8 +904,8 @@ All 34 files had `// @ts-nocheck` removed and underlying type errors corrected. 
 | Installed | `jest@29`, `ts-jest@29`, `@types/jest@29`, `@nestjs/testing@10` |
 | Configured | `package.json` `jest` block: `moduleFileExtensions: ['ts', 'js', 'json']` (TS-first to prevent stale `.js` interference), `transform: { '^.+\.ts$': 'ts-jest' }` |
 | Scripts added | `test`, `test:watch`, `test:cov`, `test:ci` |
-| Spec files created | `libs/ai-engine/ai.service.spec.ts`, `libs/billing/enforcement/suspension.service.spec.ts`, `libs/billing/subscriptions.service.spec.ts`, `libs/billing/tenant-provision.service.spec.ts` |
-| Result | **15 tests, 4 suites — all passing** |
+| Spec files created | `libs/ai-engine/ai.service.spec.ts`, `libs/billing/enforcement/suspension.service.spec.ts`, `libs/billing/subscriptions.service.spec.ts`, `libs/billing/tenant-provision.service.spec.ts`, `libs/tenant/branch.middleware.spec.ts`, `apps/api/rate-limit.middleware.spec.ts`, `apps/api/src/uploads-auth.middleware.spec.ts`, `apps/api/src/tenant-context.controller.spec.ts`, `apps/api/src/tenant-auth.controller.spec.ts`, `apps/api/src/ordering.controller.spec.ts`, `apps/api/src/booking.controller.spec.ts`, `apps/api/src/payment.controller.spec.ts` |
+| Result | **44 tests, 12 suites — all passing** |
 
 ### 14.12 GitHub Actions CI/CD
 
@@ -868,17 +966,17 @@ Previous state: the full sidebar and header rendered for unauthenticated users b
 
 | File | Change |
 |---|---|
-| `dashboard/app/login/page.tsx` | Full-page redesign — dark `bg-gray-900` with emerald/teal glowing orbs, gradient glow border, chat-bubble icon, `Tenant Portal` label. Validates tenant ID against `/tenant/context` API before calling `setSession()`. Spinner + disabled state on submit button. Proper HTTP error handling (404 → "Tenant not found") |
+| `dashboard/app/login/page.tsx` | Full-page redesign — dark `bg-gray-900` with emerald/teal glowing orbs, gradient glow border, chat-bubble icon, `Tenant Portal` label. Now authenticates tenant staff/owners via `POST /api/auth/login` using email/password and stores the returned JWT in the dashboard session. Spinner + disabled state on submit button. |
 
 ### 15.5 P-4 / P-5 / P-7 — Auth Header, Client Components, Controller HTTP Codes
 
 | File | Change |
 |---|---|
-| `dashboard/lib/api.ts` | Added `getTenantId()` helper reading `session` from localStorage; every `api()` call now attaches `x-tenant-id` header (P-4) |
+| `dashboard/lib/api.ts` | Protected dashboard requests now attach `Authorization: Bearer <token>` from the stored dashboard session (P-4 / March 9 remediation) |
 | `dashboard/app/orders/page.tsx` | Rewritten as `'use client'` component — reads tenant ID from `useTenantContext()`, `useEffect`/`useState` data fetch, shimmer-first loading (5 animated placeholder rows), inline error banner, no hardcoded `TENANT_ID` (P-5) |
 | `dashboard/app/bookings/page.tsx` | Same pattern as orders — 6-column shimmer, `STATUS_COLORS` lookup map, fully client-side (P-5) |
 | `dashboard/app/payments/page.tsx` | Same pattern as orders — 5-column table, `formatNaira` currency helper, fully client-side (P-5) |
-| `dashboard/components/OrderStatusDropdown.tsx` | Replaced hardcoded `http://localhost:4000` URL with `${API_BASE_URL}`; added `x-tenant-id` header via `getSession()?.tenantId`; `tenant.status` → `tenant?.status` optional chaining |
+| `dashboard/components/OrderStatusDropdown.tsx` | Replaced hardcoded `http://localhost:4000` URL with `${API_BASE_URL}`; sends Bearer JWT from dashboard session; `tenant.status` → `tenant?.status` optional chaining |
 | `backend/apps/api/src/tenant-context.controller.ts` | Now throws `BadRequestException` (HTTP 400) when `tenantId` missing; `NotFoundException` (HTTP 404) when tenant or subscription not found — was HTTP 200 with error body (P-7) |
 
 ### 15.6 P-6 — Dashboard Stub Pages Production UI
@@ -895,11 +993,11 @@ Previous state: the full sidebar and header rendered for unauthenticated users b
 | File | Change |
 |---|---|
 | `backend/apps/api/src/env.validator.ts` | `META_APP_SECRET` moved from `OPTIONAL_VARS` to `REQUIRED_VARS` — server will refuse to start without it (P-8) |
-| `backend/apps/api/src/main.ts` | Added `import * as jwt from 'jsonwebtoken'`; replaced bare `express.static` for `/uploads` with a gating middleware that accepts `Authorization: Bearer <jwt>` (verified against `JWT_SECRET`) or `x-tenant-id` header or `?t=<id>` query param; returns HTTP 401 otherwise (P-9) |
-| `dashboard/components/Sidebar.tsx` | Logo `<img src>` now builds URL as `${logoUrl}?t=${tenant.id}` when path starts with `/uploads/` (P-9) |
-| `admin-console/components/ImageUpload.tsx` | Preview `<img>` src now appends `?t=${getAdminToken() ?? ''}` (P-9) |
-| `admin-console/app/admin/profile/page.tsx` | Fixed hardcoded `http://localhost:4000` → `API_BASE_URL`; appends `?t=${getAdminToken()}` to avatar img src (P-9) |
-| `admin-console/app/admin/users/page.tsx` | `Avatar` component img src now uses `${API_BASE_URL}${user.avatar_url}?t=${getAdminToken() ?? ''}` (P-9) |
+| `backend/apps/api/src/main.ts` | `/uploads/settings/*` is now public by design for branding assets; other upload paths require `Authorization: Bearer <jwt>` verified against `JWT_SECRET`. `x-tenant-id` and `?t=` are no longer accepted (P-9 / March 9 remediation) |
+| `dashboard/components/Sidebar.tsx` | Logo `<img src>` no longer appends `?t=`; branding assets load directly from the explicit public settings path |
+| `admin-console/components/ImageUpload.tsx` | Removed token-in-query-string preview. Protected avatar previews now load through authenticated fetch-based rendering |
+| `admin-console/app/admin/profile/page.tsx` | Avatar display no longer appends `?t=`; uses authenticated image loading instead |
+| `admin-console/app/admin/users/page.tsx` | User avatar display no longer appends `?t=`; uses authenticated image loading instead |
 
 ### 15.8 P-10 / P-14 / P-21 — Paystack Hardening, Console Cleanup, robots.txt & Favicon
 
@@ -1002,7 +1100,7 @@ This section tracks every item that must be resolved before the platform can be 
 | P-1 | **Run database migration** — `npx prisma migrate dev --name phase4_new_models` — until this runs, `Invoice`, `Usage`, `Consent`, `FeatureFlag` do not exist in the production DB and all related services will crash | Backend | ✅ Done — migration `20260304003951_add_conversation_status_fields` applied; all schema models are live; for production use `npx prisma migrate deploy` (P-16) |
 | P-2 | **Seed super-admin** — `npx ts-node prisma/seed-super-admin.ts` must be run once against the production DB to create the first admin account | Backend | ⚠️ Script ready — `backend/prisma/seed-super-admin.ts` exists and is idempotent; run it manually after first deploy per `deploy/cpanel-setup.md` Step 5 |
 | P-3 | **Set all `REQUIRED_VARS`** in the production environment — `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (min 64 chars), `META_APP_SECRET`, `PAYSTACK_SECRET_KEY`, `CORS_ORIGINS` — app will refuse to start without these | DevOps | ✅ Done — `deploy/production-env-template.env` documents every required variable; `deploy/cpanel-setup.md` Step 4 walks through setting each one in cPanel per-app |
-| P-4 | **Dashboard `api()` helper must send auth header** — currently sends no JWT; all backend endpoints are JWT-guarded in production. Fix: read token from session and attach as `Authorization: Bearer <token>`. Until fixed, no dashboard data will load | Frontend | ✅ Fixed — `lib/api.ts` reads `tenantId` from localStorage session; attaches `x-tenant-id` header on every request |
+| P-4 | **Dashboard `api()` helper must send auth header** — currently sends no JWT; all backend endpoints are JWT-guarded in production. Fix: read token from session and attach as `Authorization: Bearer <token>`. Until fixed, no dashboard data will load | Frontend | ✅ Fixed — `lib/api.ts` reads the stored dashboard JWT and attaches `Authorization: Bearer <token>` on protected requests |
 | P-5 | **Convert dashboard server-component pages to client components** — `orders`, `bookings`, `payments` use hardcoded `TENANT_ID` at build time. They must be client components reading the session tenant ID at runtime | Frontend | ✅ Fixed — all three pages rewritten as `'use client'` components; use `useTenantContext()` for tenant ID; shimmer-first loading; inline error banners |
 
 ### 16.2 HIGH — Must fix before opening to real users
@@ -1012,7 +1110,7 @@ This section tracks every item that must be resolved before the platform can be 
 | P-6 | **Build out dashboard stub pages** — `analytics`, `broadcast`, `customers` render raw JSON or bare lists. Production-grade UI required | Frontend | ✅ Fixed — analytics shows 3 stat cards with shimmer; customers shows a 4-column shimmer-first table; broadcast has a channel-picker + textarea form with spinner |
 | P-7 | **Fix `TenantContextController` error responses** — currently returns `{ error: { code, message } }` with HTTP 200. Must return HTTP 404 / HTTP 400. Dashboard's `TenantProvider` currently misidentifies error responses as success | Backend | ✅ Fixed — controller now throws `BadRequestException` (400) when `tenantId` missing, `NotFoundException` (404) when tenant or subscription not found |
 | P-8 | **Set `META_APP_SECRET` in `REQUIRED_VARS`** — if not set, webhook endpoint permanently returns 401 and all WhatsApp/Instagram/Facebook messages are dropped silently | Backend | ✅ Fixed — moved from `OPTIONAL_VARS` to `REQUIRED_VARS` in `env.validator.ts`; server will refuse to start without it |
-| P-9 | **Add authentication to `/uploads` static route** — all tenant logo and branding assets are publicly accessible to anyone with a URL | Backend | ✅ Fixed — gated with Express middleware; accepts `Authorization: Bearer <jwt>` (admin console) or `x-tenant-id`/`?t=<id>` query param (dashboard); all `<img>` tags updated to pass `?t=` token |
+| P-9 | **Add authentication to `/uploads` static route** — all tenant logo and branding assets are publicly accessible to anyone with a URL | Backend | ✅ Fixed — explicit asset policy: `/uploads/settings/*` is public for branding, all other upload paths require Bearer JWT; `x-tenant-id`/`?t=` bypass removed |
 | P-10 | **Set `PAYSTACK_SECRET_KEY`** in production env and verify Paystack webhook signature validation is active | DevOps/Backend | ✅ Fixed — moved to `REQUIRED_VARS`; removed `sk_test_dummy` fallback; webhook now uses raw request body (not `JSON.stringify`) for HMAC-SHA512 verification; throws HTTP 401 on bad signature instead of silently ignoring |
 
 ### 16.3 MEDIUM — Needed for stable operations

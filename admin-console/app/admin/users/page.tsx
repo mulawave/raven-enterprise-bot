@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { API_BASE_URL, API_ENDPOINTS } from '@/lib/constants'
-import { getAdminToken } from '@/lib/auth'
+import AuthenticatedImage from '@/components/AuthenticatedImage'
 
 interface AdminUser {
   id: string
@@ -47,7 +47,7 @@ function Avatar({ user }: { user: AdminUser }) {
   return (
     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
       {user.avatar_url ? (
-        <img src={`${API_BASE_URL}${user.avatar_url}?t=${getAdminToken() ?? ''}`} alt={user.name || user.email} className="w-9 h-9 rounded-full object-cover" />
+        <AuthenticatedImage src={`${API_BASE_URL}${user.avatar_url}`} alt={user.name || user.email} className="w-9 h-9 rounded-full object-cover" />
       ) : initials}
     </div>
   )

@@ -72,10 +72,8 @@ export class PaymentService {
     throw new Error('PAYMENT_PROVIDER_NOT_SUPPORTED')
   }
 
-  async verifyPayment(tenantId: string, reference: string, provider: PaymentProvider): Promise<Payment> {
-    const payment = await this.prisma.payment.findFirst({
-      where: { tenant_id: tenantId, reference },
-    })
+  async verifyPayment(reference: string, provider: PaymentProvider): Promise<Payment> {
+    const payment = await this.prisma.payment.findUnique({ where: { reference } })
 
     if (!payment) {
       throw new Error('PAYMENT_NOT_FOUND')
@@ -85,9 +83,9 @@ export class PaymentService {
       const result = await this.paystack.verify(reference)
 
       if (result.data.status === 'success') {
-        return this.updatePaymentStatus(tenantId, payment.id, 'paid')
+        return this.updatePaymentStatus(payment.tenant_id, payment.id, 'paid')
       } else {
-        return this.updatePaymentStatus(tenantId, payment.id, 'failed')
+        return this.updatePaymentStatus(payment.tenant_id, payment.id, 'failed')
       }
     }
 

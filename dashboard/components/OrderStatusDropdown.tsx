@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useTenantContext } from '@/lib/tenant-context'
 import { API_BASE_URL } from '@/lib/constants'
-import { getSession } from '@/lib/auth'
+import { getAccessToken } from '@/lib/auth'
 
 interface OrderStatusDropdownProps {
   orderId: string
@@ -25,12 +25,12 @@ export default function OrderStatusDropdown({ orderId, currentStatus, onStatusCh
 
     setUpdating(true)
     try {
-      const session = getSession()
+      const accessToken = getAccessToken()
       const response = await fetch(`${API_BASE_URL}/api/ordering/orders/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(session?.tenantId ? { 'x-tenant-id': session.tenantId } : {}),
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
         body: JSON.stringify({
           orderId,

@@ -52,16 +52,23 @@ export class BookingService {
     return booking
   }
 
-  async getBooking(tenantId: string, branchId: string, bookingId: string): Promise<Booking | null> {
+  async getBooking(tenantId: string, bookingId: string, branchIds?: string[]): Promise<Booking | null> {
     return this.prisma.booking.findFirst({
-      where: { id: bookingId, tenant_id: tenantId, branch_id: branchId },
+      where: {
+        id: bookingId,
+        tenant_id: tenantId,
+        ...(branchIds?.length ? { branch_id: { in: branchIds } } : {}),
+      },
       include: { customer: true, roomType: true },
     })
   }
 
-  async listBookings(tenantId: string, branchId: string): Promise<Booking[]> {
+  async listBookings(tenantId: string, branchIds?: string[]): Promise<Booking[]> {
     return this.prisma.booking.findMany({
-      where: { tenant_id: tenantId, branch_id: branchId },
+      where: {
+        tenant_id: tenantId,
+        ...(branchIds?.length ? { branch_id: { in: branchIds } } : {}),
+      },
       include: { customer: true, roomType: true },
       orderBy: { created_at: 'desc' },
     })
