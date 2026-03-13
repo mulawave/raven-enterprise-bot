@@ -40,7 +40,7 @@ export default function CreateTenantPage() {
               },
             }
           : {}),
-      }, { timeoutMs: 60000 })
+      })
 
       router.push(`${ROUTES.TENANTS}/${response.tenant.id}`)
     } catch (err: any) {
