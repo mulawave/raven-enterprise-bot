@@ -23,9 +23,10 @@ import { PaystackService } from '../../../libs/payments/paystack.service'
 import { FlutterwaveService } from '../../../libs/payments/flutterwave.service'
 import { ComplianceModule } from './compliance.module'
 import { AuthModule } from './auth.module'
+import { AppConfigModule } from './app-config.module'
 
 @Module({
-  imports: [ComplianceModule, AuthModule],
+  imports: [ComplianceModule, AuthModule, AppConfigModule],
   controllers: [
     PaymentController,
     SubscriptionsController,

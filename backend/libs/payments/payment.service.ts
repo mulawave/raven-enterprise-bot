@@ -2,6 +2,7 @@
 import { PaystackService } from './paystack.service'
 import { FlutterwaveService } from './flutterwave.service'
 import { AuditLogger } from '../monitoring/audit.logger'
+import { ConfigLoaderService } from '../config/config-loader.service'
 
 export type PaymentProvider = 'paystack' | 'flutterwave'
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'cancelled'
@@ -18,6 +19,7 @@ export class PaymentService {
     private readonly paystack: PaystackService,
     private readonly auditLogger: AuditLogger,
     private readonly flutterwave?: FlutterwaveService,
+    private readonly configLoader?: ConfigLoaderService,
   ) {}
 
   async initializePayment(
@@ -56,7 +58,9 @@ export class PaymentService {
       timestamp: new Date(),
     })
 
-    const callbackBase = process.env.PAYMENT_CALLBACK_URL || 'http://localhost:3000'
+    const callbackBase = this.configLoader
+      ? ((await this.configLoader.get('PAYMENT_CALLBACK_URL')) ?? 'https://app.raven-ai.online')
+      : (process.env.PAYMENT_CALLBACK_URL ?? 'https://app.raven-ai.online')
 
     if (provider === 'paystack') {
       const result = await this.paystack.initialize(

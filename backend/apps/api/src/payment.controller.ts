@@ -10,20 +10,24 @@ import { WebhookHandler } from '../../../libs/payments/webhook.handler'
 import { AuditLogger } from '../../../libs/monitoring/audit.logger'
 import { JwtAuthGuard } from '../../../libs/auth/guards/jwt-auth.guard'
 import { CurrentUser } from '../../../libs/auth/decorators/current-user.decorator'
+import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
 
 @Controller('api/payments')
 export class PaymentController {
   private readonly paymentService: PaymentService
   private readonly webhookHandler: WebhookHandler
 
-  constructor(private readonly prisma: PrismaClient) {
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly configLoader: ConfigLoaderService,
+  ) {
     const auditLogger = new AuditLogger(prisma)
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY!
     const paystack = new PaystackService(paystackSecret)
     const flutterwave = process.env.FLUTTERWAVE_SECRET_KEY
       ? new FlutterwaveService(process.env.FLUTTERWAVE_SECRET_KEY)
       : undefined
-    this.paymentService = new PaymentService(prisma, paystack, auditLogger, flutterwave)
+    this.paymentService = new PaymentService(prisma, paystack, auditLogger, flutterwave, configLoader)
     this.webhookHandler = new WebhookHandler(prisma, paystackSecret)
   }
 

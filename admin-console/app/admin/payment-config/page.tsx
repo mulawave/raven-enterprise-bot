@@ -57,10 +57,12 @@ export default function PaymentConfigPage() {
     setSaveErrors((e) => ({ ...e, [key]: '' }))
     setSaveSuccess((s) => ({ ...s, [key]: false }))
     try {
-      await api.patch(`${API_ENDPOINTS.CONFIG_KEYS}/${key}`, { value: value || null })
+      const updated = await api.patch<ConfigKey>(`${API_ENDPOINTS.CONFIG_KEYS}/${key}`, { value: value || null })
+      // Update only this key — do NOT call fetchKeys() which would reset all other unsaved drafts
+      setKeys((prev) => ({ ...prev, [key]: updated }))
+      setDrafts((prev) => ({ ...prev, [key]: updated.value ?? '' }))
       setSaveSuccess((s) => ({ ...s, [key]: true }))
       setTimeout(() => setSaveSuccess((s) => ({ ...s, [key]: false })), 3000)
-      await fetchKeys()
     } catch (err: any) {
       setSaveErrors((e) => ({ ...e, [key]: err.message || 'Save failed' }))
     } finally {
@@ -74,13 +76,14 @@ export default function PaymentConfigPage() {
 
   const S = 'animate-pulse bg-slate-700 rounded'
 
-  function KeyField({ keyName }: { keyName: string }) {
+  function KeyField({ keyName, suggestion }: { keyName: string; suggestion?: string }) {
     const cfg = keys[keyName]
     if (!cfg) return <div className={`${S} h-16 w-full`} />
     const isSav = saving[keyName]
     const err = saveErrors[keyName]
     const ok = saveSuccess[keyName]
     const draft = drafts[keyName] ?? ''
+    const showSuggestion = !!suggestion && !draft && !cfg.is_secret
 
     return (
       <div className="space-y-1.5">
@@ -100,8 +103,17 @@ export default function PaymentConfigPage() {
               value={draft}
               onChange={(e) => setDrafts((d) => ({ ...d, [keyName]: e.target.value }))}
               className="w-full bg-slate-900 text-white text-sm rounded-lg px-3 py-2 border border-slate-600 focus:border-sky-500 outline-none placeholder-slate-600 font-mono pr-10"
-              placeholder="Enter value..."
+              placeholder={suggestion ? `e.g. ${suggestion}` : 'Enter value...'}
             />
+            {showSuggestion && (
+              <button
+                type="button"
+                onClick={() => setDrafts((d) => ({ ...d, [keyName]: suggestion! }))}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-sky-400 hover:text-sky-300 font-medium whitespace-nowrap"
+              >
+                Use default
+              </button>
+            )}
             {cfg.is_secret && (
               <button type="button" onClick={() => setShow((s) => ({ ...s, [keyName]: !s[keyName] }))}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
@@ -197,9 +209,24 @@ export default function PaymentConfigPage() {
 
           {/* Callback URL */}
           <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-5 space-y-3">
-            <h3 className="font-semibold text-white">Callback URL</h3>
-            <p className="text-xs text-slate-500">Paystack redirects here after payment completes. Must match the Paystack dashboard setting.</p>
-            {isLoading ? <div className={`${S} h-16 w-full`} /> : <KeyField keyName="PAYMENT_CALLBACK_URL" />}
+            <h3 className="font-semibold text-white">Callback Base URL</h3>
+            <p className="text-xs text-slate-500">
+              The base URL of your tenant dashboard. The backend appends <code className="font-mono text-sky-300">/payment/callback</code> automatically — do <strong className="text-white">not</strong> include the path here.
+            </p>
+            {isLoading ? <div className={`${S} h-16 w-full`} /> : <KeyField keyName="PAYMENT_CALLBACK_URL" suggestion="https://app.raven-ai.online" />}
+            {!isLoading && drafts['PAYMENT_CALLBACK_URL']?.trim() && (
+              <div className="rounded-lg bg-slate-900/70 border border-slate-700/50 p-3 space-y-2 text-xs">
+                <p className="text-slate-400 font-medium">Configure these exact URLs in your payment provider dashboards:</p>
+                <div className="space-y-1">
+                  <p className="text-slate-500">Paystack → Settings → Webhooks &amp; Callback:</p>
+                  <p className="font-mono text-sky-300 break-all select-all">{drafts['PAYMENT_CALLBACK_URL'].replace(/\/$/, '')}/payment/callback</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-slate-500">Flutterwave → Settings → Webhooks:</p>
+                  <p className="font-mono text-orange-300 break-all select-all">{drafts['PAYMENT_CALLBACK_URL'].replace(/\/$/, '')}/payment/callback?provider=flutterwave</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -235,7 +262,7 @@ export default function PaymentConfigPage() {
               <li className="flex gap-2"><span className="bg-indigo-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center shrink-0 mt-0.5">3</span>
                 <span>When ready for production, copy the <strong className="text-green-300">Live Secret Key</strong> and <strong className="text-green-300">Live Public Key</strong> and toggle to Live Mode.</span></li>
               <li className="flex gap-2"><span className="bg-indigo-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center shrink-0 mt-0.5">4</span>
-                <span>Set the <strong className="text-slate-200">Callback URL</strong> to match the one in your Paystack Webhook settings (e.g. <code className="font-mono text-sky-300">https://app.raven-ai.online/payments/verify</code>).</span></li>
+                <span>Set the <strong className="text-slate-200">Callback Base URL</strong> to your tenant dashboard URL (e.g. <code className="font-mono text-sky-300">https://app.raven-ai.online</code>). The system will automatically construct the full callback URL by appending <code className="font-mono text-sky-300">/payment/callback</code>. Use that full URL in your Paystack and Flutterwave webhook settings.</span></li>
               <li className="flex gap-2"><span className="bg-orange-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center shrink-0 mt-0.5">5</span>
                 <span>For <strong className="text-orange-300">Flutterwave</strong> (payments, plans &amp; payouts), log in to the <span className="text-orange-300">Flutterwave Dashboard</span> ➜ <strong className="text-slate-200">Settings ➜ API</strong>. Copy your Secret Key (<code className="font-mono text-slate-300">FLWSECK_...</code>), Public Key (<code className="font-mono text-slate-300">FLWPUBK_...</code>), Webhook Secret, and Merchant ID.</span></li>
             </ol>
