@@ -14,7 +14,6 @@ export class ApiError extends Error {
 
 interface FetchOptions extends RequestInit {
   requiresAuth?: boolean
-  timeoutMs?: number
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -55,7 +54,7 @@ export async function apiRequest<T>(
   endpoint: string,
   options: FetchOptions = {}
 ): Promise<T> {
-  const { requiresAuth = true, timeoutMs = 15000, ...fetchOptions } = options
+  const { requiresAuth = true, ...fetchOptions } = options
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -71,27 +70,16 @@ export async function apiRequest<T>(
 
   const url = `${API_BASE_URL}${endpoint}`
 
-  const controller = new AbortController()
-  const signal = fetchOptions.signal ?? controller.signal
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
   try {
     const response = await fetch(url, {
       ...fetchOptions,
       headers,
-      signal,
     })
-
-    clearTimeout(timeoutId)
 
     return handleResponse<T>(response)
   } catch (error) {
-    clearTimeout(timeoutId)
     if (error instanceof ApiError) {
       throw error
-    }
-    if ((error as any)?.name === 'AbortError') {
-      throw new ApiError(408, 'Request timeout - server took too long to respond')
     }
     throw new ApiError(500, 'Network error or server unavailable')
   }

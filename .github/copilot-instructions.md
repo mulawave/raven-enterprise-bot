@@ -76,3 +76,28 @@ return <PageContent />
 - If a file does not exist, create it at the specified path
 - If no path was given, ask before proceeding
 - After every change, list all files created or modified
+
+---
+
+## ⚠️ CRITICAL INFRASTRUCTURE RULES — NEVER VIOLATE THESE
+
+### PORT RULES — ABSOLUTE PROHIBITION
+
+- **Port 3000 is FORBIDDEN.** Other Node.js applications on a separate cPanel on the same server use port 3000 via Apache. Touching it will break unrelated live production apps.
+- **Raven ONLY uses ports 4000 and above.** Never bind, redirect, kill, or reference port 3000 for any Raven process.
+- **NEVER run any script, command, installation, or update outside the Raven cPanel user.**
+
+| Service         | Port |
+|-----------------|------|
+| Backend API     | 4010 |
+| Tenant Dashboard| 4011 |
+| Admin Console   | 4012 |
+
+### TIMEOUT RULES — NO REQUEST TIMEOUTS ANYWHERE
+
+- **NEVER add request timeouts** to any API client in this application — not in admin-console, not in dashboard, not anywhere.
+- Do NOT use `AbortController` with `setTimeout` to abort fetch requests.
+- Do NOT add a `timeoutMs` parameter or any equivalent to fetch/axios calls.
+- **Reason:** The user base is predominantly in Nigeria with slow 2G/3G networks. Any timeout causes legitimate slow requests to fail with false errors, breaking the user experience entirely.
+- `admin-console/lib/api.ts` — must have **NO timeout** (enforced).
+- `dashboard/lib/api.ts` — must have **NO timeout** (enforced).
