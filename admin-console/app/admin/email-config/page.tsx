@@ -118,7 +118,9 @@ export default function EmailConfigPage() {
   async function saveKey(key: string, value: string) {
     setSaving((s) => ({ ...s, [key]: true }))
     try {
-      await api.patch(`${API_ENDPOINTS.CONFIG_KEYS}/${key}`, { value: value || null })
+      const updated = await api.patch<ConfigKey>(`${API_ENDPOINTS.CONFIG_KEYS}/${key}`, { value: value || null })
+      setKeys((prev) => ({ ...prev, [key]: updated }))
+      setDrafts((prev) => ({ ...prev, [key]: updated.value ?? '' }))
       setSaveSuccess((s) => ({ ...s, [key]: true }))
       setTimeout(() => setSaveSuccess((s) => ({ ...s, [key]: false })), 3000)
     } catch (err: any) {
@@ -138,7 +140,6 @@ export default function EmailConfigPage() {
       ])
       setSmtpSaved(true)
       setTimeout(() => setSmtpSaved(false), 3000)
-      await fetchAll(true) // silent refresh: re-init drafts + update has_value badges
     } finally {
       setSmtpSaving(false)
     }
