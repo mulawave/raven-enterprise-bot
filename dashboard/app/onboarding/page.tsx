@@ -140,12 +140,11 @@ function LogoUploader({ value, onChange }: LogoUploaderProps) {
       {/* ── Preview panel — always visible when a logo URL is set ── */}
       {previewSrc && (
         <div className="flex items-center gap-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/10 overflow-hidden">
+          <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/10 overflow-hidden">
             <img
               src={previewSrc}
               alt="Logo preview"
-              className="h-full w-full object-contain"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              className="h-full w-full object-contain p-1"
             />
           </div>
           <div className="min-w-0">
@@ -544,8 +543,8 @@ export default function OnboardingPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSaving}
-                  className="flex-[2] rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 font-semibold text-white transition hover:from-emerald-400 hover:to-teal-400 disabled:opacity-60"
+                  disabled={isSaving || !profile.businessName.trim() || !profile.whatsappNumber.trim()}
+                  className="flex-[2] rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 font-semibold text-white transition hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSaving ? 'Saving…' : 'Save & continue →'}
                 </button>

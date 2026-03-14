@@ -5,7 +5,7 @@ export function createUploadsAuthMiddleware(jwtSecret: string) {
   return (req: Request, res: Response, next: NextFunction): Response | void => {
     const relativePath = req.path.replace(/^\/+/, '')
 
-    if (relativePath.startsWith('settings/')) {
+    if (relativePath.startsWith('settings/') || relativePath.startsWith('logos/')) {
       return next()
     }
 
