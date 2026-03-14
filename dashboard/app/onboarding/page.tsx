@@ -40,8 +40,13 @@ function LogoUploader({ value, onChange }: LogoUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [uploadState, setUploadState] = useState<UploadState>('idle')
+  const [uploadState, setUploadState] = useState<UploadState>(() => value ? 'done' : 'idle')
   const [uploadError, setUploadError] = useState<string | null>(null)
+
+  // If parent sets a value after mount (e.g. loaded from API), reflect it
+  useEffect(() => {
+    if (value && uploadState === 'idle') setUploadState('done')
+  }, [value, uploadState])
 
   const upload = useCallback((file: File) => {
     if (!file.type.match(/\/(jpg|jpeg|png|gif|svg\+xml|webp)$/)) {
@@ -124,12 +129,40 @@ function LogoUploader({ value, onChange }: LogoUploaderProps) {
     'border-white/15 bg-white/5 hover:border-white/30',
   ].join(' ')
 
+  const previewSrc = value ? (value.startsWith('http') ? value : `${API_BASE_URL}${value}`) : null
+
   return (
-    <div>
-      <label className="block text-sm font-medium text-slate-300 mb-1.5">
+    <div className="space-y-3">
+      <label className="block text-sm font-medium text-slate-300">
         Logo <span className="text-slate-500 text-xs">(optional)</span>
       </label>
 
+      {/* ── Preview panel — always visible when a logo URL is set ── */}
+      {previewSrc && (
+        <div className="flex items-center gap-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/10 overflow-hidden">
+            <img
+              src={previewSrc}
+              alt="Logo preview"
+              className="h-full w-full object-contain"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-emerald-400">✓ Logo uploaded</p>
+            <p className="text-xs text-slate-400 mt-0.5 truncate">{value}</p>
+            <button
+              type="button"
+              onClick={() => { if (uploadState !== 'uploading') inputRef.current?.click() }}
+              className="mt-1.5 text-xs text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
+            >
+              Replace logo
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Drop zone ── */}
       <div
         onClick={() => { if (uploadState !== 'uploading') inputRef.current?.click() }}
         onDragOver={handleDragOver}
@@ -137,50 +170,44 @@ function LogoUploader({ value, onChange }: LogoUploaderProps) {
         onDrop={handleDrop}
         className={zoneClass}
       >
-        {/* Image preview */}
-        {uploadState === 'done' && value && (
-          <img
-            src={`${API_BASE_URL}${value}`}
-            alt="Logo preview"
-            className="mx-auto mb-3 h-16 w-auto max-w-[120px] rounded-lg object-contain"
-          />
-        )}
-
-        {/* Icon when no preview */}
-        {uploadState !== 'done' && (
-          <div className="mb-3 text-3xl">
-            {uploadState === 'error' ? '⚠️' : uploadState === 'uploading' ? '📤' : '🖼️'}
-          </div>
-        )}
+        {/* Icon */}
+        <div className="mb-3 text-3xl">
+          {uploadState === 'error' ? '⚠️' : uploadState === 'uploading' ? '📤' : '🖼️'}
+        </div>
 
         {uploadState === 'idle' && (
           <>
             <p className="text-sm font-medium text-slate-300">
-              Drag your logo here, or{' '}
+              {previewSrc ? 'Drag a new logo here, or ' : 'Drag your logo here, or '}
               <span className="text-emerald-400 underline underline-offset-2">click to browse</span>
             </p>
             <p className="text-xs text-slate-500 mt-1">PNG, JPG, SVG or WEBP · max 5 MB</p>
           </>
         )}
 
+        {uploadState === 'done' && !previewSrc && (
+          <>
+            <p className="text-sm font-medium text-emerald-400">✓ Logo uploaded</p>
+            <p className="text-xs text-slate-500 mt-1">Click to replace</p>
+          </>
+        )}
+
+        {uploadState === 'done' && previewSrc && (
+          <p className="text-xs text-slate-500">Click or drag to replace</p>
+        )}
+
         {uploadState === 'uploading' && (
-          <div className="w-full max-w-[220px]">
+          <div className="w-full max-w-[240px]">
             <p className="text-sm font-medium text-slate-300 mb-3">Uploading…</p>
-            <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+            {/* Progress bar */}
+            <div className="h-2.5 w-full rounded-full bg-white/10 overflow-hidden">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-[width] duration-200 ease-linear"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-xs text-slate-400 mt-1.5">{progress}%</p>
+            <p className="text-xs font-medium text-emerald-400 mt-2">{progress}%</p>
           </div>
-        )}
-
-        {uploadState === 'done' && (
-          <>
-            <p className="text-sm font-medium text-emerald-400">✓ Logo uploaded</p>
-            <p className="text-xs text-slate-500 mt-1">Click to replace</p>
-          </>
         )}
 
         {uploadState === 'error' && (
