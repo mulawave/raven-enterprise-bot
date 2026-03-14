@@ -6,6 +6,10 @@ export function createUploadsAuthMiddleware(jwtSecret: string) {
     const relativePath = req.path.replace(/^\/+/, '')
 
     if (relativePath.startsWith('settings/') || relativePath.startsWith('logos/')) {
+      // Public paths — allow any origin to load these assets (helmet sets
+      // Cross-Origin-Resource-Policy: same-origin globally, which blocks
+      // cross-origin <img> loads from app.raven-ai.online → api.raven-ai.online)
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')
       return next()
     }
 
