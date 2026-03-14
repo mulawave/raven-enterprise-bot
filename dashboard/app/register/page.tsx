@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ReCAPTCHA from 'react-google-recaptcha'
@@ -8,7 +8,6 @@ import { API_BASE_URL } from '@/lib/constants'
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
-const RECAPTCHA_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? ''
 
 function getPasswordCriteria(pw: string) {
   return [
@@ -144,7 +143,15 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [recaptchaKey, setRecaptchaKey] = useState<string | null>(null)
   const recaptchaRef = useRef<ReCAPTCHA>(null)
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/config/public`)
+      .then(r => r.json())
+      .then((d: Record<string, string | null>) => { if (d.RECAPTCHA_SITE_KEY) setRecaptchaKey(d.RECAPTCHA_SITE_KEY) })
+      .catch(() => { /* captcha stays disabled */ })
+  }, [])
 
   // Email status
   const [emailStatus, setEmailStatus] = useState<EmailStatus>('idle')
@@ -203,7 +210,7 @@ export default function RegisterPage() {
     emailStatus === 'available' &&
     allCriteriaMet &&
     passwordsMatch &&
-    (!RECAPTCHA_KEY || captchaToken !== null)
+    (!recaptchaKey || captchaToken !== null)
 
   function handleNextStep(e: React.FormEvent) {
     e.preventDefault()
@@ -486,11 +493,11 @@ export default function RegisterPage() {
                 Required fields must not be left empty
               </p>
 
-              {RECAPTCHA_KEY && (
+              {recaptchaKey && (
                 <div className="flex flex-col items-center gap-2">
                   <ReCAPTCHA
                     ref={recaptchaRef}
-                    sitekey={RECAPTCHA_KEY}
+                    sitekey={recaptchaKey}
                     theme="dark"
                     onChange={token => setCaptchaToken(token)}
                     onExpired={() => setCaptchaToken(null)}

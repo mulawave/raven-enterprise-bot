@@ -18,6 +18,7 @@ import { HealthController } from './health.controller'
 import { ReadinessController } from './readiness.controller'
 import { OrderingController } from './ordering.controller'
 import { BookingController } from './booking.controller'
+import { PublicConfigController } from './public-config.controller'
 
 // ── Middleware ─────────────────────────────────────────────────────────────
 import { LoggingMiddleware } from './logging.middleware'
@@ -42,6 +43,7 @@ import { BranchResolverMiddleware } from '../../../libs/tenant/branch.middleware
     ReadinessController,
     OrderingController,
     BookingController,
+    PublicConfigController,
   ],
 })
 export class AppModule implements NestModule {
@@ -52,7 +54,7 @@ export class AppModule implements NestModule {
     // Tenant JWT resolution — exclude public routes
     consumer
       .apply(TenantMiddleware)
-      .exclude('/health', '/readiness', '/admin/auth/login', '/admin/auth/refresh', '/api/auth/login', '/webhooks/(.*)')
+      .exclude('/health', '/readiness', '/admin/auth/login', '/admin/auth/refresh', '/api/auth/login', '/api/config/public', '/webhooks/(.*)')
       .forRoutes('*')
 
     // Branch context — only needed for routes that scope to a branch

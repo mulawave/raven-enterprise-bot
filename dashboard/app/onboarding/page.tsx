@@ -7,8 +7,6 @@ import { api } from '@/lib/api'
 import { API_BASE_URL } from '@/lib/constants'
 import ReCAPTCHA from 'react-google-recaptcha'
 
-const RECAPTCHA_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? ''
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type OnboardingStep = 'welcome' | 'profile' | 'whatsapp' | 'done'
@@ -295,7 +293,15 @@ export default function OnboardingPage() {
   const [openHelp, setOpenHelp] = useState<Record<string, boolean>>({})
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [recaptchaKey, setRecaptchaKey] = useState<string | null>(null)
   const recaptchaRef = useRef<ReCAPTCHA>(null)
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/config/public`)
+      .then(r => r.json())
+      .then((d: Record<string, string | null>) => { if (d.RECAPTCHA_SITE_KEY) setRecaptchaKey(d.RECAPTCHA_SITE_KEY) })
+      .catch(() => { /* captcha stays disabled */ })
+  }, [])
 
   // Redirect to overview if already completed onboarding
   useEffect(() => {
@@ -735,11 +741,11 @@ export default function OnboardingPage() {
                 Required fields must not be left empty
               </p>
 
-              {RECAPTCHA_KEY && (
+              {recaptchaKey && (
                 <div className="flex flex-col items-center gap-2">
                   <ReCAPTCHA
                     ref={recaptchaRef}
-                    sitekey={RECAPTCHA_KEY}
+                    sitekey={recaptchaKey}
                     theme="dark"
                     onChange={token => setCaptchaToken(token)}
                     onExpired={() => setCaptchaToken(null)}
@@ -766,7 +772,7 @@ export default function OnboardingPage() {
                     !whatsapp.metaWebhookVerifyToken.trim() ||
                     !whatsapp.metaAccessToken.trim() ||
                     !whatsapp.metaPhoneNumberId.trim() ||
-                    (!!RECAPTCHA_KEY && !captchaToken)
+                    (!!recaptchaKey && !captchaToken)
                   }
                   className="flex-[2] rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 font-semibold text-white transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
