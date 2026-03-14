@@ -3,10 +3,12 @@
 import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import ReCAPTCHA from 'react-google-recaptcha'
 import { API_BASE_URL } from '@/lib/constants'
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const RECAPTCHA_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? ''
 
 function getPasswordCriteria(pw: string) {
   return [
@@ -141,6 +143,8 @@ export default function RegisterPage() {
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const recaptchaRef = useRef<ReCAPTCHA>(null)
 
   // Email status
   const [emailStatus, setEmailStatus] = useState<EmailStatus>('idle')
@@ -198,7 +202,8 @@ export default function RegisterPage() {
     EMAIL_RE.test(email.trim()) &&
     emailStatus === 'available' &&
     allCriteriaMet &&
-    passwordsMatch
+    passwordsMatch &&
+    (!RECAPTCHA_KEY || captchaToken !== null)
 
   function handleNextStep(e: React.FormEvent) {
     e.preventDefault()
@@ -271,7 +276,7 @@ export default function RegisterPage() {
 
               {/* Full name */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Full name</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Full name <span className="text-red-400">*</span></label>
                 <input
                   type="text"
                   autoComplete="name"
@@ -284,7 +289,7 @@ export default function RegisterPage() {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Email address</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Email address <span className="text-red-400">*</span></label>
                 <div className="relative">
                   <input
                     type="email"
@@ -347,7 +352,7 @@ export default function RegisterPage() {
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Password <span className="text-red-400">*</span></label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -420,7 +425,7 @@ export default function RegisterPage() {
 
               {/* Confirm password */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Confirm password</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Confirm password <span className="text-red-400">*</span></label>
                 <div className="relative">
                   <input
                     type={showConfirm ? 'text' : 'password'}
@@ -475,6 +480,26 @@ export default function RegisterPage() {
                   </p>
                 )}
               </div>
+
+              <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span className="text-red-400 font-bold">*</span>
+                Required fields must not be left empty
+              </p>
+
+              {RECAPTCHA_KEY && (
+                <div className="flex flex-col items-center gap-2">
+                  <ReCAPTCHA
+                    ref={recaptchaRef}
+                    sitekey={RECAPTCHA_KEY}
+                    theme="dark"
+                    onChange={token => setCaptchaToken(token)}
+                    onExpired={() => setCaptchaToken(null)}
+                  />
+                  {!captchaToken && (
+                    <p className="text-xs text-slate-500">Please complete the verification above to continue</p>
+                  )}
+                </div>
+              )}
 
               {error && (
                 <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">{error}</p>
@@ -563,7 +588,7 @@ export default function RegisterPage() {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => { setStep('account'); setError(null) }}
+                  onClick={() => { setStep('account'); setError(null); setCaptchaToken(null); recaptchaRef.current?.reset() }}
                   disabled={isLoading}
                   className="flex-1 rounded-xl border border-white/10 bg-white/5 px-6 py-3 font-semibold text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
                 >

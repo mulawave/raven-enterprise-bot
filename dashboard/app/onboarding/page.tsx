@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { api } from '@/lib/api'
 import { API_BASE_URL } from '@/lib/constants'
+import ReCAPTCHA from 'react-google-recaptcha'
+
+const RECAPTCHA_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? ''
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -289,6 +292,11 @@ export default function OnboardingPage() {
     openaiApiKey: '',
   })
 
+  const [openHelp, setOpenHelp] = useState<Record<string, boolean>>({})
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const recaptchaRef = useRef<ReCAPTCHA>(null)
+
   // Redirect to overview if already completed onboarding
   useEffect(() => {
     if (!session) {
@@ -533,6 +541,11 @@ export default function OnboardingPage() {
                 </div>
               </fieldset>
 
+              <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span className="text-red-400 font-bold">*</span>
+                Required fields must not be left empty
+              </p>
+
               {error && (
                 <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">{error}</p>
               )}
@@ -582,11 +595,57 @@ export default function OnboardingPage() {
                 </div>
 
                 {[
-                  { key: 'metaAppSecret', label: 'App Secret', hint: 'App Settings → Basic', placeholder: 'abc123…' },
-                  { key: 'metaWebhookVerifyToken', label: 'Webhook Verify Token', hint: 'Any string you choose — set the same in Meta dashboard', placeholder: 'raven-verify-abc' },
-                  { key: 'metaAccessToken', label: 'Access Token (permanent)', hint: 'System User → Generate token', placeholder: 'EAABwz…' },
-                  { key: 'metaPhoneNumberId', label: 'Phone Number ID', hint: 'WhatsApp → API Setup', placeholder: '1234567890' },
-                ].map(({ key, label, hint, placeholder }) => (
+                  {
+                    key: 'metaAppSecret',
+                    label: 'App Secret',
+                    placeholder: 'abc123…',
+                    helpTitle: 'How to find your App Secret',
+                    helpSteps: [
+                      'Go to developers.facebook.com and open your app.',
+                      'In the left sidebar click App Settings → Basic.',
+                      'Click Show next to “App Secret” and copy the value.',
+                      'This lets Raven verify that webhook calls genuinely come from Meta.',
+                    ],
+                  },
+                  {
+                    key: 'metaWebhookVerifyToken',
+                    label: 'Webhook Verify Token',
+                    placeholder: 'raven-verify-abc',
+                    helpTitle: 'About the Webhook Verify Token',
+                    helpSteps: [
+                      "We've pre-filled a unique token for you — you can use it as-is.",
+                      'In Meta for Developers go to your app → WhatsApp → Configuration → Webhook.',
+                      'In the “Verify token” field enter this exact same value, then click Verify & Save.',
+                      'This proves to Meta that you own the server receiving messages.',
+                    ],
+                  },
+                  {
+                    key: 'metaAccessToken',
+                    label: 'Access Token (permanent)',
+                    placeholder: 'EAABwz…',
+                    helpTitle: 'How to get a permanent Access Token',
+                    helpSteps: [
+                      'In Meta for Developers open your app.',
+                      'Go to Business Settings → Users → System Users.',
+                      'Create or select a System User, then click Generate New Token.',
+                      'Select your app and enable whatsapp_business_messaging and whatsapp_business_management permissions.',
+                      'Click Generate Token and copy it immediately — it will not be shown again.',
+                      'Use a System User token (not a personal token) so it never expires.',
+                    ],
+                  },
+                  {
+                    key: 'metaPhoneNumberId',
+                    label: 'Phone Number ID',
+                    placeholder: '1234567890',
+                    helpTitle: 'How to find your Phone Number ID',
+                    helpSteps: [
+                      'In Meta for Developers go to your app → WhatsApp → API Setup.',
+                      'Under the “From” dropdown (Step 1) select your WhatsApp business number.',
+                      'The Phone Number ID is the long numeric code shown just below the phone number.',
+                      'Copy that numeric code — that is what goes here.',
+                    ],
+                  },
+                ].map(({ key, label, placeholder, helpTitle, helpSteps }) => (
                   <div key={key}>
                     <label className="block text-sm font-medium text-slate-300 mb-1">
                       {label} <span className="text-red-400">*</span>
@@ -598,7 +657,30 @@ export default function OnboardingPage() {
                       className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white font-mono text-sm placeholder-slate-600 focus:border-emerald-500/50 focus:outline-none"
                       placeholder={placeholder}
                     />
-                    <p className="text-xs text-slate-500 mt-1">{hint}</p>
+                    <button
+                      type="button"
+                      onClick={() => setOpenHelp(prev => ({ ...prev, [key]: !prev[key] }))}
+                      className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-400 transition-colors"
+                    >
+                      <svg
+                        className={`h-3 w-3 shrink-0 transition-transform duration-200 ${openHelp[key] ? 'rotate-90' : ''}`}
+                        viewBox="0 0 12 12"
+                        fill="none"
+                      >
+                        <path d="M4.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      How to get this
+                    </button>
+                    {openHelp[key] && (
+                      <div className="mt-2 rounded-xl border border-white/10 bg-slate-800/50 px-4 py-3 text-xs">
+                        <p className="font-semibold text-slate-100 mb-2">{helpTitle}</p>
+                        <ol className="list-decimal list-inside space-y-1.5 text-slate-300">
+                          {helpSteps.map((s, i) => (
+                            <li key={i} className="leading-relaxed">{s}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
                   </div>
                 ))}
               </fieldset>
@@ -609,7 +691,9 @@ export default function OnboardingPage() {
                   AI (optional but recommended)
                 </legend>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">OpenAI API Key</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                    OpenAI API Key <span className="text-slate-500 text-xs">(optional)</span>
+                  </label>
                   <input
                     type="text"
                     value={whatsapp.openaiApiKey}
@@ -617,11 +701,54 @@ export default function OnboardingPage() {
                     className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white font-mono text-sm placeholder-slate-600 focus:border-emerald-500/50 focus:outline-none"
                     placeholder="sk-…"
                   />
-                  <p className="text-xs text-slate-500 mt-1">
-                    Without this the bot responds with rule-based replies only. You can add it later.
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setOpenHelp(prev => ({ ...prev, openaiApiKey: !prev['openaiApiKey'] }))}
+                    className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-400 transition-colors"
+                  >
+                    <svg
+                      className={`h-3 w-3 shrink-0 transition-transform duration-200 ${openHelp['openaiApiKey'] ? 'rotate-90' : ''}`}
+                      viewBox="0 0 12 12"
+                      fill="none"
+                    >
+                      <path d="M4.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    How to get this
+                  </button>
+                  {openHelp['openaiApiKey'] && (
+                    <div className="mt-2 rounded-xl border border-white/10 bg-slate-800/50 px-4 py-3 text-xs">
+                      <p className="font-semibold text-slate-100 mb-2">How to get an OpenAI API key</p>
+                      <ol className="list-decimal list-inside space-y-1.5 text-slate-300">
+                        <li className="leading-relaxed">Go to platform.openai.com and sign in (or create a free account).</li>
+                        <li className="leading-relaxed">Click your profile icon in the top-right corner, then select API keys.</li>
+                        <li className="leading-relaxed">Click Create new secret key, give it a name, and click Create.</li>
+                        <li className="leading-relaxed">Copy the key immediately — it starts with sk- and cannot be viewed again after closing the dialogue.</li>
+                        <li className="leading-relaxed">Without this key the bot uses rule-based replies only. You can add or update it later from your dashboard settings.</li>
+                      </ol>
+                    </div>
+                  )}
                 </div>
               </fieldset>
+
+              <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span className="text-red-400 font-bold">*</span>
+                Required fields must not be left empty
+              </p>
+
+              {RECAPTCHA_KEY && (
+                <div className="flex flex-col items-center gap-2">
+                  <ReCAPTCHA
+                    ref={recaptchaRef}
+                    sitekey={RECAPTCHA_KEY}
+                    theme="dark"
+                    onChange={token => setCaptchaToken(token)}
+                    onExpired={() => setCaptchaToken(null)}
+                  />
+                  {!captchaToken && (
+                    <p className="text-xs text-slate-500">Please complete the verification above to continue</p>
+                  )}
+                </div>
+              )}
 
               {error && (
                 <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">{error}</p>
@@ -633,8 +760,15 @@ export default function OnboardingPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSaving}
-                  className="flex-[2] rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 font-semibold text-white transition disabled:opacity-60"
+                  disabled={
+                    isSaving ||
+                    !whatsapp.metaAppSecret.trim() ||
+                    !whatsapp.metaWebhookVerifyToken.trim() ||
+                    !whatsapp.metaAccessToken.trim() ||
+                    !whatsapp.metaPhoneNumberId.trim() ||
+                    (!!RECAPTCHA_KEY && !captchaToken)
+                  }
+                  className="flex-[2] rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 font-semibold text-white transition disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isSaving ? 'Saving…' : 'Finish setup →'}
                 </button>
@@ -675,9 +809,31 @@ export default function OnboardingPage() {
               ))}
             </div>
 
+            <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-4 text-left mb-6">
+              <input
+                id="terms-accept"
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={e => setTermsAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-emerald-500"
+              />
+              <label htmlFor="terms-accept" className="text-sm text-slate-300 cursor-pointer leading-relaxed">
+                I accept the{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
+                  Terms &amp; Conditions
+                </a>{' '}
+                and{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
+                  Privacy Policy
+                </a>
+                . I understand that the Raven AI assistant will process messages sent by my customers.
+              </label>
+            </div>
+
             <button
-              onClick={() => router.replace('/overview')}
-              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-8 py-3 font-semibold text-white transition hover:from-emerald-400 hover:to-teal-400"
+              onClick={() => { if (termsAccepted) router.replace('/overview') }}
+              disabled={!termsAccepted}
+              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-8 py-3 font-semibold text-white transition hover:from-emerald-400 hover:to-teal-400 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Go to dashboard →
             </button>
