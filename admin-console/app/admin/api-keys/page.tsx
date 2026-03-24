@@ -33,28 +33,28 @@ const GROUP_META: Record<string, {
     icon: MessageSquare,
     description: 'App Secret, Webhook Verify Token, permanent Access Token, and Phone Number ID from the Meta Business platform.',
     accent: 'border-emerald-500/40',
-    badge: 'bg-emerald-500/15 text-emerald-300',
+    badge: 'bg-emerald-50 text-emerald-700',
   },
   ai: {
     label: 'AI / OpenAI',
     icon: Brain,
     description: 'OpenAI API key used by the AI assistant for automated WhatsApp responses.',
     accent: 'border-violet-500/40',
-    badge: 'bg-violet-500/15 text-violet-300',
+    badge: 'bg-violet-50 text-violet-700',
   },
   security: {
     label: 'Security',
     icon: Shield,
     description: 'CAPTCHA and other security keys that protect public-facing forms from bots.',
     accent: 'border-blue-500/40',
-    badge: 'bg-blue-500/15 text-blue-300',
+    badge: 'bg-blue-50 text-blue-700',
   },
   firebase: {
     label: 'Firebase / Push Notifications',
     icon: Bell,
     description: 'Firebase project credentials for FCM push notifications. Client config values are public by design — only the Service Account JSON is secret.',
     accent: 'border-orange-500/40',
-    badge: 'bg-orange-500/15 text-orange-300',
+    badge: 'bg-orange-50 text-orange-700',
   },
 }
 
@@ -94,24 +94,24 @@ function KeyRow({ item, onSaved }: { item: ConfigKey; onSaved: (updated: ConfigK
   }
 
   return (
-    <div className="py-3.5 border-b border-slate-700/40 last:border-0">
+    <div className="py-3.5 border-b border-slate-200 last:border-0">
       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-        <code className="text-xs font-mono text-sky-300 bg-sky-950/60 px-2 py-0.5 rounded border border-sky-800/40">
+        <code className="text-xs font-mono text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
           {item.key}
         </code>
         {item.is_secret && (
-          <span className="text-[10px] text-amber-400 bg-amber-900/20 px-1.5 py-0.5 rounded border border-amber-700/30">
+          <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
             secret
           </span>
         )}
         {item.has_value && (
-          <span className="text-[10px] text-emerald-400 bg-emerald-900/20 px-1.5 py-0.5 rounded border border-emerald-700/30 inline-flex items-center gap-1">
+          <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1">
             <Check className="h-2.5 w-2.5" /> saved
           </span>
         )}
       </div>
       {item.description && (
-        <p className="text-xs text-slate-400 mb-2 leading-relaxed">{item.description}</p>
+        <p className="text-xs text-slate-500 mb-2 leading-relaxed">{item.description}</p>
       )}
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -120,13 +120,13 @@ function KeyRow({ item, onSaved }: { item: ConfigKey; onSaved: (updated: ConfigK
             value={value}
             onChange={(e) => handleChange(e.target.value)}
             placeholder={`Enter ${item.key}`}
-            className="w-full px-3 py-2 bg-slate-900/80 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-600 focus:border-sky-500 focus:ring-1 focus:ring-sky-500/40 outline-none font-mono pr-10 transition-colors"
+            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-500/40 outline-none font-mono pr-10 transition-colors"
           />
           {item.is_secret && (
             <button
               type="button"
               onClick={() => setShow((s) => !s)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 transition-colors"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
             >
               {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -162,20 +162,20 @@ function GroupCard({
   onKeyUpdated: (key: string, updated: ConfigKey) => void
   isLoading: boolean
 }) {
-  const meta = GROUP_META[groupKey] ?? { label: groupKey, icon: Key, description: '', accent: 'border-slate-600/40', badge: 'bg-slate-700 text-slate-300' }
+  const meta = GROUP_META[groupKey] ?? { label: groupKey, icon: Key, description: '', accent: 'border-slate-300', badge: 'bg-slate-100 text-slate-600' }
   const Icon = meta.icon
   const setCount = items.filter((i) => i.has_value).length
 
   return (
-    <div className={`rounded-2xl border bg-slate-800/60 backdrop-blur-sm ${meta.accent} flex flex-col`}>
-      <div className="flex items-start justify-between p-5 border-b border-slate-700/50">
+    <div className={`rounded-2xl border bg-white shadow-sm ${meta.accent} flex flex-col`}>
+      <div className="flex items-start justify-between p-5 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-slate-700/60">
-            <Icon className="h-5 w-5 text-slate-200" />
+          <div className="p-2.5 rounded-xl bg-slate-100">
+            <Icon className="h-5 w-5 text-slate-600" />
           </div>
           <div>
-            <h3 className="font-semibold text-white leading-tight">{meta.label}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">{meta.description}</p>
+            <h3 className="font-semibold text-slate-900 leading-tight">{meta.label}</h3>
+            <p className="text-xs text-slate-500 mt-0.5">{meta.description}</p>
           </div>
         </div>
         <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ml-4 ${meta.badge}`}>
@@ -185,9 +185,9 @@ function GroupCard({
       <div className="p-5 flex-1">
         {isLoading
           ? Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="py-3.5 border-b border-slate-700/40 last:border-0 space-y-2">
-                <div className="h-5 w-40 bg-slate-700/60 rounded animate-pulse" />
-                <div className="h-9 w-full bg-slate-700/40 rounded-lg animate-pulse" />
+              <div key={i} className="py-3.5 border-b border-slate-200 last:border-0 space-y-2">
+                <div className="h-5 w-40 bg-slate-200 rounded animate-pulse" />
+                <div className="h-9 w-full bg-slate-100 rounded-lg animate-pulse" />
               </div>
             ))
           : items.map((item) => (
@@ -231,8 +231,8 @@ export default function ApiKeysPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">API Keys</h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <h1 className="text-3xl font-bold text-slate-900">API Keys</h1>
+          <p className="text-sm text-slate-500 mt-1">
             Integration credentials for WhatsApp / Meta, OpenAI and Firebase push notifications.
           </p>
         </div>
@@ -242,20 +242,20 @@ export default function ApiKeysPage() {
       </div>
 
       {fetchError && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-900/40 border border-red-600/50 text-sm text-red-300">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <div>
             <p className="font-medium">Failed to load configuration</p>
-            <p className="text-red-400/80 mt-0.5">{fetchError}</p>
+            <p className="text-red-600 mt-0.5">{fetchError}</p>
           </div>
         </div>
       )}
 
-      <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-sky-900/20 border border-sky-700/30 text-sm text-sky-300">
+      <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-sky-50 border border-sky-200 text-sm text-sky-700">
         <Info className="h-4 w-4 shrink-0 mt-0.5" />
         <p>
-          Payment gateway keys live in <a href="/admin/payment-config" className="underline hover:text-white">Payment Config</a>.
-          SMTP and email templates live in <a href="/admin/email-config" className="underline hover:text-white">Email Config</a>.
+          Payment gateway keys live in <a href="/admin/payment-config" className="underline font-medium hover:text-sky-900">Payment Config</a>.
+          SMTP and email templates live in <a href="/admin/email-config" className="underline font-medium hover:text-sky-900">Email Config</a>.
         </p>
       </div>
 
@@ -270,31 +270,31 @@ export default function ApiKeysPage() {
           />
         ))}
 
-        <div className="rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 space-y-4">
-          <h3 className="font-semibold text-white flex items-center gap-2">
-            <Info className="h-4 w-4 text-sky-400" />Quick Reference
+        <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 space-y-4">
+          <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+            <Info className="h-4 w-4 text-sky-500" />Quick Reference
           </h3>
-          <div className="space-y-3 text-xs text-slate-400">
-            <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-700/40 space-y-1">
-              <p className="text-slate-200 font-medium">WhatsApp / Meta</p>
+          <div className="space-y-3 text-xs text-slate-500">
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+              <p className="text-slate-700 font-medium">WhatsApp / Meta</p>
               <p>Find these in your Meta for Developers dashboard under the WhatsApp product.</p>
               <ul className="list-disc list-inside space-y-0.5 mt-1">
-                <li><code className="font-mono text-sky-300">META_APP_SECRET</code> - App Settings - Basic</li>
-                <li><code className="font-mono text-sky-300">META_ACCESS_TOKEN</code> - WhatsApp API Setup, permanent token</li>
-                <li><code className="font-mono text-sky-300">META_PHONE_NUMBER_ID</code> - WhatsApp API Setup</li>
-                <li><code className="font-mono text-sky-300">META_WEBHOOK_VERIFY_TOKEN</code> - any string you choose</li>
+                <li><code className="font-mono text-sky-700">META_APP_SECRET</code> - App Settings - Basic</li>
+                <li><code className="font-mono text-sky-700">META_ACCESS_TOKEN</code> - WhatsApp API Setup, permanent token</li>
+                <li><code className="font-mono text-sky-700">META_PHONE_NUMBER_ID</code> - WhatsApp API Setup</li>
+                <li><code className="font-mono text-sky-700">META_WEBHOOK_VERIFY_TOKEN</code> - any string you choose</li>
               </ul>
             </div>
-            <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-700/40 space-y-1">
-              <p className="text-slate-200 font-medium">OpenAI</p>
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+              <p className="text-slate-700 font-medium">OpenAI</p>
               <p>Create an API key at platform.openai.com/api-keys. Used for AI-assisted WhatsApp responses.</p>
             </div>
-            <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-700/40 space-y-1">
-              <p className="text-slate-200 font-medium">Firebase / Push Notifications</p>
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+              <p className="text-slate-700 font-medium">Firebase / Push Notifications</p>
               <p>Create a project at console.firebase.google.com. Client config is in <em>Project Settings → General → Your apps</em>. VAPID key is in <em>Cloud Messaging → Web Push certificates</em>. Service Account JSON is in <em>Project Settings → Service Accounts → Generate new private key</em>.</p>
             </div>
-            <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-700/40">
-              <p className="text-amber-400 font-medium">Important</p>
+            <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+              <p className="text-amber-600 font-medium">Important</p>
               <ul className="list-disc list-inside space-y-0.5 mt-1">
                 <li>Changes take effect within 60 seconds (config cache refresh).</li>
                 <li>Infrastructure secrets (DATABASE_URL, JWT_SECRET) live in .env only.</li>

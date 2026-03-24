@@ -154,13 +154,13 @@ export class NotificationController {
       tenantFilter = {}
     } else if (body.segment?.startsWith('plan:')) {
       const plan = body.segment.replace('plan:', '')
-      tenantFilter = { plan }
+      tenantFilter = { subscription: { plan_tier: plan } }
     } else if (body.tenantIds?.length) {
       tenantFilter = { id: { in: body.tenantIds } }
     }
 
     const tenants = await this.prisma.tenant.findMany({
-      where: { ...tenantFilter, status: 'active' },
+      where: { ...tenantFilter, suspended: false },
       select: { id: true },
     })
     const tenantIds = tenants.map((t) => t.id)

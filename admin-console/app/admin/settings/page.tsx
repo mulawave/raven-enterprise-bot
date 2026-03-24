@@ -107,36 +107,36 @@ export default function SettingsPage() {
     }
   }
 
-  const S = 'animate-pulse bg-slate-700/60 rounded'
+  const S = 'animate-pulse bg-slate-200 rounded'
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">App Settings</h1>
-        <p className="text-sm text-slate-400 mt-1">Configure your platform branding and company information.</p>
+        <h1 className="text-3xl font-bold text-slate-900">App Settings</h1>
+        <p className="text-sm text-slate-500 mt-1">Configure your platform branding and company information.</p>
       </div>
 
       {fetchError && (
-        <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-red-900/40 border border-red-600/50 text-sm text-red-300">
+        <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
           <AlertCircle className="h-5 w-5 mt-0.5 shrink-0" />
           <div>
             <p className="font-medium">Could not load settings</p>
-            <p className="text-red-400 mt-0.5">{fetchError}</p>
-            <button onClick={fetchSettings} className="mt-2 text-xs text-red-200 underline hover:text-white">Retry</button>
+            <p className="text-red-600 mt-0.5">{fetchError}</p>
+            <button onClick={fetchSettings} className="mt-2 text-xs text-red-500 underline hover:text-red-700">Retry</button>
           </div>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* LEFT COL: Company info form */}
-        <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-6 space-y-5">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-indigo-400" />Company Information
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-5">
+          <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-indigo-500" />Company Information
           </h2>
 
           {/* Company Name */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
               {isLoading ? <div className={`${S} h-4 w-32`} /> : 'Company Name'}
             </label>
             {isLoading ? <div className={`${S} h-10 w-full`} /> : (
@@ -144,7 +144,7 @@ export default function SettingsPage() {
                 type="text"
                 value={draft.company_name ?? ''}
                 onChange={(e) => setDraft({ ...draft, company_name: e.target.value })}
-                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 outline-none transition-colors"
+                className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 outline-none transition-colors"
                 placeholder="Enter company name"
               />
             )}
@@ -152,7 +152,7 @@ export default function SettingsPage() {
 
           {/* Company Address */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
               {isLoading ? <div className={`${S} h-4 w-36`} /> : 'Company Address'}
             </label>
             {isLoading ? <div className={`${S} h-24 w-full`} /> : (
@@ -160,7 +160,7 @@ export default function SettingsPage() {
                 value={draft.company_address ?? ''}
                 onChange={(e) => setDraft({ ...draft, company_address: e.target.value })}
                 rows={3}
-                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 outline-none resize-none transition-colors"
+                className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 outline-none resize-none transition-colors"
                 placeholder="Enter company address"
               />
             )}
@@ -169,7 +169,7 @@ export default function SettingsPage() {
           {/* Email + Phone row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5 text-slate-400" />
                 {isLoading ? <div className={`${S} h-4 w-28 inline-block`} /> : 'Company Email'}
               </label>
@@ -178,13 +178,13 @@ export default function SettingsPage() {
                   type="email"
                   value={draft.company_email ?? ''}
                   onChange={(e) => setDraft({ ...draft, company_email: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 outline-none transition-colors text-sm"
+                  className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 outline-none transition-colors text-sm"
                   placeholder="contact@company.com"
                 />
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <Phone className="h-3.5 w-3.5 text-slate-400" />
                 {isLoading ? <div className={`${S} h-4 w-28 inline-block`} /> : 'Company Phone'}
               </label>
@@ -193,7 +193,7 @@ export default function SettingsPage() {
                   type="tel"
                   value={draft.company_phone ?? ''}
                   onChange={(e) => setDraft({ ...draft, company_phone: e.target.value })}
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 outline-none transition-colors text-sm"
+                  className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/40 outline-none transition-colors text-sm"
                   placeholder="+234 800 000 0000"
                 />
               )}
@@ -201,12 +201,12 @@ export default function SettingsPage() {
           </div>
 
           {saveError && (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-red-900/40 border border-red-600/50 text-sm text-red-300">
+            <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
               <AlertCircle className="h-4 w-4 shrink-0" />{saveError}
             </div>
           )}
           {saveSuccess && (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-green-900/40 border border-green-600/50 text-sm text-green-300">
+            <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-700">
               <CheckCircle2 className="h-4 w-4 shrink-0" />Settings saved successfully
             </div>
           )}
@@ -219,17 +219,17 @@ export default function SettingsPage() {
         {/* RIGHT COL: Branding */}
         <div className="space-y-5">
           {/* App Logo card */}
-          <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <ImageIcon className="h-5 w-5 text-indigo-400" />App Logo
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <ImageIcon className="h-5 w-5 text-indigo-500" />App Logo
             </h2>
-            <p className="text-xs text-slate-400">Displayed in the admin sidebar and tenant-facing pages. Recommended: 200x60px PNG/SVG.</p>
+            <p className="text-xs text-slate-500">Displayed in the admin sidebar and tenant-facing pages. Recommended: 200x60px PNG/SVG.</p>
 
             {isLoading ? (
               <div className={`${S} h-36 w-full rounded-xl`} />
             ) : settings?.logo_url && showLogoPreview ? (
               <div className="space-y-3">
-                <div className="bg-slate-900 rounded-xl border border-slate-700 p-4 flex items-center justify-center min-h-[100px]">
+                <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 flex items-center justify-center min-h-[100px]">
                   <NextImage
                     src={`${API_BASE_URL}${settings.logo_url}`}
                     alt="App logo"
@@ -260,17 +260,17 @@ export default function SettingsPage() {
           </div>
 
           {/* Favicon card */}
-          <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Globe className="h-5 w-5 text-indigo-400" />Favicon
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <Globe className="h-5 w-5 text-indigo-500" />Favicon
             </h2>
-            <p className="text-xs text-slate-400">Browser tab icon. Recommended: 32x32px or 64x64px ICO/PNG/SVG.</p>
+            <p className="text-xs text-slate-500">Browser tab icon. Recommended: 32x32px or 64x64px ICO/PNG/SVG.</p>
 
             {isLoading ? (
               <div className={`${S} h-36 w-full rounded-xl`} />
             ) : settings?.favicon_url && showFaviconPreview ? (
               <div className="space-y-3">
-                <div className="bg-slate-900 rounded-xl border border-slate-700 p-4 flex items-center justify-center min-h-[80px]">
+                <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 flex items-center justify-center min-h-[80px]">
                   <NextImage
                     src={`${API_BASE_URL}${settings.favicon_url}`}
                     alt="Favicon"
@@ -301,11 +301,11 @@ export default function SettingsPage() {
           </div>
 
           {/* Branding tip */}
-          <div className="rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5">
-            <h3 className="text-sm font-medium text-white flex items-center gap-2 mb-2">
-              <Star className="h-4 w-4 text-amber-400" />Branding Tips
+          <div className="rounded-2xl border border-slate-200 bg-white/80 p-5">
+            <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2 mb-2">
+              <Star className="h-4 w-4 text-amber-500" />Branding Tips
             </h3>
-            <ul className="text-xs text-slate-400 space-y-1.5 list-disc list-inside">
+            <ul className="text-xs text-slate-500 space-y-1.5 list-disc list-inside">
               <li>Logo: transparent background PNG or SVG works best on dark themes.</li>
               <li>Favicon: use a simple icon or initial — it renders tiny in browser tabs.</li>
               <li>After uploading, do a hard-refresh (Ctrl+Shift+R) to clear the browser cache.</li>
@@ -315,15 +315,15 @@ export default function SettingsPage() {
       </div>
 
       {/* ── Platform Config ── */}
-      <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-6">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
-          <Settings className="h-5 w-5 text-indigo-400" />Platform Config
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+        <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2 mb-4">
+          <Settings className="h-5 w-5 text-indigo-500" />Platform Config
         </h2>
 
         <div className="flex items-start justify-between gap-6">
           <div>
-            <p className="text-sm font-medium text-slate-200">Require backup before platform reset</p>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-sm font-medium text-slate-700">Require backup before platform reset</p>
+            <p className="text-xs text-slate-500 mt-0.5">
               When enabled, super admins must download a platform backup before the reset button is available.
               Disable to allow reset at any time.
             </p>
@@ -343,7 +343,7 @@ export default function SettingsPage() {
               aria-checked={requireBackup}
               disabled={isSavingPlatformConfig}
               onClick={() => handlePlatformConfigToggle(!requireBackup)}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-white disabled:opacity-50 disabled:cursor-not-allowed ${
                 requireBackup ? 'bg-indigo-500' : 'bg-slate-600'
               }`}
             >

@@ -61,7 +61,7 @@ function mapStatus(s?: string): 'healthy' | 'degraded' | 'down' {
 }
 
 function Shimmer({ className }: { className?: string }) {
-  return <div className={`bg-slate-700/60 rounded animate-pulse ${className ?? ''}`} />
+  return <div className={`bg-slate-200 rounded animate-pulse ${className ?? ''}`} />
 }
 
 function MetricCard({
@@ -75,16 +75,16 @@ function MetricCard({
   href?: string
 }) {
   const inner = (
-    <div className={`bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col gap-3 hover:border-slate-500 transition-all ${href ? 'cursor-pointer hover:bg-slate-750' : ''}`}>
+    <div className={`bg-white border border-slate-200 rounded-2xl p-6 flex flex-col gap-3 shadow-sm hover:border-slate-300 hover:shadow-md transition-all ${href ? 'cursor-pointer' : ''}`}>
       <div className="flex items-center justify-between">
         <span className="text-2xl">{icon}</span>
         <span className={`h-2 w-2 rounded-full ${accent}`} />
       </div>
       <div>
-        <p className="text-sm text-slate-400 font-medium">{title}</p>
+        <p className="text-sm text-slate-500 font-medium">{title}</p>
         {loading
           ? <Shimmer className="h-8 w-28 mt-2" />
-          : <p className="text-3xl font-bold text-white mt-1">{value}</p>}
+          : <p className="text-3xl font-bold text-slate-900 mt-1">{value}</p>}
       </div>
     </div>
   )
@@ -147,26 +147,26 @@ export default function AdminOverviewPage() {
   }
 
   return (
-    <div className="space-y-8 p-6 bg-slate-900 min-h-screen text-white">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-4xl font-bold text-white tracking-tight">Overview</h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <h1 className="text-4xl font-bold text-slate-900 tracking-tight">Overview</h1>
+          <p className="text-slate-500 text-sm mt-1">
             {loadedAt ? `Updated ${loadedAt.toLocaleTimeString()}` : 'Loading…'}
           </p>
         </div>
         <div className="flex items-center gap-3">
           {!isLoading && health && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl">
-              <span className="text-sm text-slate-400">System</span>
+            <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm">
+              <span className="text-sm text-slate-500">System</span>
               <HealthBadge status={health.status} />
             </div>
           )}
           <button
             onClick={fetchData}
             disabled={isLoading}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-sm text-slate-200 rounded-xl transition-colors"
+            className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 disabled:opacity-50 text-sm text-slate-700 rounded-xl transition-colors shadow-sm"
           >
             {isLoading ? 'Refreshing…' : '↻ Refresh'}
           </button>
@@ -175,9 +175,9 @@ export default function AdminOverviewPage() {
 
       {/* Error notice — inline, non-blocking */}
       {error && (
-        <div className="bg-red-900/40 border border-red-700 rounded-xl px-4 py-3 text-red-300 text-sm flex items-center justify-between">
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={fetchData} className="text-red-400 hover:text-red-200 underline text-xs">Retry</button>
+          <button onClick={fetchData} className="text-red-600 hover:text-red-800 underline text-xs">Retry</button>
         </div>
       )}
 
@@ -226,10 +226,10 @@ export default function AdminOverviewPage() {
       {/* System Health + Quick Nav */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Component Health */}
-        <div className="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-6">
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-bold text-white">Component Health</h2>
-            <Link href={ROUTES.SYSTEM} className="text-xs text-blue-400 hover:text-blue-300">View details →</Link>
+            <h2 className="text-lg font-bold text-slate-900">Component Health</h2>
+            <Link href={ROUTES.SYSTEM} className="text-xs text-blue-600 hover:text-blue-700">View details →</Link>
           </div>
           <div className="grid grid-cols-2 gap-4">
             {[
@@ -238,10 +238,10 @@ export default function AdminOverviewPage() {
               { label: 'AI Engine', status: 'healthy' as const, icon: '🤖' },
               { label: 'WhatsApp', status: 'healthy' as const, icon: '📱' },
             ].map(({ label, status, icon }) => (
-              <div key={label} className="flex items-center justify-between bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-3">
+              <div key={label} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
                 <div className="flex items-center gap-3">
                   <span className="text-xl">{icon}</span>
-                  <span className="text-sm font-medium text-white">{label}</span>
+                  <span className="text-sm font-medium text-slate-700">{label}</span>
                 </div>
                 {isLoading || !status
                   ? <Shimmer className="h-5 w-14 rounded-full" />
@@ -252,8 +252,8 @@ export default function AdminOverviewPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
-          <h2 className="text-lg font-bold text-white mb-5">Quick Actions</h2>
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-900 mb-5">Quick Actions</h2>
           <div className="space-y-2">
             {[
               { label: 'View Tenants', href: ROUTES.TENANTS, icon: '🏢' },
@@ -265,11 +265,11 @@ export default function AdminOverviewPage() {
               <Link
                 key={href}
                 href={href}
-                className="flex items-center gap-3 px-4 py-3 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-slate-500 rounded-xl text-sm text-slate-200 hover:text-white transition-all group"
+                className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 rounded-xl text-sm text-slate-700 hover:text-slate-900 transition-all group"
               >
                 <span className="text-lg">{icon}</span>
                 <span className="font-medium">{label}</span>
-                <span className="ml-auto text-slate-500 group-hover:text-slate-300">→</span>
+                <span className="ml-auto text-slate-400 group-hover:text-slate-600">→</span>
               </Link>
             ))}
           </div>

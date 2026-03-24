@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ROUTES } from '@/lib/constants'
+import { ROUTES, API_BASE_URL } from '@/lib/constants'
 import { useState, useEffect } from 'react'
 
 const navItems = [
@@ -34,6 +34,28 @@ export default function AdminSidebar() {
   const router = useRouter()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [loadingRoute, setLoadingRoute] = useState<string | null>(null)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+
+  // Fetch platform logo from branding API
+  useEffect(() => {
+    async function fetchBranding() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/config/branding`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.logo_url) {
+          setLogoUrl(
+            data.logo_url.startsWith('http')
+              ? data.logo_url
+              : `${API_BASE_URL}${data.logo_url}`,
+          )
+        }
+      } catch {
+        // non-critical
+      }
+    }
+    fetchBranding()
+  }, [])
 
   // Clear the loading indicator once the route has actually changed
   useEffect(() => {
@@ -66,10 +88,14 @@ export default function AdminSidebar() {
         <div className="flex items-start justify-between gap-3">
           {!isCollapsed ? (
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                )}
               </div>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Raven Admin</h1>
@@ -78,10 +104,14 @@ export default function AdminSidebar() {
             </div>
           ) : (
             <div className="flex justify-center flex-1">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                )}
               </div>
             </div>
           )}

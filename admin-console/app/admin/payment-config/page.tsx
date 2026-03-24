@@ -74,7 +74,7 @@ export default function PaymentConfigPage() {
     await save('PAYMENT_LIVE_MODE', isLive ? 'false' : 'true')
   }
 
-  const S = 'animate-pulse bg-slate-700 rounded'
+  const S = 'animate-pulse bg-slate-200 rounded'
 
   function KeyField({ keyName, suggestion }: { keyName: string; suggestion?: string }) {
     const cfg = keys[keyName]
@@ -88,9 +88,9 @@ export default function PaymentConfigPage() {
     return (
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
-          <code className="text-xs font-mono text-sky-300 bg-sky-950/60 px-2 py-0.5 rounded border border-sky-800/40">{keyName}</code>
+          <code className="text-xs font-mono text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">{keyName}</code>
           {cfg.has_value && (
-            <span className="text-[10px] text-emerald-400 bg-emerald-900/20 px-1.5 py-0.5 rounded border border-emerald-700/30 inline-flex items-center gap-1">
+            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-flex items-center gap-1">
               <CheckCircle2 className="h-2.5 w-2.5" /> saved
             </span>
           )}
@@ -102,21 +102,21 @@ export default function PaymentConfigPage() {
               type={cfg.is_secret && !show[keyName] ? 'password' : 'text'}
               value={draft}
               onChange={(e) => setDrafts((d) => ({ ...d, [keyName]: e.target.value }))}
-              className="w-full bg-slate-900 text-white text-sm rounded-lg px-3 py-2 border border-slate-600 focus:border-sky-500 outline-none placeholder-slate-600 font-mono pr-10"
+              className="w-full bg-white text-slate-900 text-sm rounded-lg px-3 py-2 border border-slate-300 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none placeholder-slate-400 font-mono pr-10"
               placeholder={suggestion ? `e.g. ${suggestion}` : 'Enter value...'}
             />
             {showSuggestion && (
               <button
                 type="button"
                 onClick={() => setDrafts((d) => ({ ...d, [keyName]: suggestion! }))}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-sky-400 hover:text-sky-300 font-medium whitespace-nowrap"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-sky-600 hover:text-sky-700 font-medium whitespace-nowrap"
               >
                 Use default
               </button>
             )}
             {cfg.is_secret && (
               <button type="button" onClick={() => setShow((s) => ({ ...s, [keyName]: !s[keyName] }))}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
                 {show[keyName] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             )}
@@ -125,8 +125,8 @@ export default function PaymentConfigPage() {
             Save
           </Button>
         </div>
-        {err && <p className="text-red-400 text-xs flex items-center gap-1"><AlertCircle className="h-3 w-3" />{err}</p>}
-        {ok && <p className="text-emerald-400 text-xs flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Saved</p>}
+        {err && <p className="text-red-600 text-xs flex items-center gap-1"><AlertCircle className="h-3 w-3" />{err}</p>}
+        {ok && <p className="text-emerald-600 text-xs flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Saved</p>}
       </div>
     )
   }
@@ -134,12 +134,12 @@ export default function PaymentConfigPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">Payment Configuration</h1>
-        <p className="text-sm text-slate-400 mt-1">Configure Paystack and Flutterwave API keys for payments, subscriptions, and payouts.</p>
+        <h1 className="text-3xl font-bold text-slate-900">Payment Configuration</h1>
+        <p className="text-sm text-slate-500 mt-1">Configure Paystack and Flutterwave API keys for payments, subscriptions, and payouts.</p>
       </div>
 
       {fetchError && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-900/40 border border-red-600/50 text-sm text-red-300">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{fetchError}</span>
           <Button size="sm" variant="secondary" onClick={fetchKeys} className="ml-auto">Retry</Button>
@@ -147,17 +147,17 @@ export default function PaymentConfigPage() {
       )}
 
       {/* Mode banner */}
-      <div className={`rounded-2xl border p-5 flex items-center justify-between ${isLive ? 'bg-green-900/20 border-green-600/40' : 'bg-amber-900/20 border-amber-600/40'}`}>
+      <div className={`rounded-2xl border p-5 flex items-center justify-between ${isLive ? 'bg-green-50 border-green-300' : 'bg-amber-50 border-amber-300'}`}>
         <div className="flex items-center gap-3">
           {isLive
-            ? <ShieldCheck className="h-6 w-6 text-green-400" />
-            : <FlaskConical className="h-6 w-6 text-amber-400" />
+            ? <ShieldCheck className="h-6 w-6 text-green-600" />
+            : <FlaskConical className="h-6 w-6 text-amber-600" />
           }
           <div>
-            <p className={`font-semibold ${isLive ? 'text-green-300' : 'text-amber-300'}`}>
+            <p className={`font-semibold ${isLive ? 'text-green-800' : 'text-amber-800'}`}>
               {isLoading ? 'Loading...' : isLive ? 'Live Mode Active' : 'Sandbox / Test Mode Active'}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               {isLive ? 'Real money transactions are enabled. Charges are live.' : 'No real charges. Use Paystack test cards.'}
             </p>
           </div>
@@ -180,11 +180,11 @@ export default function PaymentConfigPage() {
         {/* LEFT: Live keys + Test keys + Callback */}
         <div className="space-y-5">
           {/* Live keys */}
-          <div className={`rounded-2xl border bg-slate-800/60 p-5 space-y-4 ${isLive ? 'border-green-600/40' : 'border-slate-700/40'}`}>
+          <div className={`rounded-2xl border bg-white p-5 space-y-4 shadow-sm ${isLive ? 'border-green-300' : 'border-slate-200'}`}>
             <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${isLive ? 'bg-green-400' : 'bg-slate-600'}`} />
-              <h3 className="font-semibold text-white">Live Keys</h3>
-              {isLive && <span className="text-xs bg-green-900/40 text-green-300 px-2 py-0.5 rounded-full border border-green-700/30">Active</span>}
+              <div className={`h-2 w-2 rounded-full ${isLive ? 'bg-green-500' : 'bg-slate-400'}`} />
+              <h3 className="font-semibold text-slate-900">Live Keys</h3>
+              {isLive && <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200">Active</span>}
             </div>
             <p className="text-xs text-slate-500">sk_live_ / pk_live_ — used when Live Mode is on.</p>
             {isLoading
@@ -194,11 +194,11 @@ export default function PaymentConfigPage() {
           </div>
 
           {/* Test keys */}
-          <div className={`rounded-2xl border bg-slate-800/60 p-5 space-y-4 ${!isLive ? 'border-amber-600/40' : 'border-slate-700/40'}`}>
+          <div className={`rounded-2xl border bg-white p-5 space-y-4 shadow-sm ${!isLive ? 'border-amber-300' : 'border-slate-200'}`}>
             <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${!isLive ? 'bg-amber-400' : 'bg-slate-600'}`} />
-              <h3 className="font-semibold text-white">Sandbox / Test Keys</h3>
-              {!isLive && <span className="text-xs bg-amber-900/40 text-amber-300 px-2 py-0.5 rounded-full border border-amber-700/30">Active</span>}
+              <div className={`h-2 w-2 rounded-full ${!isLive ? 'bg-amber-500' : 'bg-slate-400'}`} />
+              <h3 className="font-semibold text-slate-900">Sandbox / Test Keys</h3>
+              {!isLive && <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">Active</span>}
             </div>
             <p className="text-xs text-slate-500">sk_test_ / pk_test_ — used when Sandbox Mode is on.</p>
             {isLoading
@@ -208,22 +208,22 @@ export default function PaymentConfigPage() {
           </div>
 
           {/* Callback URL */}
-          <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-5 space-y-3">
-            <h3 className="font-semibold text-white">Callback Base URL</h3>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3 shadow-sm">
+            <h3 className="font-semibold text-slate-900">Callback Base URL</h3>
             <p className="text-xs text-slate-500">
-              The base URL of your tenant dashboard. The backend appends <code className="font-mono text-sky-300">/payment/callback</code> automatically — do <strong className="text-white">not</strong> include the path here.
+              The base URL of your tenant dashboard. The backend appends <code className="font-mono text-sky-700">/payment/callback</code> automatically — do <strong className="text-slate-900">not</strong> include the path here.
             </p>
             {isLoading ? <div className={`${S} h-16 w-full`} /> : <KeyField keyName="PAYMENT_CALLBACK_URL" suggestion="https://app.raven-ai.online" />}
             {!isLoading && drafts['PAYMENT_CALLBACK_URL']?.trim() && (
-              <div className="rounded-lg bg-slate-900/70 border border-slate-700/50 p-3 space-y-2 text-xs">
-                <p className="text-slate-400 font-medium">Configure these exact URLs in your payment provider dashboards:</p>
+              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 space-y-2 text-xs">
+                <p className="text-slate-600 font-medium">Configure these exact URLs in your payment provider dashboards:</p>
                 <div className="space-y-1">
                   <p className="text-slate-500">Paystack → Settings → Webhooks &amp; Callback:</p>
-                  <p className="font-mono text-sky-300 break-all select-all">{drafts['PAYMENT_CALLBACK_URL'].replace(/\/$/, '')}/payment/callback</p>
+                  <p className="font-mono text-sky-700 break-all select-all">{drafts['PAYMENT_CALLBACK_URL'].replace(/\/$/, '')}/payment/callback</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-slate-500">Flutterwave → Settings → Webhooks:</p>
-                  <p className="font-mono text-orange-300 break-all select-all">{drafts['PAYMENT_CALLBACK_URL'].replace(/\/$/, '')}/payment/callback?provider=flutterwave</p>
+                  <p className="font-mono text-orange-700 break-all select-all">{drafts['PAYMENT_CALLBACK_URL'].replace(/\/$/, '')}/payment/callback?provider=flutterwave</p>
                 </div>
               </div>
             )}
@@ -234,15 +234,15 @@ export default function PaymentConfigPage() {
         <div className="space-y-5">
 
           {/* Flutterwave keys */}
-          <div className="rounded-2xl border border-orange-700/40 bg-slate-800/60 p-5 space-y-4">
+          <div className="rounded-2xl border border-orange-300 bg-white p-5 space-y-4 shadow-sm">
             <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-orange-400" />
-              <h3 className="font-semibold text-white">Flutterwave</h3>
-              <span className="text-xs bg-orange-900/30 text-orange-300 px-2 py-0.5 rounded-full border border-orange-700/30">Payments, Plans &amp; Payouts</span>
+              <Zap className="h-4 w-4 text-orange-500" />
+              <h3 className="font-semibold text-slate-900">Flutterwave</h3>
+              <span className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full border border-orange-200">Payments, Plans &amp; Payouts</span>
             </div>
             <p className="text-xs text-slate-500">
               Used for processing payments, managing subscription plans, and bank payout transfers.
-              Get your keys from the <span className="text-orange-300">Flutterwave Dashboard → Settings → API</span>.
+              Get your keys from the <span className="text-orange-600 font-medium">Flutterwave Dashboard → Settings → API</span>.
             </p>
             {isLoading
               ? [1, 2, 3, 4].map((i) => <div key={i} className={`${S} h-16 w-full`} />)
@@ -271,7 +271,7 @@ export default function PaymentConfigPage() {
                 href="https://dashboard.paystack.com/#/settings/developers"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 hover:underline"
               >
                 <ExternalLink className="h-3.5 w-3.5" />Paystack Developer Settings
               </a>
@@ -279,20 +279,20 @@ export default function PaymentConfigPage() {
                 href="https://app.flutterwave.com/dashboard/settings/apis"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300 hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs text-orange-600 hover:text-orange-700 hover:underline"
               >
                 <ExternalLink className="h-3.5 w-3.5" />Flutterwave API Settings
               </a>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 space-y-2">
-            <p className="text-xs font-medium text-amber-400">Important Notes</p>
-            <ul className="text-xs text-slate-400 space-y-1.5 list-disc list-inside">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-2 shadow-sm">
+            <p className="text-xs font-medium text-amber-700">Important Notes</p>
+            <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
               <li>Never share secret keys. They authorize charges directly.</li>
               <li>Keys are applied within 60 seconds of saving (config cache).</li>
               <li>Test mode and Live mode use completely separate key sets.</li>
-              <li>Paystack test card: <code className="font-mono text-slate-300">4084 0840 8408 4081</code> (any future exp, CVV 408).</li>
+              <li>Paystack test card: <code className="font-mono text-slate-700">4084 0840 8408 4081</code> (any future exp, CVV 408).</li>
             </ul>
           </div>
         </div>

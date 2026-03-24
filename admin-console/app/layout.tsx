@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ToastProvider } from '@/lib/toast-context'
+import DynamicFavicon from '@/components/DynamicFavicon'
 
 export const metadata: Metadata = {
   title: 'Raven Business Automator (RBA) — Admin',
   description: 'Enterprise Admin Control Plane',
+  icons: [],
 }
 
 export default function RootLayout({
@@ -23,6 +25,7 @@ export default function RootLayout({
             {children}
           </ToastProvider>
         </div>
+        <DynamicFavicon />
       </body>
     </html>
   )

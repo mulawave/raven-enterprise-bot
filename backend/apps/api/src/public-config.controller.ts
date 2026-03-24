@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common'
+import { PrismaClient } from '@prisma/client'
 import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
 
 /**
@@ -23,16 +24,33 @@ const PUBLIC_KEYS = [
   'FCM_CLIENT_VAPID_KEY',
 ] as const
 
-@Controller('api/config/public')
+@Controller('api/config')
 export class PublicConfigController {
-  constructor(private readonly configLoader: ConfigLoaderService) {}
+  constructor(
+    private readonly configLoader: ConfigLoaderService,
+    private readonly prisma: PrismaClient,
+  ) {}
 
-  @Get()
+  @Get('public')
   async getPublicConfig(): Promise<Record<string, string | null>> {
     const result: Record<string, string | null> = {}
     for (const key of PUBLIC_KEYS) {
       result[key] = (await this.configLoader.get(key)) ?? null
     }
     return result
+  }
+
+  /**
+   * GET /api/config/branding
+   * Returns platform logo and favicon URLs from AppSettings.
+   * Public — no auth required. These are non-secret display assets.
+   */
+  @Get('branding')
+  async getPlatformBranding(): Promise<{ logo_url: string | null; favicon_url: string | null }> {
+    const settings = await this.prisma.appSettings.findFirst()
+    return {
+      logo_url: settings?.logo_url ?? null,
+      favicon_url: settings?.favicon_url ?? null,
+    }
   }
 }

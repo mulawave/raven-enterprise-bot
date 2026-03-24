@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { useTenantContext } from '@/lib/tenant-context'
+import { API_BASE_URL } from '@/lib/constants'
 
 function IconOverview() {
   return (
@@ -160,7 +161,8 @@ export default function Sidebar() {
   const pathname = usePathname()
   const [loadingRoute, setLoadingRoute] = useState<string | null>(null)
 
-  const logoSrc = branding?.logoUrl ?? null
+  const rawLogo = branding?.logoUrl ?? null
+  const logoSrc = rawLogo ? (rawLogo.startsWith('http') ? rawLogo : `${API_BASE_URL}${rawLogo}`) : null
 
   const handleNavClick = (href: string) => {
     setLoadingRoute(href)

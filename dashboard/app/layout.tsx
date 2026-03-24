@@ -3,10 +3,12 @@ import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import DashboardShell from '@/components/DashboardShell'
 import CookieConsent from '@/components/CookieConsent'
+import DynamicFavicon from '@/components/DynamicFavicon'
 
 export const metadata: Metadata = {
   title: 'Raven Business Automator (RBA)',
   description: 'Enterprise Bot Management Dashboard',
+  icons: [],
 }
 
 export default function RootLayout({
@@ -21,6 +23,7 @@ export default function RootLayout({
           <DashboardShell>{children}</DashboardShell>
         </Suspense>
         <CookieConsent />
+        <DynamicFavicon />
       </body>
     </html>
   )

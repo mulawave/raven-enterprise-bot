@@ -38,10 +38,10 @@ const PROVIDER_OPTIONS = [
 ]
 
 const TEMPLATE_META: Record<string, { label: string; color: string; vars: string[] }> = {
-  EMAIL_TEMPLATE_WELCOME: { label: 'Welcome Email', color: 'text-indigo-300 border-indigo-500/40', vars: ['APP_NAME','USER_NAME','DASHBOARD_URL','YEAR'] },
-  EMAIL_TEMPLATE_PASSWORD_RESET: { label: 'Password Reset', color: 'text-red-300 border-red-500/40', vars: ['APP_NAME','USER_NAME','RESET_URL','YEAR'] },
-  EMAIL_TEMPLATE_INVOICE: { label: 'Invoice', color: 'text-emerald-300 border-emerald-500/40', vars: ['APP_NAME','USER_NAME','INVOICE_NUMBER','BILLING_PERIOD','PLAN_NAME','AMOUNT','PAYMENT_DATE','YEAR'] },
-  EMAIL_TEMPLATE_SUBSCRIPTION_CONFIRMED: { label: 'Subscription Confirmed', color: 'text-violet-300 border-violet-500/40', vars: ['APP_NAME','USER_NAME','PLAN_NAME','CONVERSATIONS_LIMIT','RENEWAL_DATE','DASHBOARD_URL','YEAR'] },
+  EMAIL_TEMPLATE_WELCOME: { label: 'Welcome Email', color: 'text-indigo-600 border-indigo-500/40', vars: ['APP_NAME','USER_NAME','DASHBOARD_URL','YEAR'] },
+  EMAIL_TEMPLATE_PASSWORD_RESET: { label: 'Password Reset', color: 'text-red-600 border-red-500/40', vars: ['APP_NAME','USER_NAME','RESET_URL','YEAR'] },
+  EMAIL_TEMPLATE_INVOICE: { label: 'Invoice', color: 'text-emerald-600 border-emerald-500/40', vars: ['APP_NAME','USER_NAME','INVOICE_NUMBER','BILLING_PERIOD','PLAN_NAME','AMOUNT','PAYMENT_DATE','YEAR'] },
+  EMAIL_TEMPLATE_SUBSCRIPTION_CONFIRMED: { label: 'Subscription Confirmed', color: 'text-violet-600 border-violet-500/40', vars: ['APP_NAME','USER_NAME','PLAN_NAME','CONVERSATIONS_LIMIT','RENEWAL_DATE','DASHBOARD_URL','YEAR'] },
 }
 
 const TEMPLATE_ORDER = ['EMAIL_TEMPLATE_WELCOME','EMAIL_TEMPLATE_PASSWORD_RESET','EMAIL_TEMPLATE_INVOICE','EMAIL_TEMPLATE_SUBSCRIPTION_CONFIRMED']
@@ -172,7 +172,7 @@ export default function EmailConfigPage() {
     }
   }
 
-  const S = 'animate-pulse bg-slate-700 rounded'
+  const S = 'animate-pulse bg-slate-200 rounded'
   const provider = drafts['SMTP_PROVIDER'] ?? 'smtp'
   const activeTemplateData = templates.find((t) => t.key === activeTemplate)
   const activeMeta = activeTemplate ? TEMPLATE_META[activeTemplate] : null
@@ -181,8 +181,8 @@ export default function EmailConfigPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Email Configuration</h1>
-          <p className="text-sm text-slate-400 mt-1">Configure SMTP delivery and manage email templates with live preview.</p>
+          <h1 className="text-3xl font-bold text-slate-900">Email Configuration</h1>
+          <p className="text-sm text-slate-500 mt-1">Configure SMTP delivery and manage email templates with live preview.</p>
         </div>
         <Button variant="secondary" size="sm" isLoading={isLoading} loadingText="Loading..." onClick={() => fetchAll()} disabled={isLoading} className="shrink-0">
           <RefreshCw className="h-4 w-4" />Refresh
@@ -190,16 +190,16 @@ export default function EmailConfigPage() {
       </div>
 
       {fetchError && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-900/40 border border-red-600/50 text-sm text-red-300">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
           <AlertCircle className="h-5 w-5 shrink-0" /><span>{fetchError}</span>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-800/60 p-1 rounded-xl w-fit border border-slate-700">
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
         {([['smtp', <Mail key="m" className="h-4 w-4" />, 'SMTP & Delivery'], ['templates', <Code2 key="c" className="h-4 w-4" />, 'Email Templates']] as const).map(([t, icon, label]) => (
           <button key={t} onClick={() => setTab(t as 'smtp' | 'templates')}
-            className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+            className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'}`}>
             {icon}{label}
           </button>
         ))}
@@ -211,16 +211,16 @@ export default function EmailConfigPage() {
           {/* LEFT: SMTP form */}
           <div className="space-y-5">
             {/* Provider */}
-            <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-5 space-y-3">
-              <h3 className="font-semibold text-white flex items-center gap-2"><Server className="h-4 w-4 text-indigo-400" />Email Provider</h3>
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
+              <h3 className="font-semibold text-slate-900 flex items-center gap-2"><Server className="h-4 w-4 text-indigo-500" />Email Provider</h3>
               <div className="grid grid-cols-2 gap-3">
                 {PROVIDER_OPTIONS.map((opt) => (
                   <button key={opt.value}
                     onClick={() => setDrafts((d) => ({ ...d, SMTP_PROVIDER: opt.value }))}
-                    className={`text-left p-3.5 rounded-xl border transition-all ${provider === opt.value ? 'border-indigo-500 bg-indigo-900/30' : 'border-slate-700 bg-slate-900/40 hover:border-slate-500'}`}>
+                    className={`text-left p-3.5 rounded-xl border transition-all ${provider === opt.value ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`}>
                     <div className="flex items-center gap-2 mb-1">
-                      <div className={`h-3 w-3 rounded-full border-2 ${provider === opt.value ? 'border-indigo-400 bg-indigo-400' : 'border-slate-500'}`} />
-                      <span className="text-white text-sm font-medium">{opt.label}</span>
+                      <div className={`h-3 w-3 rounded-full border-2 ${provider === opt.value ? 'border-indigo-500 bg-indigo-500' : 'border-slate-400'}`} />
+                      <span className="text-slate-900 text-sm font-medium">{opt.label}</span>
                     </div>
                     <p className="text-xs text-slate-500 ml-5">{opt.desc}</p>
                   </button>
@@ -230,23 +230,23 @@ export default function EmailConfigPage() {
 
             {/* SMTP fields */}
             {provider === 'smtp' && (
-              <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-5 space-y-4">
-                <h3 className="font-semibold text-white flex items-center gap-2"><Server className="h-4 w-4 text-indigo-400" />SMTP Settings</h3>
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+                <h3 className="font-semibold text-slate-900 flex items-center gap-2"><Server className="h-4 w-4 text-indigo-500" />SMTP Settings</h3>
                 <div className="grid grid-cols-2 gap-3">
                   {SMTP_FIELDS.map(({ key, label, type, placeholder, colSpan }) => {
                     const isPass = type === 'password'
                     return (
                       <div key={key} className={colSpan === 2 ? 'col-span-2' : ''}>
-                        <label className="block text-xs text-slate-400 mb-1 flex items-center justify-between">
+                        <label className="block text-xs text-slate-600 mb-1 flex items-center justify-between">
                           <span>{label}</span>
-                          {isPass && <button onClick={() => setShowPass((s) => !s)} className="text-slate-500 hover:text-white text-xs">{showPass ? 'Hide' : 'Show'}</button>}
+                          {isPass && <button onClick={() => setShowPass((s) => !s)} className="text-slate-500 hover:text-slate-700 text-xs">{showPass ? 'Hide' : 'Show'}</button>}
                         </label>
                         {isLoading ? <div className={`${S} h-9`} /> : (
                           <input
                             type={isPass && !showPass ? 'password' : type === 'password' ? 'text' : type}
                             value={drafts[key] ?? ''}
                             onChange={(e) => setDrafts((d) => ({ ...d, [key]: e.target.value }))}
-                            className="w-full bg-slate-900 text-white text-sm rounded-lg px-3 py-2 border border-slate-600 focus:border-indigo-500 outline-none placeholder-slate-500"
+                            className="w-full bg-white text-slate-900 text-sm rounded-lg px-3 py-2 border border-slate-300 focus:border-indigo-500 outline-none placeholder-slate-400"
                             placeholder={placeholder}
                           />
                         )}
@@ -261,9 +261,9 @@ export default function EmailConfigPage() {
                     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${drafts['SMTP_SECURE'] === 'true' ? 'bg-indigo-500' : 'bg-slate-600'}`}>
                     <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${drafts['SMTP_SECURE'] === 'true' ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </button>
-                  <span className="text-sm text-slate-300">Use TLS (enable for port 465)</span>
+                  <span className="text-sm text-slate-600">Use TLS (enable for port 465)</span>
                 </div>
-                {smtpSaved && <div className="flex items-center gap-2 text-sm text-emerald-300"><CheckCircle2 className="h-4 w-4" />SMTP settings saved</div>}
+                {smtpSaved && <div className="flex items-center gap-2 text-sm text-emerald-600"><CheckCircle2 className="h-4 w-4" />SMTP settings saved</div>}
                 <Button variant="primary" isLoading={smtpSaving} loadingText="Saving..." onClick={saveAllSmtp} className="w-full">
                   Save SMTP Settings
                 </Button>
@@ -273,24 +273,24 @@ export default function EmailConfigPage() {
 
           {/* RIGHT: Test email + guide */}
           <div className="space-y-5">
-            <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-5 space-y-4">
-              <h3 className="font-semibold text-white flex items-center gap-2"><Send className="h-4 w-4 text-indigo-400" />Send Test Email</h3>
-              <p className="text-xs text-slate-400">Verify your delivery config by sending a test message.</p>
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+              <h3 className="font-semibold text-slate-900 flex items-center gap-2"><Send className="h-4 w-4 text-indigo-500" />Send Test Email</h3>
+              <p className="text-xs text-slate-500">Verify your delivery config by sending a test message.</p>
               <div className="flex gap-2">
                 <input type="email" value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="your@email.com"
-                  className="flex-1 bg-slate-900 text-white text-sm rounded-lg px-3 py-2 border border-slate-600 focus:border-indigo-500 outline-none placeholder-slate-500" />
+                  className="flex-1 bg-white text-slate-900 text-sm rounded-lg px-3 py-2 border border-slate-300 focus:border-indigo-500 outline-none placeholder-slate-400" />
                 <Button size="sm" isLoading={isTesting} loadingText="Sending..." onClick={sendTestEmail} disabled={!testTo.includes('@')}>
                   Send Test
                 </Button>
               </div>
               {testResult && (
-                <div className={`rounded-lg p-3 ${testResult.success ? 'bg-emerald-900/30 border border-emerald-700/40' : 'bg-red-900/30 border border-red-700/40'}`}>
-                  <p className={`text-sm font-medium ${testResult.success ? 'text-emerald-300' : 'text-red-300'}`}>
+                <div className={`rounded-lg p-3 ${testResult.success ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+                  <p className={`text-sm font-medium ${testResult.success ? 'text-emerald-700' : 'text-red-700'}`}>
                     {testResult.success ? 'Test email sent successfully' : 'Test email failed'}
                   </p>
-                  <p className={`text-xs mt-1 ${testResult.success ? 'text-emerald-400/70' : 'text-red-400/70'}`}>{testResult.message}</p>
+                  <p className={`text-xs mt-1 ${testResult.success ? 'text-emerald-600' : 'text-red-600'}`}>{testResult.message}</p>
                   {testResult.preview && (
-                    <a href={testResult.preview} target="_blank" rel="noreferrer" className="text-xs text-indigo-400 hover:underline mt-1 block">
+                    <a href={testResult.preview} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 hover:underline mt-1 block">
                       Preview email (Ethereal) &rarr;
                     </a>
                   )}
@@ -298,18 +298,18 @@ export default function EmailConfigPage() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-slate-700/40 bg-slate-800/40 p-5 space-y-3">
-              <p className="text-sm font-medium text-white">Common SMTP Providers</p>
-              <div className="space-y-2 text-xs text-slate-400">
+            <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 space-y-3">
+              <p className="text-sm font-medium text-slate-900">Common SMTP Providers</p>
+              <div className="space-y-2 text-xs text-slate-500">
                 {[
                   { name: 'SendGrid', host: 'smtp.sendgrid.net', port: '587', user: 'apikey', pass: 'SG.xxx key' },
                   { name: 'Mailgun', host: 'smtp.mailgun.org', port: '587', user: 'postmaster@...', pass: 'API key' },
                   { name: 'Gmail', host: 'smtp.gmail.com', port: '587', user: 'your@gmail.com', pass: 'App password' },
                   { name: 'AWS SES', host: 'email-smtp.us-east-1.amazonaws.com', port: '587', user: 'SMTP IAM User', pass: 'SMTP Password' },
                 ].map((p) => (
-                  <div key={p.name} className="p-2.5 bg-slate-900/60 rounded-lg border border-slate-700/40">
-                    <p className="text-slate-200 font-medium">{p.name}</p>
-                    <p>Host: <code className="text-sky-300">{p.host}</code> Port: <code className="text-sky-300">{p.port}</code></p>
+                  <div key={p.name} className="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                    <p className="text-slate-700 font-medium">{p.name}</p>
+                    <p>Host: <code className="text-sky-700">{p.host}</code> Port: <code className="text-sky-700">{p.port}</code></p>
                     <p>User: {p.user} | Pass: {p.pass}</p>
                   </div>
                 ))}
@@ -322,8 +322,8 @@ export default function EmailConfigPage() {
       {/* TEMPLATES TAB */}
       {tab === 'templates' && (
         <div className="space-y-4">
-          <p className="text-sm text-slate-400">
-            Click a template to edit. Use <code className="bg-slate-700 px-1.5 rounded text-indigo-300 text-xs">{'{{VARIABLE}}'}</code> placeholders — swapped at send time.
+          <p className="text-sm text-slate-500">
+            Click a template to edit. Use <code className="bg-slate-100 px-1.5 rounded text-indigo-600 text-xs border border-slate-200">{'{{VARIABLE}}'}</code> placeholders — swapped at send time.
             The preview updates live as you type.
           </p>
 
@@ -338,7 +338,7 @@ export default function EmailConfigPage() {
                   const isActive = activeTemplate === k
                   return (
                     <button key={k} onClick={() => setActiveTemplate(k)}
-                      className={`px-4 py-2 rounded-xl border text-sm font-medium transition-all ${isActive ? `bg-slate-700 ${meta.color} border-current` : 'border-slate-700/40 text-slate-400 hover:text-white hover:border-slate-500'}`}>
+                      className={`px-4 py-2 rounded-xl border text-sm font-medium transition-all ${isActive ? `bg-slate-100 ${meta.color} border-current` : 'border-slate-200 text-slate-500 hover:text-slate-900 hover:border-slate-300'}`}>
                       {meta.label}
                     </button>
                   )
@@ -348,21 +348,21 @@ export default function EmailConfigPage() {
 
           {/* Split editor/preview */}
           {activeTemplate && activeMeta && !isLoading && (
-            <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 overflow-hidden">
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
               {/* Template header */}
-              <div className="flex items-center justify-between p-4 border-b border-slate-700/40">
+              <div className="flex items-center justify-between p-4 border-b border-slate-200">
                 <div>
                   <h3 className={`font-semibold ${activeMeta.color.split(' ')[0]}`}>{activeMeta.label}</h3>
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {activeMeta.vars.map((v) => (
-                      <code key={v} className="text-[10px] font-mono bg-slate-900 text-indigo-300 px-1.5 py-0.5 rounded border border-slate-700/40">
+                      <code key={v} className="text-[10px] font-mono bg-slate-100 text-indigo-600 px-1.5 py-0.5 rounded border border-slate-200">
                         {`{{${v}}}`}
                       </code>
                     ))}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 ml-4">
-                  {templateSaved[activeTemplate] && <span className="text-xs text-emerald-400 flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" />Saved</span>}
+                  {templateSaved[activeTemplate] && <span className="text-xs text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" />Saved</span>}
                   <Button size="sm" isLoading={templateSaving[activeTemplate]} loadingText="Saving..." onClick={() => saveTemplate(activeTemplate)}>
                     Save Template
                   </Button>
@@ -370,17 +370,17 @@ export default function EmailConfigPage() {
               </div>
 
               {/* Split pane: editor (left) + preview (right) */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-700/40" style={{ minHeight: '520px' }}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-200" style={{ minHeight: '520px' }}>
                 {/* Editor */}
                 <div className="flex flex-col">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-slate-900/60 border-b border-slate-700/40">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200">
                     <Code2 className="h-3.5 w-3.5 text-slate-500" />
-                    <span className="text-xs text-slate-400">HTML Editor</span>
+                    <span className="text-xs text-slate-500">HTML Editor</span>
                   </div>
                   <textarea
                     value={templateDrafts[activeTemplate] ?? ''}
                     onChange={(e) => setTemplateDrafts((d) => ({ ...d, [activeTemplate]: e.target.value }))}
-                    className="flex-1 w-full bg-slate-950 text-slate-200 text-xs font-mono px-4 py-3 outline-none resize-none border-0 focus:ring-0"
+                    className="flex-1 w-full bg-slate-900 text-slate-200 text-xs font-mono px-4 py-3 outline-none resize-none border-0 focus:ring-0"
                     spellCheck={false}
                     style={{ minHeight: '480px' }}
                   />
@@ -388,17 +388,17 @@ export default function EmailConfigPage() {
 
                 {/* Live preview */}
                 <div className="flex flex-col">
-                  <div className="flex items-center justify-between px-4 py-2 bg-slate-900/60 border-b border-slate-700/40">
+                  <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200">
                     <div className="flex items-center gap-2">
                       <Eye className="h-3.5 w-3.5 text-slate-500" />
-                      <span className="text-xs text-slate-400">Live Preview</span>
+                      <span className="text-xs text-slate-500">Live Preview</span>
                     </div>
                     <button
                       onClick={() => {
                         const w = window.open('', '_preview_' + activeTemplate)
                         if (w) { w.document.write(templateDrafts[activeTemplate] ?? ''); w.document.close() }
                       }}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                      className="text-xs text-indigo-600 hover:text-indigo-500 flex items-center gap-1"
                     >
                       <Maximize2 className="h-3 w-3" />Open full
                     </button>
@@ -418,8 +418,8 @@ export default function EmailConfigPage() {
           )}
 
           {!isLoading && templates.length === 0 && (
-            <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-12 text-center">
-              <p className="text-slate-400">No templates found. Run the database migration to seed default templates.</p>
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-12 text-center">
+              <p className="text-slate-500">No templates found. Run the database migration to seed default templates.</p>
             </div>
           )}
         </div>

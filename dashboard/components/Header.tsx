@@ -6,6 +6,7 @@ import { useTenantContext } from '@/lib/tenant-context'
 import { clearSession } from '@/lib/auth'
 import { useOnClickOutside } from '@/lib/use-on-click-outside'
 import { api } from '@/lib/api'
+import { API_BASE_URL } from '@/lib/constants'
 import { useNotifications } from '@/lib/use-notifications'
 import type { AppNotification } from '@/lib/use-notifications'
 
@@ -82,6 +83,8 @@ export default function Header() {
 
   const displayName = branding?.businessName || tenant?.name || 'User'
   const initials = displayName.charAt(0).toUpperCase()
+  const rawLogo = branding?.logoUrl || null
+  const logoSrc = rawLogo ? (rawLogo.startsWith('http') ? rawLogo : `${API_BASE_URL}${rawLogo}`) : null
 
   return (
     <>
@@ -170,11 +173,15 @@ export default function Header() {
               <button
                 type="button"
                 onClick={() => { setMenuOpen((prev) => !prev); setNotifOpen(false) }}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 text-sm font-semibold text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 text-sm font-semibold text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 overflow-hidden"
                 aria-haspopup="true"
                 aria-expanded={menuOpen}
               >
-                {initials}
+                {logoSrc ? (
+                  <img src={logoSrc} alt={displayName} className="h-9 w-9 rounded-full object-cover" />
+                ) : (
+                  initials
+                )}
               </button>
             </div>
 
