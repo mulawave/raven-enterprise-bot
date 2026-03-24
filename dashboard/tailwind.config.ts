@@ -17,6 +17,15 @@ const config: Config = {
           700: 'rgb(var(--primary-700) / <alpha-value>)',
         },
       },
+      animation: {
+        shimmer: 'shimmer 1.5s infinite linear',
+      },
+      keyframes: {
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+      },
     },
   },
   plugins: [],

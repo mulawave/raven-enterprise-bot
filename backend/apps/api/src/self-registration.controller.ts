@@ -17,6 +17,8 @@ import { TenantProvisionService } from '../admin/onboarding/tenant.provision.ser
 import { SubscriptionsService, PlanTier } from '../../../libs/billing/subscriptions.service'
 import { AuthService } from '../../../libs/auth/services/auth.service'
 import { EmailService } from '../../../libs/email/email.service'
+import { NotificationService } from '../../../libs/notifications/notification.service'
+import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
 
 const PENDING_REG_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
@@ -37,7 +39,20 @@ export class SelfRegistrationController {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly authService: AuthService,
     private readonly emailService: EmailService,
+    private readonly notificationService: NotificationService,
+    private readonly configLoader: ConfigLoaderService,
   ) {}
+
+  private async resolveDashboardUrl(): Promise<string> {
+    const dashboardUrl = (await this.configLoader.get('NEXT_PUBLIC_DASHBOARD_URL'))
+      || process.env.NEXT_PUBLIC_DASHBOARD_URL
+
+    if (!dashboardUrl) {
+      throw new BadRequestException('NEXT_PUBLIC_DASHBOARD_URL is not configured. Set it in System Config or environment.')
+    }
+
+    return dashboardUrl
+  }
 
   /**
    * GET /api/auth/check-email?email=XXX
@@ -112,7 +127,7 @@ export class SelfRegistrationController {
       },
     })
 
-    const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL ?? 'https://app.raven-ai.online'
+    const dashboardUrl = await this.resolveDashboardUrl()
     const confirmUrl = `${dashboardUrl}/confirm-email?token=${token}`
 
     try {
@@ -198,15 +213,17 @@ export class SelfRegistrationController {
     await this.subscriptionsService.createSubscription(
       result.tenant.id,
       pending.planTier as PlanTier,
+      'pending_payment',
     )
 
-    // Mark onboarding as in-progress in the tenant's theme JSON
+    // Mark onboarding as awaiting payment in the tenant's theme JSON
     await this.prisma.tenant.update({
       where: { id: result.tenant.id },
       data: {
         theme: JSON.stringify({
-          onboardingStep: 'plan_selected',
+          onboardingStep: 'payment',
           selectedPlan: pending.planTier,
+          onboardingCompleted: false,
           onboarding: {
             whatsappSet: false,
             catalogueSet: false,
@@ -221,11 +238,20 @@ export class SelfRegistrationController {
     // Clean up pending registration
     await this.prisma.systemConfig.delete({ where: { key: `PENDING_REG_${token}` } })
 
+    // Notify all system admins of new tenant sign-up (fire-and-forget)
+    this.notificationService.send({
+      toAdmins: true,
+      title: '🎉 New Tenant Registered',
+      body: `${pending.name} (${pending.email}) signed up on the ${pending.planTier} plan.`,
+      type: 'new_tenant',
+      data: { tenantId: result.tenant.id, tenantName: pending.name, email: pending.email, plan: pending.planTier },
+    }).catch(() => undefined)
+
     // Issue JWT
     const { access_token } = await this.authService.login(result.owner)
 
     // Send welcome email (non-blocking)
-    const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL ?? 'https://app.raven-ai.online'
+    const dashboardUrl = await this.resolveDashboardUrl()
     this.emailService.send({
       to: pending.email,
       subject: '🎉 Your Raven account is ready!',

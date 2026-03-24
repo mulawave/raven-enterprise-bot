@@ -28,7 +28,7 @@ npm install
 Copy `.env.example` to `.env` and configure:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:4010
 ```
 
 ### Development

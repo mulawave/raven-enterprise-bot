@@ -84,8 +84,8 @@ const PLANS = [
     selectedBg: 'bg-emerald-500/20',
     selectedRing: 'ring-emerald-400',
     checkColor: 'bg-emerald-400 text-gray-900',
-    idleBorder: 'border-white/10',
-    idleBg: 'bg-white/3',
+    idleBorder: 'border-white/15',
+    idleBg: 'bg-slate-800/40',
   },
   {
     id: 'growth' as const,
@@ -98,8 +98,8 @@ const PLANS = [
     selectedBg: 'bg-sky-500/20',
     selectedRing: 'ring-sky-400',
     checkColor: 'bg-sky-400 text-gray-900',
-    idleBorder: 'border-white/10',
-    idleBg: 'bg-white/3',
+    idleBorder: 'border-white/15',
+    idleBg: 'bg-slate-800/40',
     highlight: true,
   },
   {
@@ -113,8 +113,8 @@ const PLANS = [
     selectedBg: 'bg-violet-500/20',
     selectedRing: 'ring-violet-400',
     checkColor: 'bg-violet-400 text-gray-900',
-    idleBorder: 'border-white/10',
-    idleBg: 'bg-white/3',
+    idleBorder: 'border-white/15',
+    idleBg: 'bg-slate-800/40',
   },
 ]
 
@@ -145,6 +145,7 @@ export default function RegisterPage() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [recaptchaKey, setRecaptchaKey] = useState<string | null>(null)
   const recaptchaRef = useRef<ReCAPTCHA>(null)
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/config/public`)
@@ -210,6 +211,7 @@ export default function RegisterPage() {
     emailStatus === 'available' &&
     allCriteriaMet &&
     passwordsMatch &&
+    termsAccepted &&
     (!recaptchaKey || captchaToken !== null)
 
   function handleNextStep(e: React.FormEvent) {
@@ -250,20 +252,19 @@ export default function RegisterPage() {
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gray-900 p-4">
       <ToastContainer toasts={toasts} />
 
-      {/* Background glow orbs */}
-      <div className="pointer-events-none absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-emerald-600 opacity-15 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-1/3 right-1/4 h-96 w-96 rounded-full bg-teal-500 opacity-15 blur-3xl" />
+      {/* Background glow orbs — subtle */}
+      <div className="pointer-events-none absolute top-1/4 left-1/4 h-96 w-96 rounded-full bg-emerald-600 opacity-5 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-1/3 right-1/4 h-96 w-96 rounded-full bg-teal-500 opacity-5 blur-3xl" />
 
-      <div className="relative z-10 w-full max-w-lg">
+      <div className="relative z-10 w-full max-w-3xl">
         {/* Glow border */}
-        <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 opacity-40 blur-xl" />
+        <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 opacity-10 blur-md" />
 
-        <div className="relative rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-2xl">
+        <div className="relative rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-6 lg:p-8 shadow-2xl backdrop-blur-2xl">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-4 sm:mb-5">
             <div>
-              <span className="text-2xl font-bold text-emerald-400">Raven</span>
-              <span className="text-sm text-slate-400 ml-2">Enterprise Bot</span>
+              <span className="text-2xl font-bold text-emerald-400">Raven Business Automator</span>
             </div>
             {/* Step indicator */}
             <div className="flex items-center gap-2">
@@ -275,261 +276,373 @@ export default function RegisterPage() {
 
           {/* ── Step 1: Account details ── */}
           {step === 'account' && (
-            <form onSubmit={handleNextStep} className="space-y-5">
+            <form onSubmit={handleNextStep} className="space-y-4">
+
+              {/* Page title */}
               <div>
-                <h1 className="text-xl font-semibold text-white">Create your account</h1>
-                <p className="text-sm text-slate-400 mt-1">Get your AI business assistant up and running in minutes.</p>
+                <h1 className="text-lg font-semibold text-white">Create your account</h1>
+                <p className="text-xs text-slate-400 mt-0.5">Get your AI business assistant up and running in minutes.</p>
               </div>
 
-              {/* Full name */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Full name <span className="text-red-400">*</span></label>
-                <input
-                  type="text"
-                  autoComplete="name"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-500 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
-                  placeholder="Jane Adeyemi"
-                />
-              </div>
+              <hr className="border-white/10" />
 
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Email address <span className="text-red-400">*</span></label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={e => handleEmailChange(e.target.value)}
-                    onBlur={e => checkEmailAvailability(e.target.value)}
-                    className={`w-full rounded-xl border px-4 py-3 pr-10 text-white placeholder-slate-500 focus:outline-none focus:ring-1 bg-white/5 transition-colors ${
-                      emailStatus === 'invalid' || emailStatus === 'taken' || emailStatus === 'pending'
-                        ? 'border-red-500/70 focus:border-red-500/70 focus:ring-red-500/40'
-                        : emailStatus === 'available'
-                        ? 'border-emerald-400/70 focus:border-emerald-400/70 focus:ring-emerald-400/40'
-                        : 'border-white/10 focus:border-emerald-500/50 focus:ring-emerald-500/50'
-                    }`}
-                    placeholder="jane@mybusiness.ng"
-                  />
-                  {/* Status icon inside input */}
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {emailStatus === 'checking' && (
-                      <svg className="h-4 w-4 animate-spin text-slate-400" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                      </svg>
-                    )}
-                    {emailStatus === 'available' && (
-                      <svg className="h-5 w-5 text-emerald-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                    {(emailStatus === 'taken' || emailStatus === 'pending' || emailStatus === 'invalid') && (
-                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </span>
-                </div>
-                {/* Below-field feedback */}
-                {emailStatus === 'available' && (
-                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-400">
-                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Great — this email is available
-                  </p>
-                )}
-                {(emailStatus === 'taken' || emailStatus === 'pending' || emailStatus === 'invalid') && emailMessage && (
-                  <p className="mt-1.5 flex items-start gap-1.5 text-xs text-red-400">
-                    <svg className="mt-0.5 h-3.5 w-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                    </svg>
-                    <span>
-                      {emailMessage}
-                      {emailStatus === 'taken' && (
-                        <> &nbsp;<a href="/login" className="font-semibold underline decoration-dotted hover:text-red-300">Sign in instead?</a></>
-                      )}
-                    </span>
-                  </p>
-                )}
-              </div>
+              {/* ── Row 1: Name+Email | Password ── */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Password <span className="text-red-400">*</span></label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={e => { setPassword(e.target.value); setPwTouched(true) }}
-                    className={`w-full rounded-xl border px-4 py-3 pr-12 text-white placeholder-slate-500 focus:outline-none focus:ring-1 bg-white/5 transition-colors ${
-                      pwTouched && !allCriteriaMet
-                        ? 'border-orange-500/50 focus:border-orange-500/50 focus:ring-orange-500/30'
-                        : pwTouched && allCriteriaMet
-                        ? 'border-emerald-400/70 focus:border-emerald-400/70 focus:ring-emerald-400/40'
-                        : 'border-white/10 focus:border-emerald-500/50 focus:ring-emerald-500/50'
-                    }`}
-                    placeholder="Create a strong password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
-                    tabIndex={-1}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? (
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                      </svg>
-                    ) : (
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
+                {/* Left column: Name & Email */}
+                <div className="relative rounded-xl border border-white/10 p-3 pt-6 space-y-3">
+                  <span className="absolute -top-2.5 left-3 bg-gray-900 px-2 text-xs font-semibold text-emerald-400 tracking-wide">Name &amp; Email</span>
 
-                {/* Strength bar */}
-                {pwTouched && password && strength && (
-                  <div className="mt-2">
-                    <div className="flex gap-1 mb-1">
-                      {[1,2,3,4,5].map(i => (
-                        <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= strength.score ? strength.color : 'bg-slate-700'}`} />
-                      ))}
-                    </div>
-                    <span className={`text-xs font-medium ${strength.score >= 4 ? 'text-emerald-400' : strength.score === 3 ? 'text-yellow-400' : 'text-orange-400'}`}>
-                      {strength.label}
-                    </span>
+                  {/* Full name */}
+                  <div>
+                    <label className="block text-xs font-medium text-slate-200 mb-1">Full name <span className="text-red-400">*</span></label>
+                    <input
+                      type="text"
+                      autoComplete="name"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      className="w-full rounded-xl border border-white/20 bg-slate-800/80 px-3 py-2.5 text-base md:text-sm text-white placeholder-slate-500 focus:border-emerald-500/70 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+                      placeholder="Jane Adeyemi"
+                    />
                   </div>
-                )}
 
-                {/* Criteria checklist */}
-                {pwTouched && (
-                  <ul className="mt-2.5 grid grid-cols-1 gap-1">
-                    {criteria.map(c => (
-                      <li key={c.label} className={`flex items-center gap-2 text-xs transition-colors ${c.met ? 'text-emerald-400' : 'text-slate-500'}`}>
-                        <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition-all ${c.met ? 'bg-emerald-500/20' : 'bg-slate-700/50'}`}>
-                          {c.met ? (
-                            <svg className="h-2.5 w-2.5" viewBox="0 0 12 12" fill="none">
-                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          ) : (
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />
-                          )}
-                        </span>
-                        {c.label}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {/* Confirm password */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Confirm password <span className="text-red-400">*</span></label>
-                <div className="relative">
-                  <input
-                    type={showConfirm ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={e => { setConfirmPassword(e.target.value); setConfirmTouched(true) }}
-                    className={`w-full rounded-xl border px-4 py-3 pr-12 text-white placeholder-slate-500 focus:outline-none focus:ring-1 bg-white/5 transition-colors ${
-                      confirmTouched && confirmPassword
-                        ? passwordsMatch
-                          ? 'border-emerald-400/70 focus:border-emerald-400/70 focus:ring-emerald-400/40'
-                          : 'border-red-500/60 focus:border-red-500/60 focus:ring-red-500/40'
-                        : 'border-white/10 focus:border-emerald-500/50 focus:ring-emerald-500/50'
-                    }`}
-                    placeholder="Repeat your password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
-                    tabIndex={-1}
-                    aria-label={showConfirm ? 'Hide password' : 'Show password'}
-                  >
-                    {showConfirm ? (
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                      </svg>
-                    ) : (
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-                {confirmTouched && confirmPassword && (
-                  <p className={`mt-1.5 flex items-center gap-1.5 text-xs ${passwordsMatch ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {passwordsMatch ? (
-                      <>
-                        <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  {/* Email */}
+                  <div>
+                    <label className="block text-xs font-medium text-slate-200 mb-1">Email address <span className="text-red-400">*</span></label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        autoComplete="email"
+                        value={email}
+                        onChange={e => handleEmailChange(e.target.value)}
+                        onBlur={e => checkEmailAvailability(e.target.value)}
+                        className={`w-full rounded-xl border px-3 py-2.5 pr-9 text-base md:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 bg-slate-800/80 transition-colors ${
+                          emailStatus === 'invalid' || emailStatus === 'taken' || emailStatus === 'pending'
+                            ? 'border-red-500/70 focus:border-red-500/70 focus:ring-red-500/40'
+                            : emailStatus === 'available'
+                            ? 'border-emerald-400/70 focus:border-emerald-400/70 focus:ring-emerald-400/40'
+                            : 'border-white/20 focus:border-emerald-500/70 focus:ring-emerald-500/40'
+                        }`}
+                        placeholder="jane@mybusiness.ng"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {emailStatus === 'checking' && (
+                          <svg className="h-4 w-4 animate-spin text-slate-400" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                          </svg>
+                        )}
+                        {emailStatus === 'available' && (
+                          <svg className="h-4 w-4 text-emerald-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        {(emailStatus === 'taken' || emailStatus === 'pending' || emailStatus === 'invalid') && (
+                          <svg className="h-4 w-4 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </span>
+                    </div>
+                    {emailStatus === 'available' && (
+                      <p className="mt-1 flex items-center gap-1 text-xs text-emerald-400">
+                        <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
-                        Passwords match
-                      </>
-                    ) : (
-                      <>
-                        <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                        Passwords do not match
-                      </>
+                        Email available
+                      </p>
                     )}
-                  </p>
-                )}
+                    {(emailStatus === 'taken' || emailStatus === 'pending' || emailStatus === 'invalid') && emailMessage && (
+                      <p className="mt-1 flex items-start gap-1 text-xs text-red-400">
+                        <svg className="mt-0.5 h-3 w-3 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <span>
+                          {emailMessage}
+                          {emailStatus === 'taken' && (
+                            <> &nbsp;<a href="/login" className="font-semibold underline decoration-dotted hover:text-red-300">Sign in?</a></>
+                          )}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right column: Account Password */}
+                <div className="relative rounded-xl border border-white/10 p-3 pt-6 space-y-3">
+                  <span className="absolute -top-2.5 left-3 bg-gray-900 px-2 text-xs font-semibold text-emerald-400 tracking-wide">Account Password</span>
+
+                  {/* Password */}
+                  <div>
+                    <label className="block text-xs font-medium text-slate-200 mb-1">Password <span className="text-red-400">*</span></label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        value={password}
+                        onChange={e => { setPassword(e.target.value); setPwTouched(true) }}
+                        className={`w-full rounded-xl border px-3 py-2.5 pr-10 text-base md:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 bg-slate-800/80 transition-colors ${
+                          pwTouched && !allCriteriaMet
+                            ? 'border-orange-500/50 focus:border-orange-500/50 focus:ring-orange-500/30'
+                            : pwTouched && allCriteriaMet
+                            ? 'border-emerald-400/70 focus:border-emerald-400/70 focus:ring-emerald-400/40'
+                            : 'border-white/20 focus:border-emerald-500/70 focus:ring-emerald-500/40'
+                        }`}
+                        placeholder="Create a strong password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                        tabIndex={-1}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                          </svg>
+                        ) : (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Strength + criteria — single compact row */}
+                    {pwTouched && (
+                      <div className="mt-1.5 space-y-1">
+                        {/* Strength bar + label inline */}
+                        {password && strength && (
+                          <div className="flex items-center gap-2">
+                            <div className="flex flex-1 gap-0.5">
+                              {[1,2,3,4,5].map(i => (
+                                <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= strength.score ? strength.color : 'bg-slate-700'}`} />
+                              ))}
+                            </div>
+                            <span className={`text-xs font-medium shrink-0 ${strength.score >= 4 ? 'text-emerald-400' : strength.score === 3 ? 'text-yellow-400' : 'text-orange-400'}`}>
+                              {strength.label}
+                            </span>
+                          </div>
+                        )}
+                        {/* Criteria pills — hidden once all met */}
+                        {!allCriteriaMet && (
+                          <div className="flex flex-wrap gap-x-2 gap-y-1">
+                            {criteria.map(c => (
+                              <span key={c.label} className={`inline-flex items-center gap-1 text-xs transition-colors ${c.met ? 'text-emerald-400' : 'text-slate-500'}`}>
+                                <span className={`h-1.5 w-1.5 rounded-full shrink-0 transition-colors ${c.met ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                                {c.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Confirm password */}
+                  <div>
+                    <label className="block text-xs font-medium text-slate-200 mb-1">Confirm password <span className="text-red-400">*</span></label>
+                    <div className="relative">
+                      <input
+                        type={showConfirm ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        value={confirmPassword}
+                        onChange={e => { setConfirmPassword(e.target.value); setConfirmTouched(true) }}
+                        className={`w-full rounded-xl border px-3 py-2.5 pr-10 text-base md:text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 bg-slate-800/80 transition-colors ${
+                          confirmTouched && confirmPassword
+                            ? passwordsMatch
+                              ? 'border-emerald-400/70 focus:border-emerald-400/70 focus:ring-emerald-400/40'
+                              : 'border-red-500/60 focus:border-red-500/60 focus:ring-red-500/40'
+                            : 'border-white/20 focus:border-emerald-500/70 focus:ring-emerald-500/40'
+                        }`}
+                        placeholder="Repeat your password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirm(!showConfirm)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                        tabIndex={-1}
+                        aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                      >
+                        {showConfirm ? (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                          </svg>
+                        ) : (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                    {confirmTouched && confirmPassword && (
+                      <p className={`mt-1 flex items-center gap-1 text-xs ${passwordsMatch ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {passwordsMatch ? (
+                          <>
+                            <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Passwords match
+                          </>
+                        ) : (
+                          <>
+                            <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                            Passwords do not match
+                          </>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <p className="flex items-center gap-1.5 text-xs text-slate-500">
-                <span className="text-red-400 font-bold">*</span>
-                Required fields must not be left empty
-              </p>
+              {/* ── Full-width: Terms & GDPR spanning 2 columns ── */}
+              <div className="relative rounded-xl border border-white/10 p-3 pt-6 space-y-2">
+                <span className="absolute -top-2.5 left-3 bg-gray-900 px-2 text-xs font-semibold text-emerald-400 tracking-wide">Terms &amp; Consent</span>
 
-              {recaptchaKey && (
-                <div className="flex flex-col items-center gap-2">
-                  <ReCAPTCHA
-                    ref={recaptchaRef}
-                    sitekey={recaptchaKey}
-                    theme="dark"
-                    onChange={token => setCaptchaToken(token)}
-                    onExpired={() => setCaptchaToken(null)}
-                  />
-                  {!captchaToken && (
-                    <p className="text-xs text-slate-500">Please complete the verification above to continue</p>
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <div className="relative mt-0.5 shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={e => setTermsAccepted(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className={`flex h-5 w-5 items-center justify-center rounded border-2 transition-all ${
+                      termsAccepted
+                        ? 'border-emerald-500 bg-emerald-500'
+                        : 'border-slate-500 bg-slate-800 hover:border-slate-400'
+                    }`}>
+                      {termsAccepted && (
+                        <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-sm leading-snug text-slate-200">
+                    I have read and agree to the{' '}
+                    <Link href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-400 underline underline-offset-2 hover:text-emerald-300" onClick={e => e.stopPropagation()}>
+                      Terms of Service
+                    </Link>{' '}and{' '}
+                    <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-400 underline underline-offset-2 hover:text-emerald-300" onClick={e => e.stopPropagation()}>
+                      Privacy Policy
+                    </Link>
+                    , and consent to the processing of my personal data and use of cookies.
+                  </span>
+                </label>
+
+                {/* GDPR block */}
+                <div className="rounded-lg border border-white/10 bg-slate-900/80 px-3 py-2 ring-1 ring-white/5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-400/25">
+                      <svg className="h-3.5 w-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-200">GDPR Compliant</p>
+                      <p className="text-xs text-slate-400">Your data is encrypted, never sold, and processed under GDPR. Withdraw consent anytime from account settings.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="flex items-center gap-1 text-xs text-slate-400">
+                  <span className="text-red-400 font-bold">*</span>
+                  Required fields must not be left empty
+                </p>
+              </div>
+
+              {/* ── Row 2: Captcha | Continue button ── */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Left: Bot Verification */}
+                <div className="relative rounded-xl border border-white/10 p-3 pt-6">
+                  <span className="absolute -top-2.5 left-3 bg-gray-900 px-2 text-xs font-semibold text-emerald-400 tracking-wide">Bot Verification</span>
+                  {recaptchaKey ? (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <ReCAPTCHA
+                        ref={recaptchaRef}
+                        sitekey={recaptchaKey}
+                        theme="dark"
+                        onChange={token => setCaptchaToken(token)}
+                        onExpired={() => setCaptchaToken(null)}
+                      />
+                      {!captchaToken && (
+                        <p className="text-xs text-slate-500">Complete the verification to continue</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center min-h-[60px]">
+                      <p className="text-xs text-slate-500">No verification required</p>
+                    </div>
                   )}
                 </div>
-              )}
 
-              {error && (
-                <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">{error}</p>
-              )}
+                {/* Right: Submit */}
+                <div className="relative rounded-xl border border-white/10 p-3 pt-6 flex flex-col justify-center gap-3">
+                  <span className="absolute -top-2.5 left-3 bg-gray-900 px-2 text-xs font-semibold text-emerald-400 tracking-wide">Submit</span>
 
-              <button
-                type="submit"
-                disabled={!canProceed}
-                className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 font-semibold text-white transition-all hover:from-emerald-400 hover:to-teal-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:from-emerald-500 disabled:hover:to-teal-500"
-              >
-                Continue →
-              </button>
+                  {error && (
+                    <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
+                  )}
 
-              {!canProceed && (name || email || password) && (
-                <p className="text-center text-xs text-slate-500">
-                  Complete all fields above to continue
-                </p>
-              )}
+                  <button
+                    type="submit"
+                    disabled={!canProceed}
+                    className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 font-semibold text-white transition-all hover:from-emerald-400 hover:to-teal-400 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:from-emerald-500 disabled:hover:to-teal-500"
+                  >
+                    Continue →
+                  </button>
 
-              <p className="text-center text-sm text-slate-400">
-                Already have an account?{' '}
-                <Link href="/login" className="text-emerald-400 hover:underline">Sign in</Link>
-              </p>
+                  {!canProceed && (name || email || password) && (
+                    <p className="text-center text-xs text-slate-500">Complete all fields above to continue</p>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Nav cards — side by side on sm+ ── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-3 backdrop-blur-sm">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-500/15 ring-1 ring-teal-400/30">
+                      <svg className="h-4 w-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-white">Have an account?</p>
+                      <p className="text-xs text-slate-400">Sign in to your portal</p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/login"
+                    className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-teal-500/20 px-2.5 py-1.5 text-xs font-semibold text-teal-300 ring-1 ring-teal-400/40 transition-all hover:bg-teal-500/30 hover:text-teal-200"
+                  >
+                    Login
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+
+                <Link
+                  href="/"
+                  className="group flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-sm font-medium text-slate-400 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-700/60 transition-colors group-hover:bg-slate-600/60">
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                  </span>
+                  Back to home
+                </Link>
+              </div>
             </form>
           )}
 
@@ -557,13 +670,13 @@ export default function RegisterPage() {
                     >
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
-                          <span className={`font-semibold ${isSelected ? 'text-white' : 'text-slate-300'}`}>{plan.name}</span>
+                          <span className="font-semibold text-white">{plan.name}</span>
                           {plan.highlight && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-medium">Popular</span>
                           )}
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className={`font-bold ${isSelected ? 'text-white' : 'text-slate-300'}`}>
+                          <span className="font-bold text-white">
                             {plan.price}<span className="text-xs text-slate-400 font-normal">{plan.period}</span>
                           </span>
                           <div className={`flex h-5 w-5 items-center justify-center rounded-full transition-all ${
@@ -577,10 +690,10 @@ export default function RegisterPage() {
                           </div>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-400 mb-2">{plan.description}</p>
+                      <p className="text-xs text-slate-300 mb-2">{plan.description}</p>
                       <div className="flex flex-wrap gap-x-3 gap-y-1">
                         {plan.features.map(f => (
-                          <span key={f} className={`text-xs ${isSelected ? 'text-slate-200' : 'text-slate-400'}`}>✓ {f}</span>
+                          <span key={f} className={`text-xs ${isSelected ? 'text-white' : 'text-slate-300'}`}>✓ {f}</span>
                         ))}
                       </div>
                     </button>
@@ -620,6 +733,7 @@ export default function RegisterPage() {
             </form>
           )}
         </div>
+
       </div>
     </div>
   )

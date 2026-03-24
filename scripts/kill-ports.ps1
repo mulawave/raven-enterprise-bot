@@ -1,4 +1,4 @@
-$ports = 3000,3001,4000
+$ports = 4000,4011,4012
 
 foreach ($port in $ports) {
   $process = netstat -ano | findstr :$port

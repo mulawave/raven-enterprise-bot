@@ -138,7 +138,11 @@ export class AdminUsersController {
     })
     if (existing) throw new ConflictException('Email already in use')
 
-    const role = body.role === 'admin' ? UserRole.admin : UserRole.SUPER_ADMIN
+    const allowedRoles = ['admin', 'SUPER_ADMIN'] as const
+    if (!body.role || !allowedRoles.includes(body.role)) {
+      throw new BadRequestException('Role is required and must be "admin" or "SUPER_ADMIN"')
+    }
+    const role = body.role === 'SUPER_ADMIN' ? UserRole.SUPER_ADMIN : UserRole.admin
     const hashedPassword = await bcrypt.hash(body.password, 10)
 
     const user = await this.prisma.user.create({
@@ -197,7 +201,11 @@ export class AdminUsersController {
       if (id === requesterId) {
         throw new ForbiddenException('Cannot change your own role')
       }
-      updateData.role = body.role === 'admin' ? UserRole.admin : UserRole.SUPER_ADMIN
+      const allowedRoles = ['admin', 'SUPER_ADMIN'] as const
+      if (!allowedRoles.includes(body.role)) {
+        throw new BadRequestException('Role must be "admin" or "SUPER_ADMIN"')
+      }
+      updateData.role = body.role === 'SUPER_ADMIN' ? UserRole.SUPER_ADMIN : UserRole.admin
     }
 
     const updated = await this.prisma.user.update({

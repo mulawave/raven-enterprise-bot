@@ -22,6 +22,19 @@ export class StateMachine {
 
     if (intent === 'Greeting' || intent === 'HelpRequest') return 'Validated'
 
+    // Informational intents — no backend validation needed, answer immediately
+    if (
+      intent === 'GeneralInfo' ||
+      intent === 'MenuBrowse' ||
+      intent === 'AboutInquiry' ||
+      intent === 'PriceInquiry' ||
+      intent === 'AvailabilityInquiry' ||
+      intent === 'PolicyQuestion' ||
+      intent === 'Fallback'
+    ) {
+      return 'Validated'
+    }
+
     if (intent === 'OrderDraft' || intent === 'ModifyOrderDraft' || intent === 'BookingRequest') {
       if (hasDraft) return this.applyValidation('DraftCreated', validation)
       return this.applyValidation('CollectingInfo', validation)

@@ -22,6 +22,15 @@ const config: Config = {
           900: '#0c4a6e',
         },
       },
+      animation: {
+        shimmer: 'shimmer 1.5s infinite linear',
+      },
+      keyframes: {
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+      },
     },
   },
   plugins: [],

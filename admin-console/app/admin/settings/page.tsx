@@ -5,8 +5,8 @@ import NextImage from 'next/image'
 import ImageUpload from '@/components/ImageUpload'
 import Button from '@/components/Button'
 import { api } from '@/lib/api'
-import { CheckCircle2, AlertCircle, Building2, Globe, Mail, Phone, ImageIcon, Star } from 'lucide-react'
-import { API_BASE_URL } from '@/lib/constants'
+import { CheckCircle2, AlertCircle, Building2, Globe, Mail, Phone, ImageIcon, Star, Settings } from 'lucide-react'
+import { API_BASE_URL, API_ENDPOINTS } from '@/lib/constants'
 
 interface AppSettings {
   id: string
@@ -29,7 +29,19 @@ export default function SettingsPage() {
   const [showLogoPreview, setShowLogoPreview] = useState(true)
   const [showFaviconPreview, setShowFaviconPreview] = useState(true)
 
+  const [requireBackup, setRequireBackup] = useState(false)
+  const [isLoadingPlatformConfig, setIsLoadingPlatformConfig] = useState(true)
+  const [isSavingPlatformConfig, setIsSavingPlatformConfig] = useState(false)
+  const [platformConfigSaved, setPlatformConfigSaved] = useState(false)
+
   useEffect(() => { fetchSettings() }, [])
+
+  useEffect(() => {
+    api.get<{ require_backup_before_reset: boolean }>(API_ENDPOINTS.PLATFORM_RESET_CONFIG)
+      .then((d) => setRequireBackup(d.require_backup_before_reset))
+      .catch(() => {})
+      .finally(() => setIsLoadingPlatformConfig(false))
+  }, [])
   useEffect(() => { setShowLogoPreview(true) }, [settings?.logo_url])
   useEffect(() => { setShowFaviconPreview(true) }, [settings?.favicon_url])
 
@@ -78,6 +90,21 @@ export default function SettingsPage() {
   const handleFaviconChange = async (url: string) => {
     setSettings((prev) => (prev ? { ...prev, favicon_url: url } : prev))
     try { await api.patch('/admin/settings', { favicon_url: url }) } catch {}
+  }
+
+  const handlePlatformConfigToggle = async (value: boolean) => {
+    setRequireBackup(value)
+    setIsSavingPlatformConfig(true)
+    setPlatformConfigSaved(false)
+    try {
+      await api.patch(API_ENDPOINTS.PLATFORM_RESET_CONFIG, { require_backup_before_reset: value })
+      setPlatformConfigSaved(true)
+      setTimeout(() => setPlatformConfigSaved(false), 2500)
+    } catch {
+      setRequireBackup(!value) // revert on error
+    } finally {
+      setIsSavingPlatformConfig(false)
+    }
   }
 
   const S = 'animate-pulse bg-slate-700/60 rounded'
@@ -284,6 +311,49 @@ export default function SettingsPage() {
               <li>After uploading, do a hard-refresh (Ctrl+Shift+R) to clear the browser cache.</li>
             </ul>
           </div>
+        </div>
+      </div>
+
+      {/* ── Platform Config ── */}
+      <div className="rounded-2xl border border-slate-700/40 bg-slate-800/60 p-6">
+        <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
+          <Settings className="h-5 w-5 text-indigo-400" />Platform Config
+        </h2>
+
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <p className="text-sm font-medium text-slate-200">Require backup before platform reset</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              When enabled, super admins must download a platform backup before the reset button is available.
+              Disable to allow reset at any time.
+            </p>
+            {platformConfigSaved && (
+              <p className="mt-1.5 text-xs text-green-400 flex items-center gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5" />Saved
+              </p>
+            )}
+          </div>
+
+          {isLoadingPlatformConfig ? (
+            <div className="animate-pulse bg-slate-700/60 rounded-full h-6 w-11 shrink-0" />
+          ) : (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={requireBackup}
+              disabled={isSavingPlatformConfig}
+              onClick={() => handlePlatformConfigToggle(!requireBackup)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed ${
+                requireBackup ? 'bg-indigo-500' : 'bg-slate-600'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform ${
+                  requireBackup ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          )}
         </div>
       </div>
     </div>

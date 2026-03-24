@@ -12,5 +12,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/register', '/register/:path*', '/confirm-email', '/onboarding', '/onboarding/:path*'],
+  matcher: ['/((?!_next/static|_next/image|favicon\.ico).*)'],
 }

@@ -5,6 +5,7 @@ import { Module } from '@nestjs/common'
 
 // Controllers
 import { PaymentController } from './payment.controller'
+import { SubscriptionPaymentController } from './subscription-payment.controller'
 import { SubscriptionsController } from '../admin/subscriptions.controller'
 import { AdminBillingController } from '../admin/billing/admin-billing.controller'
 import { AdminSubscriptionsController } from '../admin/subscriptions/admin-subscriptions.controller'
@@ -21,6 +22,7 @@ import { UsageTracker as BillingUsageTracker } from '../../../libs/billing/usage
 import { BillingLifecycleService } from '../../../libs/billing/billing-lifecycle.service'
 import { PaystackService } from '../../../libs/payments/paystack.service'
 import { FlutterwaveService } from '../../../libs/payments/flutterwave.service'
+import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
 import { ComplianceModule } from './compliance.module'
 import { AuthModule } from './auth.module'
 import { AppConfigModule } from './app-config.module'
@@ -29,6 +31,7 @@ import { AppConfigModule } from './app-config.module'
   imports: [ComplianceModule, AuthModule, AppConfigModule],
   controllers: [
     PaymentController,
+    SubscriptionPaymentController,
     SubscriptionsController,
     AdminBillingController,
     AdminSubscriptionsController,
@@ -43,8 +46,16 @@ import { AppConfigModule } from './app-config.module'
     GracePeriodChecker,
     BillingUsageTracker,
     BillingLifecycleService,
-    { provide: PaystackService, useFactory: () => new PaystackService(process.env.PAYSTACK_SECRET_KEY ?? '') },
-    { provide: FlutterwaveService, useFactory: () => new FlutterwaveService(process.env.FLUTTERWAVE_SECRET_KEY ?? '') },
+    {
+      provide: PaystackService,
+      useFactory: async (config: ConfigLoaderService) => new PaystackService(await config.getPaystackSecret()),
+      inject: [ConfigLoaderService],
+    },
+    {
+      provide: FlutterwaveService,
+      useFactory: async (config: ConfigLoaderService) => new FlutterwaveService(await config.getFlutterwaveSecret()),
+      inject: [ConfigLoaderService],
+    },
   ],
   exports: [
     SubscriptionsService,

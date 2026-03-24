@@ -1,6 +1,6 @@
 ﻿import Link from 'next/link'
 
-export const metadata = { title: 'User Guide — Raven AI' }
+export const metadata = { title: 'User Guide — Raven Business Automator (RBA)' }
 
 const sections = [
   {
@@ -9,7 +9,7 @@ const sections = [
     content: [
       {
         heading: 'Receiving your Tenant ID',
-        body: 'After your account is provisioned by a Raven AI administrator, you will receive an email containing your Tenant ID. This ID is unique to your business and is required to log in. Keep it secure.',
+        body: 'After your account is provisioned by a Raven Business Automator (RBA) administrator, you will receive an email containing your Tenant ID. This ID is unique to your business and is required to log in. Keep it secure.',
       },
       {
         heading: 'Logging in',
@@ -91,7 +91,7 @@ const sections = [
       },
       {
         heading: 'Automated reminders',
-        body: 'Raven AI sends a WhatsApp reminder to the customer 24 hours before the appointment. Reminders are sent automatically — no manual action required.',
+        body: 'Raven Business Automator (RBA) sends a WhatsApp reminder to the customer 24 hours before the appointment. Reminders are sent automatically — no manual action required.',
       },
     ],
   },
@@ -123,7 +123,7 @@ const sections = [
       },
       {
         heading: 'Payment',
-        body: 'Payments are processed securely via Paystack. Cards are not stored on Raven AI servers. You will receive an invoice email after each successful charge.',
+        body: 'Payments are processed securely via Paystack. Cards are not stored on Raven Business Automator (RBA) servers. You will receive an invoice email after each successful charge.',
       },
     ],
   },
@@ -165,7 +165,7 @@ export default function GuidePage() {
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white">
       <nav className="border-b border-white/5 px-6 h-14 flex items-center justify-between max-w-5xl mx-auto">
-        <Link href="/" className="text-indigo-400 font-bold tracking-tight">Raven AI</Link>
+        <Link href="/" className="text-indigo-400 font-bold tracking-tight">Raven Business Automator (RBA)</Link>
         <Link href="/" className="text-sm text-slate-400 hover:text-white">&larr; Back</Link>
       </nav>
 
@@ -187,7 +187,7 @@ export default function GuidePage() {
         <main className="flex-1 space-y-12">
           <div>
             <h1 className="text-3xl font-bold mb-2">Tenant User Guide</h1>
-            <p className="text-slate-400 text-sm">A step-by-step guide to getting the most out of the Raven AI platform.</p>
+            <p className="text-slate-400 text-sm">A step-by-step guide to getting the most out of the Raven Business Automator (RBA) platform.</p>
           </div>
 
           {sections.map((section) => (

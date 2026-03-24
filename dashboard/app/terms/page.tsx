@@ -1,13 +1,13 @@
 ﻿import Link from 'next/link'
 
-export const metadata = { title: 'Terms of Use — Raven AI' }
+export const metadata = { title: 'Terms of Use — Raven Business Automator (RBA)' }
 
 export default function TermsPage() {
   const updated = 'June 2025'
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white">
       <nav className="border-b border-white/5 px-6 h-14 flex items-center justify-between max-w-5xl mx-auto">
-        <Link href="/" className="text-indigo-400 font-bold tracking-tight">Raven AI</Link>
+        <Link href="/" className="text-indigo-400 font-bold tracking-tight">Raven Business Automator (RBA)</Link>
         <Link href="/" className="text-sm text-slate-400 hover:text-white">&larr; Back</Link>
       </nav>
       <main className="max-w-3xl mx-auto px-6 py-16">
@@ -17,11 +17,11 @@ export default function TermsPage() {
         <div className="space-y-6 text-slate-300 text-sm leading-relaxed">
           <section>
             <h2 className="text-lg font-semibold text-white mb-2">1. Acceptance of Terms</h2>
-            <p>By accessing or using Raven AI ("the platform"), you agree to be bound by these Terms of Use and our Privacy Policy. If you do not agree, you must not use the platform.</p>
+            <p>By accessing or using Raven Business Automator (RBA) ("the platform"), you agree to be bound by these Terms of Use and our Privacy Policy. If you do not agree, you must not use the platform.</p>
           </section>
           <section>
             <h2 className="text-lg font-semibold text-white mb-2">2. Eligibility</h2>
-            <p>You must be at least 18 years old and have the legal authority to enter into a binding agreement on behalf of yourself or your business. Use of the platform is subject to activation by a Raven AI administrator who issues a Tenant ID.</p>
+            <p>You must be at least 18 years old and have the legal authority to enter into a binding agreement on behalf of yourself or your business. Use of the platform is subject to activation by a Raven Business Automator (RBA) administrator who issues a Tenant ID.</p>
           </section>
           <section>
             <h2 className="text-lg font-semibold text-white mb-2">3. Permitted Use</h2>
@@ -37,7 +37,7 @@ export default function TermsPage() {
           </section>
           <section>
             <h2 className="text-lg font-semibold text-white mb-2">6. Intellectual Property</h2>
-            <p>All platform software, documentation, and branding are the intellectual property of Raven AI. Content you upload (product data, templates, brand assets) remains your property. You grant Raven AI a limited licence to process this content to operate the platform services.</p>
+            <p>All platform software, documentation, and branding are the intellectual property of Raven Business Automator (RBA). Content you upload (product data, templates, brand assets) remains your property. You grant Raven Business Automator (RBA) a limited licence to process this content to operate the platform services.</p>
           </section>
           <section>
             <h2 className="text-lg font-semibold text-white mb-2">7. Availability and Support</h2>
@@ -45,7 +45,7 @@ export default function TermsPage() {
           </section>
           <section>
             <h2 className="text-lg font-semibold text-white mb-2">8. Limitation of Liability</h2>
-            <p>To the maximum extent permitted by law, Raven AI's liability for any claim arising out of your use of the platform is limited to the total fees paid by you in the three months preceding the claim. We are not liable for indirect, incidental, or consequential damages.</p>
+            <p>To the maximum extent permitted by law, Raven Business Automator (RBA)'s liability for any claim arising out of your use of the platform is limited to the total fees paid by you in the three months preceding the claim. We are not liable for indirect, incidental, or consequential damages.</p>
           </section>
           <section>
             <h2 className="text-lg font-semibold text-white mb-2">9. Termination</h2>

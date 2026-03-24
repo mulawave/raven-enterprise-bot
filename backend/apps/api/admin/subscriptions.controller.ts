@@ -1,9 +1,10 @@
 import { Controller, Get, Post, Put, Delete, Body, HttpCode, HttpStatus, UnauthorizedException, UseGuards } from '@nestjs/common'
 import { SubscriptionsService, PlanTier } from '../../../libs/billing/subscriptions.service'
 import { JwtAuthGuard } from '../../../libs/auth/guards/jwt-auth.guard'
+import { SystemScopeGuard } from '../../../libs/auth/guards/system-scope.guard'
 import { CurrentUser } from '../../../libs/auth/decorators/current-user.decorator'
 
-@Controller('subscriptions')
+@Controller('api/subscriptions')
 @UseGuards(JwtAuthGuard)
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
@@ -93,11 +94,13 @@ export class SubscriptionsController {
   }
 
   /**
-   * Change subscription plan
+   * Change subscription plan — ADMIN ONLY
    * PUT /api/subscriptions/plan
-   * Body: { tenantId: string, newPlanTier: 'starter' | 'growth' | 'enterprise' }
+   * Requires SYSTEM scope JWT (admin-console). Tenants must pay via the
+   * POST /api/subscription/payment/initialize → Paystack flow instead.
    */
   @Put('plan')
+  @UseGuards(SystemScopeGuard)
   async changePlan(@CurrentUser() user: any, @Body() body: { newPlanTier: PlanTier }) {
     const tenantId = user?.tenant_id
     const { newPlanTier } = body

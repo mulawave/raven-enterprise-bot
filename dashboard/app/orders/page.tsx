@@ -6,13 +6,19 @@ import { formatNaira, formatDate } from '@/lib/formatters'
 import { useTenantContext } from '@/lib/tenant-context'
 import OrderStatusDropdown from '@/components/OrderStatusDropdown'
 
+interface OrderItem {
+  quantity: number
+  price_kobo: number
+  menuItem: { name: string } | null
+}
+
 interface Order {
   id: string
-  customerName: string
-  items: Array<{ name: string; quantity: number }>
-  totalAmount: number
+  total_kobo: number
   status: string
-  createdAt: string
+  created_at: string
+  customer: { name: string | null; phone: string | null; email: string | null } | null
+  orderItems: OrderItem[]
 }
 
 const SHIMMER_ROWS = Array.from({ length: 5 })
@@ -22,6 +28,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [statusError, setStatusError] = useState<string | null>(null)
 
   useEffect(() => {
     let isActive = true
@@ -51,6 +58,9 @@ export default function OrdersPage() {
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         {error && (
           <div className="px-6 py-4 text-sm text-red-600 border-b border-red-100 bg-red-50">{error}</div>
+        )}
+        {statusError && (
+          <div className="px-6 py-4 text-sm text-red-600 border-b border-red-100 bg-red-50">{statusError}</div>
         )}
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -84,19 +94,21 @@ export default function OrdersPage() {
               : orders.map((order) => (
                   <tr key={order.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {order.customerName}
+                      {order.customer?.name ?? <span className="italic text-gray-400">Unknown</span>}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {order.items?.map(item => `${item.name} (${item.quantity})`).join(', ')}
+                      {order.orderItems?.length
+                        ? order.orderItems.map(item => `${item.menuItem?.name ?? 'Item'} ×${item.quantity}`).join(', ')
+                        : <span className="italic text-gray-400">—</span>}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatNaira(order.totalAmount)}
+                      {formatNaira(order.total_kobo)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <OrderStatusDropdown orderId={order.id} currentStatus={order.status} />
+                      <OrderStatusDropdown orderId={order.id} currentStatus={order.status} onError={(msg) => setStatusError(msg)} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(order.createdAt)}
+                      {formatDate(order.created_at)}
                     </td>
                   </tr>
                 ))

@@ -29,8 +29,3 @@ declare global {
 }
 
 export {}
-
-  }
-}
-
-export {}

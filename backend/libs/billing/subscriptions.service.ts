@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
+import { NotificationService } from '../notifications/notification.service'
+import { ConfigLoaderService } from '../config/config-loader.service'
 
 export type PlanTier = 'starter' | 'growth' | 'enterprise'
 export type SubscriptionStatus = 'active' | 'cancelled' | 'past_due'
@@ -45,7 +47,7 @@ export class SubscriptionsService {
   /**
    * Look up a plan from DB, with PLANS constant as a fallback
    */
-  private async lookupPlan(tier: string): Promise<{ conversationsLimit: number; overagePriceKobo: number; priceKobo: number; name: string }> {
+  async lookupPlan(tier: string): Promise<{ conversationsLimit: number; overagePriceKobo: number; priceKobo: number; name: string }> {
     const dbPlan = await this.prisma.plan.findUnique({ where: { tier } }).catch(() => null)
     if (dbPlan) {
       return {
@@ -63,7 +65,7 @@ export class SubscriptionsService {
   /**
    * Create a new subscription for a tenant
    */
-  async createSubscription(tenantId: string, planTier: PlanTier) {
+  async createSubscription(tenantId: string, planTier: PlanTier, initialStatus: string = 'pending_payment') {
     const plan = await this.lookupPlan(planTier)
     const now = new Date()
     const periodEnd = new Date()
@@ -73,7 +75,7 @@ export class SubscriptionsService {
       data: {
         tenant_id: tenantId,
         plan_tier: planTier,
-        status: 'active',
+        status: initialStatus,
         current_period_start: now,
         current_period_end: periodEnd,
         conversations_used: 0,
@@ -120,7 +122,23 @@ export class SubscriptionsService {
     if (usagePercent >= 80 && usagePercent < 81) {
       // Send warning email at 80%
       this.logger.log(`Tenant ${tenantId} has used ${usagePercent.toFixed(0)}% of conversations`)
-      // TODO: Trigger email notification
+      try {
+        const notificationService = new NotificationService(this.prisma, new ConfigLoaderService(this.prisma))
+        await notificationService.send({
+          tenantId,
+          title: 'Usage warning',
+          body: `You have used ${newCount}/${limit} conversations (${usagePercent.toFixed(0)}%). Consider upgrading your plan to avoid overage charges.`,
+          type: 'alert',
+          data: {
+            tenantId,
+            conversationsUsed: String(newCount),
+            conversationsLimit: String(limit),
+            usagePercent: usagePercent.toFixed(0),
+          },
+        })
+      } catch (err) {
+        this.logger.warn(`Failed to send usage warning notification for tenant ${tenantId}: ${(err as Error).message}`)
+      }
     }
 
     if (usagePercent >= 100) {

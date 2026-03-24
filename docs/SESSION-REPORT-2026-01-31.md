@@ -467,9 +467,9 @@ const redis = new Redis(process.env.REDIS_URL, {
 REDIS_URL=redis://localhost:6379  # ← New
 DATABASE_URL=postgresql://app_user:change_me@localhost:5432/app_db
 PAYSTACK_SECRET_KEY=sk_test_dummy_for_sandbox
-PAYMENT_CALLBACK_URL=http://localhost:3000/payment/callback
+PAYMENT_CALLBACK_URL=http://localhost:4011/payment/callback
 META_APP_SECRET=your_meta_app_secret_here
-META_WEBHOOK_VERIFY_TOKEN=test-verify-token
+META_WEBHOOK_VERIFY_TOKEN=your-webhook-verify-token
 ```
 
 **Status:** ✅ Updated

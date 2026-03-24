@@ -34,8 +34,17 @@ export class TenantAuthController {
 
     const { access_token } = await this.authService.login(user)
 
+    // Check if onboarding is completed by reading tenant theme
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: user.tenant_id } })
+    let onboardingCompleted = false
+    try {
+      const theme = JSON.parse(tenant?.theme ?? '{}')
+      onboardingCompleted = theme?.onboardingCompleted === true
+    } catch { /* ignore */ }
+
     return {
       access_token,
+      onboarding_completed: onboardingCompleted,
       user: {
         id: user.id,
         email: user.email,

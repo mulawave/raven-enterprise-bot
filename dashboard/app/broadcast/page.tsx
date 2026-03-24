@@ -5,17 +5,19 @@ import { api } from '@/lib/api'
 import { useTenantContext } from '@/lib/tenant-context'
 
 const CHANNELS = [
-  { id: 'whatsapp',  label: 'WhatsApp',  icon: '💬' },
-  { id: 'instagram', label: 'Instagram', icon: '📸' },
-  { id: 'facebook',  label: 'Facebook',  icon: '📘' },
+  { id: 'whatsapp',  label: 'WhatsApp',  icon: '💬', available: true },
+  { id: 'instagram', label: 'Instagram', icon: '📸', available: false },
+  { id: 'facebook',  label: 'Facebook',  icon: '📘', available: false },
 ]
 
 const MAX_CHARS = 1024
 
 interface BroadcastResult {
   sent: number
-  tenantId: string
-  channel: string
+  failed: number
+  total: number
+  message?: string
+  channel?: string
 }
 
 export default function BroadcastPage() {
@@ -31,6 +33,7 @@ export default function BroadcastPage() {
 
   const handleSend = async () => {
     if (!canSend) return
+    if (!window.confirm(`Send this broadcast to all your WhatsApp contacts? This cannot be undone.`)) return
 
     setIsSending(true)
     setResult(null)
@@ -38,7 +41,7 @@ export default function BroadcastPage() {
 
     try {
       const data = await api<BroadcastResult>(
-        `/api/admin/broadcast/send?tenantId=${tenant?.id ?? ''}`,
+        `/api/broadcast/send`,
         {
           method: 'POST',
           body: JSON.stringify({ channel, message: message.trim() }),
@@ -65,7 +68,7 @@ export default function BroadcastPage() {
         <div className="mb-6 px-4 py-3 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-700 flex items-center gap-2">
           <span>✓</span>
           <span>
-            Broadcast queued on <strong>{result.channel}</strong> — {result.sent} messages sent
+            Broadcast queued on <strong>{result.channel ?? channel}</strong> — {result.sent} message{result.sent !== 1 ? 's' : ''} sent{result.failed > 0 ? `, ${result.failed} failed` : ''}
           </span>
         </div>
       )}
@@ -89,15 +92,19 @@ export default function BroadcastPage() {
               <button
                 key={ch.id}
                 type="button"
-                onClick={() => setChannel(ch.id)}
+                disabled={!ch.available}
+                onClick={() => ch.available && setChannel(ch.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                  channel === ch.id
+                  !ch.available
+                    ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400 border-gray-200'
+                    : channel === ch.id
                     ? 'bg-gray-900 text-white border-gray-900'
                     : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
                 }`}
               >
                 <span>{ch.icon}</span>
                 {ch.label}
+                {!ch.available && <span className="text-xs text-gray-400 ml-1">(Soon)</span>}
               </button>
             ))}
           </div>

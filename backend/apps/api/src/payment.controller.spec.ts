@@ -29,7 +29,7 @@ describe('PaymentController', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     process.env.PAYSTACK_SECRET_KEY = 'test-paystack-secret'
-    controller = new PaymentController(prisma as any)
+    controller = new PaymentController(prisma as any, { get: jest.fn() } as any, null as any)
   })
 
   it('rejects requests without tenant credentials', async () => {

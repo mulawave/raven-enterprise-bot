@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { api } from '@/lib/api'
+import { API_BASE_URL } from '@/lib/constants'
 
 const CHECKLIST_KEY = 'onboarding_checklist'
 
@@ -37,7 +38,7 @@ const STEPS = [
     icon: '🍽️',
     title: 'Set up your catalogue',
     desc: 'Add at least one menu category and item so customers can browse and order.',
-    action: '/menu',
+    action: '/catalogue',
     actionLabel: 'Add menu items',
   },
   {
@@ -88,7 +89,7 @@ export default function OnboardingChecklist() {
     const session = getSession()
     if (!session) return
 
-    fetch(`/api/tenant/onboarding-status`, {
+    fetch(`${API_BASE_URL}/api/tenant/onboarding-status`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     })
       .then(r => r.ok ? r.json() : null)

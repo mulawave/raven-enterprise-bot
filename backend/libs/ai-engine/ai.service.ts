@@ -95,7 +95,7 @@ export class AiService {
       return `${brand}I will notify our team to follow up with you shortly.`
     }
     if (state === 'AwaitingBackendValidation') {
-      return `${brand}Let me verify that for you and get back to you.`
+      return `${brand}On it! Could you confirm a few details so I can assist you right away?`
     }
 
     switch (intent) {
@@ -104,7 +104,9 @@ export class AiService {
       case 'HelpRequest':
         return `${brand}I can help with orders, bookings, payments, and general enquiries. What do you need?`
       case 'MenuBrowse':
-        return `${brand}I can show you our available items. Please give me a moment.`
+        return `${brand}Here are our offerings — what catches your eye?`
+      case 'AboutInquiry':
+        return `${brand}I handle customer conversations, orders, bookings, and follow-ups — automatically, at scale.`
       case 'OrderDraft':
         return `${brand}I have started an order for you. Please confirm the items you would like.`
       case 'ModifyOrderDraft':
@@ -114,11 +116,17 @@ export class AiService {
       case 'PaymentStatusInquiry':
         return `${brand}Let me check your payment status. Please share your reference number.`
       case 'PolicyQuestion':
-        return `${brand}Our team will confirm the policy details for you shortly.`
+        return `${brand}Good question! Check our FAQ page or ask me anything specific — I'll answer directly.`
+      case 'PriceInquiry':
+        return `${brand}Happy to help with pricing — which item or service are you asking about?`
+      case 'AvailabilityInquiry':
+        return `${brand}Let me know which item or date you have in mind and I'll confirm availability right away.`
+      case 'GeneralInfo':
+        return `${brand}We'd love to help. What would you like to know about us?`
       case 'EscalationRequest':
         return `${brand}A member of staff has been notified and will be with you shortly.`
       default:
-        return this.fallback.getText(brandingName)
+        return `${brand}Happy to help! What would you like to know?`
     }
   }
 

@@ -15,8 +15,10 @@ const navItems = [
   { label: 'Orders', href: ROUTES.ORDERS, icon: '📦', description: 'Order management' },
   { label: 'Customers', href: ROUTES.CUSTOMERS, icon: '👤', description: 'Customer directory' },
   { label: 'Bookings', href: ROUTES.BOOKINGS, icon: '📅', description: 'Booking analytics' },
+  { label: 'Notifications', href: ROUTES.NOTIFICATIONS, icon: '🔔', description: 'Push & email broadcasts' },
   { label: 'System Health', href: ROUTES.SYSTEM, icon: '🏥', description: 'System status' },
   { label: 'Admin Users', href: ROUTES.USERS, icon: '👥', description: 'User management' },
+  { label: 'Platform Reset', href: ROUTES.RESET, icon: '🔄', description: 'Reset all tenant data' },
 ]
 
 const bottomNavItems = [

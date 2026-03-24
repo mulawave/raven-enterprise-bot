@@ -10,24 +10,27 @@ import UsageMeter from '@/components/UsageMeter'
 interface Order {
   id: string
   status: string
-  totalAmount: number
+  total_kobo: number
 }
 
 export default function OverviewPage() {
   const { subscription, tenant } = useTenantContext()
   const [orders, setOrders] = useState<Order[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     let isActive = true
 
     const loadOrders = async () => {
       try {
-        const data = await api<Order[]>(`/api/ordering/orders?tenantId=${tenant?.id ?? ''}`).catch(() => [])
+        const data = await api<Order[]>(`/api/ordering/orders?tenantId=${tenant?.id ?? ''}`)
         if (isActive) {
           setOrders(Array.isArray(data) ? data : [])
         }
-      } catch (error) {
-        // Ignore load errors for empty-state display
+      } catch {
+        // Show empty state on load failure
+      } finally {
+        if (isActive) setIsLoading(false)
       }
     }
 
@@ -40,7 +43,7 @@ export default function OverviewPage() {
 
   const { totalRevenue, orderCount } = useMemo(() => {
     const paidOrders = orders.filter((o) => o.status === 'completed' || o.status === 'paid')
-    const revenue = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0)
+    const revenue = paidOrders.reduce((sum, o) => sum + o.total_kobo, 0)
     return { totalRevenue: revenue, orderCount: orders.length }
   }, [orders])
 
@@ -81,18 +84,29 @@ export default function OverviewPage() {
           title="Conversations"
           value={usageDisplay}
           subtitle={`${usagePercent}% used`}
-          icon="ðŸ’¬"
+          icon="💬"
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        <StatCard title="Total Orders" value={orderCount} icon="ðŸ›’" />
-        <StatCard
-          title="Revenue"
-          value={formatNaira(totalRevenue)}
-          subtitle="From completed orders"
-          icon="ðŸ’°"
-        />
+        {isLoading ? (
+          Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-lg border border-gray-200 p-6 space-y-3">
+              <div className="h-4 w-24 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" />
+              <div className="h-8 w-32 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" />
+            </div>
+          ))
+        ) : (
+          <>
+            <StatCard title="Total Orders" value={orderCount} icon="🛒" />
+            <StatCard
+              title="Revenue"
+              value={formatNaira(totalRevenue)}
+              subtitle="From completed orders"
+              icon="💰"
+            />
+          </>
+        )}
       </div>
     </div>
   )

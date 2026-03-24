@@ -30,6 +30,27 @@ export class ConfigLoaderService {
     await this.maybeRefreshCache()
   }
 
+  /**
+   * Returns the active Paystack secret key based on PAYMENT_LIVE_MODE.
+   * When live mode → PAYSTACK_SECRET_KEY, otherwise → PAYSTACK_TEST_SECRET_KEY.
+   */
+  async getPaystackSecret(): Promise<string> {
+    const liveMode = await this.get('PAYMENT_LIVE_MODE')
+    const key = liveMode === 'true' ? 'PAYSTACK_SECRET_KEY' : 'PAYSTACK_TEST_SECRET_KEY'
+    const value = await this.get(key)
+    if (!value) {
+      this.logger.warn(`Paystack key "${key}" is not set (PAYMENT_LIVE_MODE=${liveMode})`)
+    }
+    return value ?? ''
+  }
+
+  /**
+   * Returns the active Flutterwave secret key (future live/sandbox support).
+   */
+  async getFlutterwaveSecret(): Promise<string> {
+    return (await this.get('FLUTTERWAVE_SECRET_KEY')) ?? ''
+  }
+
   private async maybeRefreshCache(): Promise<void> {
     if (Date.now() - this.cacheLoadedAt < this.CACHE_TTL_MS) return
     try {

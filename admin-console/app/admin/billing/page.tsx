@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { API_ENDPOINTS } from '@/lib/constants'
 import StatCard from '@/components/StatCard'
-import LoadingSkeleton from '@/components/LoadingSkeleton'
 
 interface RevenueSummaryApiResponse {
   mrr: number
@@ -95,10 +94,6 @@ export default function BillingPage() {
     fetchData()
   }, [])
 
-  if (isLoading) {
-    return <LoadingSkeleton />
-  }
-
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -109,39 +104,55 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-slate-900">Billing & Revenue</h1>
+      <h1 className="text-3xl font-bold text-slate-900">Billing &amp; Revenue</h1>
 
-      {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Monthly Recurring Revenue"
-            value={summary.mrrFormatted}
-            icon="💰"
-          />
-          <StatCard
-            title="Annual Recurring Revenue"
-            value={summary.arrFormatted}
-            icon="📈"
-          />
-          <StatCard
-            title="Total Revenue"
-            value={summary.totalRevenueFormatted}
-            icon="💵"
-          />
-          <StatCard
-            title="Payments (30d)"
-            value={summary.paymentsCount30d}
-            icon="💳"
-          />
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {isLoading
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-xl border border-slate-200 p-6 space-y-3">
+                <div className="h-3.5 w-32 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" />
+                <div className="h-9 w-28 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" />
+              </div>
+            ))
+          : summary && (
+              <>
+                <StatCard title="Monthly Recurring Revenue" value={summary.mrrFormatted} icon="💰" />
+                <StatCard title="Annual Recurring Revenue" value={summary.arrFormatted} icon="📈" />
+                <StatCard title="Total Revenue" value={summary.totalRevenueFormatted} icon="💵" />
+                <StatCard title="Payments (30d)" value={summary.paymentsCount30d} icon="💳" />
+              </>
+            )}
+      </div>
 
       <div className="bg-white rounded-lg shadow border border-slate-200">
         <div className="px-6 py-4 border-b border-slate-200">
           <h2 className="text-lg font-semibold text-slate-900">Recent Payments</h2>
         </div>
 
-        {payments.length > 0 ? (
+        {isLoading ? (
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Tenant</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Description</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-200">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <tr key={i}>
+                  <td className="px-6 py-4"><div className="h-4 w-28 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" /></td>
+                  <td className="px-6 py-4"><div className="h-4 w-20 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" /></td>
+                  <td className="px-6 py-4"><div className="h-5 w-14 rounded-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" /></td>
+                  <td className="px-6 py-4"><div className="h-4 w-32 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" /></td>
+                  <td className="px-6 py-4"><div className="h-4 w-20 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : payments.length > 0 ? (
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>

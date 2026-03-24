@@ -1,4 +1,4 @@
-export const FALLBACK_TEXT = 'Let me confirm that and get back to you.'
+export const FALLBACK_TEXT = 'Happy to help! Could you share a bit more detail so I can point you in the right direction?'
 
 export const TEMPLATES = {
   Greeting: 'Hello. How can I help you today?',

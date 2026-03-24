@@ -10,8 +10,14 @@ export class SessionResolver {
   constructor(private readonly prisma: PrismaClient) {}
 
   async resolve(phoneNumberId: string, customerPhone: string): Promise<ResolvedSession> {
-    // For MVP, use first tenant (in production, look up by phoneNumberId → channel → tenant)
-    const tenant = await this.prisma.tenant.findFirst()
+    // Attempt to route to the tenant whose META_PHONE_NUMBER_ID matches the incoming message.
+    // Fallback: use the first tenant (MVP behaviour for single-tenant setups).
+    let tenant = await this.findTenantByPhoneNumberId(phoneNumberId)
+
+    if (!tenant) {
+      tenant = await this.prisma.tenant.findFirst()
+    }
+
     if (!tenant) {
       throw new Error('No tenant found')
     }
@@ -59,5 +65,31 @@ export class SessionResolver {
       customerId: customer.id,
       tenantId: tenant.id,
     }
+  }
+
+  /**
+   * Scan all tenants and return the one whose theme contains a matching META_PHONE_NUMBER_ID.
+   * Returns null if no tenant is configured with that phone number ID.
+   */
+  private async findTenantByPhoneNumberId(phoneNumberId: string): Promise<{ id: string } | null> {
+    if (!phoneNumberId) return null
+
+    const tenants = await this.prisma.tenant.findMany({
+      select: { id: true, theme: true },
+    })
+
+    for (const t of tenants) {
+      if (!t.theme) continue
+      try {
+        const theme = JSON.parse(t.theme) as Record<string, unknown>
+        if (typeof theme.META_PHONE_NUMBER_ID === 'string' && theme.META_PHONE_NUMBER_ID === phoneNumberId) {
+          return { id: t.id }
+        }
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+
+    return null
   }
 }

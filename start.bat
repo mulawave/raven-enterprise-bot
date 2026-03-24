@@ -41,8 +41,8 @@ echo ========================================
 echo All services started!
 echo.
 echo   Backend:        http://localhost:4000
-echo   Admin Console:  http://localhost:3001
-echo   Dashboard:      http://localhost:3000
+echo   Admin Console:  http://localhost:4012
+echo   Dashboard:      http://localhost:4011
 echo.
 echo Login: admin@raven.ai / SuperAdmin123!
 echo ========================================

@@ -19,6 +19,22 @@ import { ReadinessController } from './readiness.controller'
 import { OrderingController } from './ordering.controller'
 import { BookingController } from './booking.controller'
 import { PublicConfigController } from './public-config.controller'
+import { DataDeletionController } from './data-deletion.controller'
+import { FaqController } from './faq.controller'
+import { TenantKeysController } from './tenant-keys.controller'
+import { ContactController } from './contact.controller'
+import { BotConfigController } from './bot-config.controller'
+import { EmailListController } from './email-list.controller'
+import { NotificationController } from './notification.controller'
+import {
+  TenantAnalyticsController,
+  TenantCustomersController,
+  TenantPaymentsController,
+  TenantBroadcastController,
+} from './tenant-data.controller'
+
+// ── Notifications (global — push + in-app) ────────────────────────────────
+import { NotificationsModule } from '../../../libs/notifications/notifications.module'
 
 // ── Middleware ─────────────────────────────────────────────────────────────
 import { LoggingMiddleware } from './logging.middleware'
@@ -30,6 +46,7 @@ import { BranchResolverMiddleware } from '../../../libs/tenant/branch.middleware
   imports: [
     InfrastructureModule,
     AppConfigModule,
+    NotificationsModule,
     AuthModule,
     BillingModule,
     TenantModule,
@@ -44,6 +61,17 @@ import { BranchResolverMiddleware } from '../../../libs/tenant/branch.middleware
     OrderingController,
     BookingController,
     PublicConfigController,
+    DataDeletionController,
+    FaqController,
+    TenantKeysController,
+    ContactController,
+    BotConfigController,
+    EmailListController,
+    NotificationController,
+    TenantAnalyticsController,
+    TenantCustomersController,
+    TenantPaymentsController,
+    TenantBroadcastController,
   ],
 })
 export class AppModule implements NestModule {
@@ -54,7 +82,7 @@ export class AppModule implements NestModule {
     // Tenant JWT resolution — exclude public routes
     consumer
       .apply(TenantMiddleware)
-      .exclude('/health', '/readiness', '/admin/auth/login', '/admin/auth/refresh', '/api/auth/login', '/api/config/public', '/webhooks/(.*)')
+      .exclude('/health', '/readiness', '/admin/auth/login', '/admin/auth/refresh', '/api/auth/login', '/api/config/public', '/webhooks/(.*)', '/api/data-deletion/status/(.*)', '/api/data-deletion/public')
       .forRoutes('*')
 
     // Branch context — only needed for routes that scope to a branch

@@ -1,9 +1,11 @@
 import './globals.css'
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import DashboardShell from '@/components/DashboardShell'
+import CookieConsent from '@/components/CookieConsent'
 
 export const metadata: Metadata = {
-  title: 'Raven Dashboard',
+  title: 'Raven Business Automator (RBA)',
   description: 'Enterprise Bot Management Dashboard',
 }
 
@@ -15,7 +17,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <DashboardShell>{children}</DashboardShell>
+        <Suspense fallback={null}>
+          <DashboardShell>{children}</DashboardShell>
+        </Suspense>
+        <CookieConsent />
       </body>
     </html>
   )

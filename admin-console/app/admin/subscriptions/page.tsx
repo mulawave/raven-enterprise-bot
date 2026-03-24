@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { API_ENDPOINTS } from '@/lib/constants'
 import StatusBadge from '@/components/StatusBadge'
-import LoadingSkeleton from '@/components/LoadingSkeleton'
 
 interface SubscriptionApiItem {
   id: string
@@ -87,10 +86,6 @@ export default function SubscriptionsPage() {
     fetchSubscriptions()
   }, [filter])
 
-  if (isLoading) {
-    return <LoadingSkeleton />
-  }
-
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -104,7 +99,11 @@ export default function SubscriptionsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Subscriptions</h1>
-          <p className="text-sm text-slate-600 mt-1">{total.toLocaleString()} total</p>
+          <p className="text-sm text-slate-600 mt-1">
+            {isLoading
+              ? <span className="inline-block h-4 w-16 rounded bg-slate-200 animate-pulse" />
+              : `${total.toLocaleString()} total`}
+          </p>
         </div>
         <div className="flex space-x-2">
           {['all', 'active', 'past_due', 'cancelled'].map((f) => (
@@ -148,7 +147,21 @@ export default function SubscriptionsPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
-            {subscriptions.map((subscription) => (
+            {isLoading
+              ? Array.from({ length: 7 }).map((_, i) => (
+                  <tr key={i}>
+                    <td className="px-6 py-4 whitespace-nowrap"><div className="h-4 w-28 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" /></td>
+                    <td className="px-6 py-4 whitespace-nowrap"><div className="h-4 w-16 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" /></td>
+                    <td className="px-6 py-4 whitespace-nowrap"><div className="h-5 w-16 rounded-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" /></td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="h-4 w-24 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer mb-1.5" />
+                      <div className="w-32 h-1.5 rounded-full bg-slate-200 animate-pulse" />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap"><div className="h-4 w-16 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" /></td>
+                    <td className="px-6 py-4 whitespace-nowrap"><div className="h-4 w-20 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" /></td>
+                  </tr>
+                ))
+              : subscriptions.map((subscription) => (
               <tr key={subscription.id} className="hover:bg-slate-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-slate-900">{subscription.tenantName}</div>
@@ -183,15 +196,15 @@ export default function SubscriptionsPage() {
                   <div className="text-sm text-slate-600">{new Date(subscription.currentPeriodEnd).toLocaleDateString()}</div>
                 </td>
               </tr>
-            ))}
+              ))}
           </tbody>
         </table>
 
-        {subscriptions.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-slate-500">No subscriptions found</p>
-          </div>
-        )}
+      {!isLoading && subscriptions.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-slate-500">No subscriptions found</p>
+        </div>
+      )}
       </div>
     </div>
   )

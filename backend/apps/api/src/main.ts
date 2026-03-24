@@ -22,6 +22,13 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, { rawBody: true })
 
+  // Instruct every proxy (nginx, CDN, browser) never to cache API responses.
+  // All data must come from the database on every request — no stale reads.
+  app.use((_req: any, res: any, next: any) => {
+    res.setHeader('Cache-Control', 'no-store')
+    next()
+  })
+
   // Security headers
   app.use(helmet())
 

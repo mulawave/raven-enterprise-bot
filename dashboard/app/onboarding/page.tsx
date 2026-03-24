@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { getSession } from '@/lib/auth'
+import { getSession, DashboardSession } from '@/lib/auth'
 import { api } from '@/lib/api'
 import { API_BASE_URL } from '@/lib/constants'
 import ReCAPTCHA from 'react-google-recaptcha'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type OnboardingStep = 'welcome' | 'profile' | 'whatsapp' | 'done'
+type OnboardingStep = 'welcome' | 'payment' | 'profile' | 'whatsapp' | 'done'
 
 interface ProfileForm {
   businessName: string
@@ -233,6 +233,7 @@ function LogoUploader({ value, onChange }: LogoUploaderProps) {
 
 const STEPS = [
   { id: 'welcome', label: 'Welcome' },
+  { id: 'payment', label: 'Subscription' },
   { id: 'profile', label: 'Business profile' },
   { id: 'whatsapp', label: 'WhatsApp & AI' },
   { id: 'done', label: 'Done' },
@@ -267,11 +268,21 @@ function StepBar({ current }: { current: OnboardingStep }) {
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const session = typeof window !== 'undefined' ? getSession() : null
+  // Stabilise session: getSession() returns JSON.parse() = new object every call.
+  // If we read it in the component body, every re-render creates a new reference,
+  // which makes the [session, router] useEffect re-fire on every state change.
+  const [session] = useState<DashboardSession | null>(() =>
+    typeof window !== 'undefined' ? getSession() : null,
+  )
 
   const [step, setStep] = useState<OnboardingStep>('welcome')
+  const [isResumingStep, setIsResumingStep] = useState(true) // true while we fetch the user's step from backend
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Subscription plan info for the payment step
+  const [planInfo, setPlanInfo] = useState<{ planName: string; amountKobo: number; planTier: string } | null>(null)
+  const [isInitializingPayment, setIsInitializingPayment] = useState(false)
 
   const [profile, setProfile] = useState<ProfileForm>({
     businessName: session?.name ?? '',
@@ -303,14 +314,81 @@ export default function OnboardingPage() {
       .catch(() => { /* captcha stays disabled */ })
   }, [])
 
-  // Redirect to overview if already completed onboarding
+  // Redirect to login if no session; fetch subscription + onboarding state to resume at the correct step
   useEffect(() => {
     if (!session) {
       router.replace('/login')
+      return
     }
+
+    fetch(`${API_BASE_URL}/api/subscription/payment/status`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: {
+        subscriptionStatus: string
+        planName: string
+        amountKobo: number
+        planTier: string
+        onboardingStep: string | null
+        onboardingCompleted: boolean
+      } | null) => {
+        if (data) {
+          setPlanInfo({ planName: data.planName, amountKobo: data.amountKobo, planTier: data.planTier })
+
+          if (data.onboardingCompleted || data.onboardingStep === 'done') {
+            // Fully completed — go straight to the dashboard
+            router.replace('/overview')
+            return
+          }
+
+          if (data.subscriptionStatus !== 'active') {
+            // Payment not done yet — go to welcome (brand new) or payment (returning)
+            setStep(data.onboardingStep === 'payment' ? 'payment' : 'welcome')
+          } else {
+            // Payment done — resume at the saved onboarding step
+            const resumeStep = (data.onboardingStep as OnboardingStep | null)
+            if (resumeStep === 'whatsapp') setStep('whatsapp')
+            else setStep('profile') // handles 'profile', null, or any unknown value
+          }
+        }
+      })
+      .catch(() => {
+        // Status check failed — fall back to welcome so the user can proceed normally
+        setStep('welcome')
+      })
+      .finally(() => setIsResumingStep(false))
   }, [session, router])
 
-  // ── Save profile (step 2) ────────────────────────────────────────────────
+  // ── Initialize subscription payment (step 2) ─────────────────────────────
+
+  async function handlePayNow() {
+    setIsInitializingPayment(true)
+    setError(null)
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/subscription/payment/initialize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.accessToken}`,
+        },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message ?? `Error ${res.status}`)
+      if (data.already_paid) {
+        setStep('profile')
+        return
+      }
+      // Redirect to Paystack checkout
+      window.location.href = data.authorizationUrl
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to initialize payment. Please try again.')
+    } finally {
+      setIsInitializingPayment(false)
+    }
+  }
+
+  // ── Save profile (step 3) ────────────────────────────────────────────────
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault()
@@ -341,6 +419,12 @@ export default function OnboardingPage() {
       }
 
       setStep('whatsapp')
+      // Persist the advance to whatsapp step so reloads resume here
+      await fetch(`${API_BASE_URL}/api/onboarding/step`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.accessToken}` },
+        body: JSON.stringify({ step: 'whatsapp' }),
+      }).catch(() => { /* non-critical */ })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save. Please try again.')
     } finally {
@@ -364,33 +448,27 @@ export default function OnboardingPage() {
     setIsSaving(true)
     setError(null)
 
-    const keys = [
-      { key: 'META_APP_SECRET', value: whatsapp.metaAppSecret.trim() },
-      { key: 'META_WEBHOOK_VERIFY_TOKEN', value: whatsapp.metaWebhookVerifyToken.trim() },
-      { key: 'META_ACCESS_TOKEN', value: whatsapp.metaAccessToken.trim() },
-      { key: 'META_PHONE_NUMBER_ID', value: whatsapp.metaPhoneNumberId.trim() },
-      ...(whatsapp.openaiApiKey.trim() ? [{ key: 'OPENAI_API_KEY', value: whatsapp.openaiApiKey.trim() }] : []),
-    ]
-
     try {
-      // Upsert each key individually using the existing config endpoint
-      await Promise.all(
-        keys.map(({ key, value }) =>
-          api('/api/config/keys', {
-            method: 'POST',
-            body: JSON.stringify({ key, value }),
-          }).catch(() => {
-            // Fallback: try the admin config path
-            return fetch(`${API_BASE_URL}/admin/config`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.accessToken}` },
-              body: JSON.stringify({ key, value }),
-            })
-          }),
-        ),
-      )
+      const keys = [
+        { key: 'META_APP_SECRET', value: whatsapp.metaAppSecret.trim() },
+        { key: 'META_WEBHOOK_VERIFY_TOKEN', value: whatsapp.metaWebhookVerifyToken.trim() },
+        { key: 'META_ACCESS_TOKEN', value: whatsapp.metaAccessToken.trim() },
+        { key: 'META_PHONE_NUMBER_ID', value: whatsapp.metaPhoneNumberId.trim() },
+        ...(whatsapp.openaiApiKey.trim() ? [{ key: 'OPENAI_API_KEY', value: whatsapp.openaiApiKey.trim() }] : []),
+      ]
+
+      await api('/api/settings/keys', {
+        method: 'POST',
+        body: JSON.stringify({ keys }),
+      })
 
       setStep('done')
+      // Persist — so re-loading shows the done/dashboard state correctly
+      await fetch(`${API_BASE_URL}/api/onboarding/step`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.accessToken}` },
+        body: JSON.stringify({ step: 'done' }),
+      }).catch(() => { /* non-critical */ })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save API keys.')
     } finally {
@@ -399,6 +477,26 @@ export default function OnboardingPage() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+
+  // Block all step content while we're determining where the user should resume
+  if (isResumingStep) {
+    return (
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gray-900">
+        <div className="pointer-events-none fixed top-1/4 left-1/4 h-[500px] w-[500px] rounded-full bg-emerald-600 opacity-10 blur-3xl" />
+        <div className="pointer-events-none fixed bottom-1/3 right-1/4 h-[500px] w-[500px] rounded-full bg-teal-500 opacity-10 blur-3xl" />
+        <div className="relative z-10 text-center">
+          <span className="text-2xl font-bold text-emerald-400">Raven Business Automator</span>
+          <div className="mt-8 flex justify-center">
+            <svg className="h-8 w-8 animate-spin text-emerald-400" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+          </div>
+          <p className="mt-4 text-sm text-slate-400">Loading your setup progress…</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gray-900 p-4">
@@ -409,7 +507,7 @@ export default function OnboardingPage() {
       <div className="relative z-10 mx-auto max-w-2xl py-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <span className="text-2xl font-bold text-emerald-400">Raven</span>
+          <span className="text-2xl font-bold text-emerald-400">Raven Business Automator</span>
           <span className="text-slate-400 ml-2 text-sm">Account Setup</span>
         </div>
 
@@ -419,16 +517,16 @@ export default function OnboardingPage() {
         {step === 'welcome' && (
           <div className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl text-center">
             <div className="text-5xl mb-4">🚀</div>
-            <h1 className="text-2xl font-bold text-white mb-3">Welcome to Raven!</h1>
+            <h1 className="text-2xl font-bold text-white mb-3">Welcome to Raven Business Automator!</h1>
             <p className="text-slate-400 leading-relaxed mb-8 max-w-md mx-auto">
               Your account is active. Let's spend the next 3 minutes setting up your
               WhatsApp AI assistant so customers can start chatting with your business today.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 text-left">
               {[
+                { icon: '💳', title: 'Activate subscription', desc: 'Pay securely via card or bank' },
                 { icon: '🏢', title: 'Business profile', desc: 'Name, logo, branding' },
                 { icon: '📱', title: 'WhatsApp & AI', desc: 'Connect your number and AI key' },
-                { icon: '🎉', title: 'Go live', desc: 'Start receiving messages' },
               ].map(item => (
                 <div key={item.title} className="rounded-xl border border-white/10 bg-white/5 p-4">
                   <div className="text-2xl mb-2">{item.icon}</div>
@@ -438,11 +536,92 @@ export default function OnboardingPage() {
               ))}
             </div>
             <button
-              onClick={() => setStep('profile')}
+              onClick={() => {
+                setStep('payment')
+                // Persist so a reload resumes at payment, not welcome
+                fetch(`${API_BASE_URL}/api/onboarding/step`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.accessToken}` },
+                  body: JSON.stringify({ step: 'payment' }),
+                }).catch(() => { /* non-critical */ })
+              }}
               className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-8 py-3 font-semibold text-white transition hover:from-emerald-400 hover:to-teal-400"
             >
-              Let's set up your profile →
+              Let's get started →
             </button>
+          </div>
+        )}
+
+        {/* ── Step: Subscription Payment ── */}
+        {step === 'payment' && (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
+            <div className="text-center mb-8">
+              <div className="text-4xl mb-3">💳</div>
+              <h2 className="text-xl font-bold text-white mb-1">Activate your subscription</h2>
+              <p className="text-sm text-slate-400">
+                Pay securely with your card or via bank transfer. You will not be charged any recurring fees automatically — renewals require explicit approval.
+              </p>
+            </div>
+
+            {/* Plan summary card */}
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400 mb-1">Your plan</p>
+                  <p className="text-xl font-bold text-white capitalize">
+                    {planInfo?.planName ?? (planInfo?.planTier ? planInfo.planTier.charAt(0).toUpperCase() + planInfo.planTier.slice(1) + ' Plan' : 'Loading…')}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-slate-400 mb-0.5">Amount due</p>
+                  <p className="text-2xl font-bold text-emerald-400">
+                    {planInfo ? `₦${(planInfo.amountKobo / 100).toLocaleString()}` : '…'}
+                  </p>
+                </div>
+              </div>
+              <div className="h-px bg-white/10 mb-4" />
+              <ul className="space-y-1.5 text-sm text-slate-300">
+                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Billed as a one-time activation for your first month</li>
+                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Payment processed securely by Paystack</li>
+                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Card, bank transfer, or USSD accepted</li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-amber-300 mb-6 leading-relaxed">
+              You will be redirected to Paystack's secure checkout page. After completing payment you will be automatically returned here to finish setup.
+            </div>
+
+            {error && (
+              <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2 mb-4">{error}</p>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setStep('welcome')}
+                className="flex-1 rounded-xl border border-white/10 bg-white/5 px-6 py-3 font-semibold text-slate-300 transition hover:bg-white/10"
+              >
+                ← Back
+              </button>
+              <button
+                type="button"
+                onClick={handlePayNow}
+                disabled={isInitializingPayment || !planInfo}
+                className="flex-[2] rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 font-semibold text-white transition hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isInitializingPayment ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Redirecting to Paystack…
+                  </>
+                ) : (
+                  <>Pay ₦{planInfo ? (planInfo.amountKobo / 100).toLocaleString() : '…'} →</>
+                )}
+              </button>
+            </div>
           </div>
         )}
 
@@ -557,7 +736,7 @@ export default function OnboardingPage() {
               )}
 
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setStep('welcome')} className="flex-1 rounded-xl border border-white/10 bg-white/5 px-6 py-3 font-semibold text-slate-300 transition hover:bg-white/10">
+                <button type="button" onClick={() => setStep('payment')} className="flex-1 rounded-xl border border-white/10 bg-white/5 px-6 py-3 font-semibold text-slate-300 transition hover:bg-white/10">
                   ← Back
                 </button>
                 <button
@@ -610,7 +789,7 @@ export default function OnboardingPage() {
                       'Go to developers.facebook.com and open your app.',
                       'In the left sidebar click App Settings → Basic.',
                       'Click Show next to “App Secret” and copy the value.',
-                      'This lets Raven verify that webhook calls genuinely come from Meta.',
+                      'This lets Raven Business Automator (RBA) verify that webhook calls genuinely come from Meta.',
                     ],
                   },
                   {
@@ -832,12 +1011,28 @@ export default function OnboardingPage() {
                 <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
                   Privacy Policy
                 </a>
-                . I understand that the Raven AI assistant will process messages sent by my customers.
+                . I understand that the Raven Business Automator (RBA) AI assistant will process messages sent by my customers.
               </label>
             </div>
 
             <button
-              onClick={() => { if (termsAccepted) router.replace('/overview') }}
+              onClick={async () => {
+                if (!termsAccepted) return
+                // Mark onboarding complete on backend
+                await fetch(`${API_BASE_URL}/api/onboarding/complete`, {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${session?.accessToken}` },
+                }).catch(() => { /* best-effort */ })
+                // Update local session so the gate doesn't redirect back
+                const raw = localStorage.getItem('session')
+                if (raw) {
+                  try {
+                    const s = JSON.parse(raw)
+                    localStorage.setItem('session', JSON.stringify({ ...s, onboardingCompleted: true }))
+                  } catch { /* ignore */ }
+                }
+                router.replace('/overview')
+              }}
               disabled={!termsAccepted}
               className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-8 py-3 font-semibold text-white transition hover:from-emerald-400 hover:to-teal-400 disabled:opacity-40 disabled:cursor-not-allowed"
             >

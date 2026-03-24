@@ -39,9 +39,9 @@ CONF
   done
 }
 
-write_proxy_conf "api.raven-ai.online"   3000
-write_proxy_conf "app.raven-ai.online"   3001
-write_proxy_conf "admin.raven-ai.online" 3002
+write_proxy_conf "api.raven-ai.online"   4010
+write_proxy_conf "app.raven-ai.online"   4011
+write_proxy_conf "admin.raven-ai.online" 4012
 
 echo ""
 echo "=== Rebuilding Apache httpd.conf ==="

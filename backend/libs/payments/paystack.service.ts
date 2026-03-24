@@ -34,18 +34,23 @@ export class PaystackService {
   }
 
   async initialize(amountKobo: number, email: string, reference: string, callbackUrl: string) {
-    const res = await axios.post(
-      'https://api.paystack.co/transaction/initialize',
-      {
-        amount: amountKobo,
-        email,
-        reference,
-        callback_url: callbackUrl,
-        currency: 'NGN',
-      },
-      { headers: this.headers },
-    )
-    return res.data
+    try {
+      const res = await axios.post(
+        'https://api.paystack.co/transaction/initialize',
+        {
+          amount: amountKobo,
+          email,
+          reference,
+          callback_url: callbackUrl,
+          currency: 'NGN',
+        },
+        { headers: this.headers },
+      )
+      return res.data
+    } catch (err: any) {
+      const body = err?.response?.data
+      throw new Error(`Paystack initialize failed [${err?.response?.status}]: ${JSON.stringify(body)}`)
+    }
   }
 
   async verify(reference: string) {

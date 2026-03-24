@@ -59,15 +59,15 @@ export class PaymentService {
     })
 
     const callbackBase = this.configLoader
-      ? ((await this.configLoader.get('PAYMENT_CALLBACK_URL')) ?? 'https://app.raven-ai.online')
-      : (process.env.PAYMENT_CALLBACK_URL ?? 'https://app.raven-ai.online')
+      ? ((await this.configLoader.get('PAYMENT_CALLBACK_URL')) ?? 'https://api.raven-ai.online')
+      : (process.env.PAYMENT_CALLBACK_URL ?? 'https://api.raven-ai.online')
 
     if (provider === 'paystack') {
       const result = await this.paystack.initialize(
         amountKobo,
         email,
         reference,
-        `${callbackBase}/payment/callback`,
+        `${callbackBase}/api/payments/callback`,
       )
       return {
         payment,
@@ -82,7 +82,7 @@ export class PaymentService {
         amountKobo,
         email,
         reference,
-        `${callbackBase}/payment/callback?provider=flutterwave`,
+        `${callbackBase}/api/payments/callback?provider=flutterwave`,
       )
       return {
         payment,

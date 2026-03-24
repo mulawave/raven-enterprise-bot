@@ -2,18 +2,18 @@
 
 import { useState } from 'react'
 import { useTenantContext } from '@/lib/tenant-context'
-import { API_BASE_URL } from '@/lib/constants'
-import { getAccessToken } from '@/lib/auth'
+import { api } from '@/lib/api'
 
 interface OrderStatusDropdownProps {
   orderId: string
   currentStatus: string
   onStatusChange?: () => void
+  onError?: (msg: string) => void
 }
 
 const ORDER_STATUSES = ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled']
 
-export default function OrderStatusDropdown({ orderId, currentStatus, onStatusChange }: OrderStatusDropdownProps) {
+export default function OrderStatusDropdown({ orderId, currentStatus, onStatusChange, onError }: OrderStatusDropdownProps) {
   const { tenant } = useTenantContext()
   const isSuspended = tenant?.status === 'SUSPENDED'
   const [status, setStatus] = useState(currentStatus)
@@ -25,27 +25,14 @@ export default function OrderStatusDropdown({ orderId, currentStatus, onStatusCh
 
     setUpdating(true)
     try {
-      const accessToken = getAccessToken()
-      const response = await fetch(`${API_BASE_URL}/api/ordering/orders/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
-        body: JSON.stringify({
-          orderId,
-          status: newStatus,
-        }),
+      await api(`/api/ordering/orders/${orderId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus }),
       })
-
-      if (response.ok) {
-        setStatus(newStatus)
-        onStatusChange?.()
-      } else {
-        alert('Failed to update order status')
-      }
-    } catch (error) {
-      alert('Failed to update order status')
+      setStatus(newStatus)
+      onStatusChange?.()
+    } catch {
+      onError?.('Failed to update order status')
     } finally {
       setUpdating(false)
     }

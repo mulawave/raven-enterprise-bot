@@ -16,16 +16,28 @@ export function formatNaira(kobo: number): string {
  */
 export function formatDate(isoString: string): string {
   const date = new Date(isoString)
+  if (isNaN(date.getTime())) return '—'
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMins / 60)
   const diffDays = Math.floor(diffHours / 24)
 
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+  if (diffMins < 1 && diffMins >= 0) return 'Just now'
+  if (diffMins < 60 && diffMins >= 0) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`
+  if (diffHours < 24 && diffHours >= 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+  if (diffDays < 7 && diffDays >= 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
 
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+/**
+ * Always returns an absolute date string — never relative.
+ * Used for billing dates, renewal dates, etc.
+ */
+export function formatBillingDate(isoString: string | undefined | null): string {
+  if (!isoString) return '—'
+  const date = new Date(isoString)
+  if (isNaN(date.getTime())) return '—'
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }

@@ -7,6 +7,7 @@ export interface DashboardSession {
   role: string
   email?: string
   name?: string | null
+  onboardingCompleted?: boolean
 }
 
 export function getSession(): DashboardSession | null {

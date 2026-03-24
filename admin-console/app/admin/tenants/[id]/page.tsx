@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { api } from '@/lib/api'
-import { API_ENDPOINTS } from '@/lib/constants'
+import { API_ENDPOINTS, ROUTES } from '@/lib/constants'
 import StatusBadge from '@/components/StatusBadge'
-import LoadingSkeleton from '@/components/LoadingSkeleton'
 
 type TenantApiError = { error: { code: string; message: string } }
 
@@ -146,11 +146,7 @@ export default function TenantDetailPage() {
     }
   }, [tenantId])
 
-  if (isLoading) {
-    return <LoadingSkeleton />
-  }
-
-  if (error || !tenant) {
+  if (!isLoading && (error || !tenant)) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <p className="text-red-800">{error || 'Tenant not found'}</p>
@@ -162,10 +158,26 @@ export default function TenantDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">{tenant.name}</h1>
-          <p className="text-slate-600 mt-1">Tenant details & access</p>
+          {isLoading
+            ? <div className="h-9 w-52 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" />
+            : <h1 className="text-3xl font-bold text-slate-900">{tenant!.name}</h1>
+          }
+          <p className="text-slate-600 mt-1">Tenant details &amp; access</p>
         </div>
-        <StatusBadge status={(tenant.subscription?.status as any) || 'pending'} />
+        <div className="flex items-center gap-3">
+          {!isLoading && <StatusBadge status={(tenant!.subscription?.status as any) || 'pending'} />}
+          {!isLoading && (
+            <Link
+              href={`${ROUTES.TENANTS}/${tenantId}/reset`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Reset Tenant
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="border-b border-slate-200">
@@ -187,6 +199,30 @@ export default function TenantDetailPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+        {isLoading ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-1.5">
+                  <div className="h-3 w-16 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" />
+                  <div className="h-5 w-40 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" />
+                </div>
+              ))}
+            </div>
+            <div>
+              <div className="h-3.5 w-24 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer mb-3" />
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-2">
+                    <div className="h-3 w-12 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" />
+                    <div className="h-7 w-10 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : tenant ? (
+          <>
         {activeTab === 'overview' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -225,6 +261,8 @@ export default function TenantDetailPage() {
                 ))}
               </div>
             </div>
+
+
           </div>
         )}
 
@@ -326,7 +364,10 @@ export default function TenantDetailPage() {
             )}
           </div>
         )}
+          </>
+        ) : null}
       </div>
+
     </div>
   )
 }

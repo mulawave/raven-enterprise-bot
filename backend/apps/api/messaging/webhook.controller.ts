@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Req, Res, Query, Body, HttpStatus, Headers, UnauthorizedException, Inject, Optional, Logger } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
+import Redis from 'ioredis'
 import { MessageParser, ParsedMessage } from './message.parser'
 import { SessionResolver } from './session.resolver'
 import { InstagramAdapter } from './instagram.adapter'
@@ -29,6 +30,7 @@ export class WebhookController {
     private readonly prisma: PrismaClient,
     @Optional() @Inject('AI_MESSAGE_PROCESSOR') private readonly aiProcessor?: AiMessageProcessor,
     @Optional() private readonly configLoader?: ConfigLoaderService,
+    @Optional() @Inject(Redis) private readonly redis?: Redis,
   ) {
     this.parser = new MessageParser()
     this.sessionResolver = new SessionResolver(prisma)
@@ -43,13 +45,66 @@ export class WebhookController {
     @Query('hub.verify_token') verifyToken: string,
     @Res() res: Response,
   ) {
-    const expectedToken = (this.configLoader
+    if (mode !== 'subscribe') {
+      return res.sendStatus(403)
+    }
+
+    // Check global verify token first
+    const globalToken = (this.configLoader
       ? await this.configLoader.get('META_WEBHOOK_VERIFY_TOKEN')
-      : process.env.META_WEBHOOK_VERIFY_TOKEN) || 'test-verify-token'
-    if (mode === 'subscribe' && verifyToken === expectedToken) {
+      : process.env.META_WEBHOOK_VERIFY_TOKEN) || ''
+
+    if (!globalToken) {
+      this.logger.error('META_WEBHOOK_VERIFY_TOKEN is not configured — rejecting webhook verification. Set it via Settings or environment.')
+      return res.sendStatus(403)
+    }
+
+    if (verifyToken === globalToken) {
       return res.status(200).send(challenge)
     }
+
+    // Check per-tenant verify tokens stored in Tenant.theme
+    const tenants = await this.prisma.tenant.findMany({ select: { theme: true } })
+    for (const t of tenants) {
+      if (!t.theme) continue
+      try {
+        const theme = JSON.parse(t.theme) as Record<string, unknown>
+        if (typeof theme.META_WEBHOOK_VERIFY_TOKEN === 'string' && theme.META_WEBHOOK_VERIFY_TOKEN === verifyToken) {
+          return res.status(200).send(challenge)
+        }
+      } catch { /* ignore */ }
+    }
+
     return res.sendStatus(403)
+  }
+
+  /**
+   * POST /api/messaging/webhook/verify
+   * Alias for /whatsapp — handles cases where Meta's Callback URL was configured
+   * pointing at the verify endpoint instead of /whatsapp.
+   */
+  @Post('verify')
+  async receiveWhatsAppViaVerify(
+    @Body() body: any,
+    @Headers('x-hub-signature-256') signature: string | undefined,
+    @Res() res: Response,
+  ) {
+    this.logger.warn('Received WhatsApp POST on /verify endpoint — processing. Update your Meta Callback URL to /api/messaging/webhook/whatsapp.')
+    // Facebook sends a test POST to the callback URL to confirm it is reachable —
+    // these have no real message payload and no valid HMAC. Accept them silently.
+    if (!body?.entry?.length) {
+      return res.sendStatus(200)
+    }
+    // Best-effort signature check: log failure and reject if HMAC is invalid.
+    // This is a fallback alias endpoint for misconfigured callback URLs.
+    try {
+      await this.validateSignature(JSON.stringify(body), signature)
+    } catch (err) {
+      this.logger.error(`HMAC validation failed on /verify endpoint — rejecting payload: ${(err as Error).message}`)
+      return res.sendStatus(401)
+    }
+    await this.processMessages(body, 'whatsapp', this.parser)
+    res.sendStatus(200)
   }
 
   @Post('whatsapp')
@@ -58,6 +113,9 @@ export class WebhookController {
     @Headers('x-hub-signature-256') signature: string | undefined,
     @Res() res: Response,
   ) {
+    if (!body?.entry?.length) {
+      return res.sendStatus(200)
+    }
     await this.validateSignature(JSON.stringify(body), signature)
     await this.processMessages(body, 'whatsapp', this.parser)
     res.sendStatus(200)
@@ -86,22 +144,44 @@ export class WebhookController {
   }
 
   private async validateSignature(payload: string, signature: string | undefined): Promise<void> {
-    const secret = (this.configLoader
+    // Collect every known app secret (global + all per-tenant)
+    const secrets: string[] = []
+
+    const globalSecret = (this.configLoader
       ? await this.configLoader.get('META_APP_SECRET')
       : process.env.META_APP_SECRET) || ''
-    if (!secret) {
-      throw new UnauthorizedException('META_APP_SECRET not configured')
+
+    if (globalSecret) secrets.push(globalSecret)
+
+    const tenants = await this.prisma.tenant.findMany({ select: { theme: true } })
+    for (const t of tenants) {
+      if (!t.theme) continue
+      try {
+        const theme = JSON.parse(t.theme) as Record<string, unknown>
+        if (typeof theme.META_APP_SECRET === 'string' && theme.META_APP_SECRET) {
+          secrets.push(theme.META_APP_SECRET)
+        }
+      } catch { /* ignore */ }
     }
 
+    // No secrets configured anywhere — reject in production, warn loudly.
+    // Save your App Secret in Settings → WhatsApp & AI to enforce signature validation.
+    if (secrets.length === 0) {
+      this.logger.error('No META_APP_SECRET configured — rejecting webhook payload. Save your App Secret in Settings → WhatsApp & AI.')
+      throw new UnauthorizedException('No META_APP_SECRET configured')
+    }
+
+    // At least one secret is known — signature is now mandatory
     if (!signature) {
-      throw new UnauthorizedException('Missing signature')
+      throw new UnauthorizedException('Missing X-Hub-Signature-256 header')
     }
 
-    const expectedSignature = 'sha256=' + crypto.createHmac('sha256', secret).update(payload).digest('hex')
-
-    if (signature !== expectedSignature) {
-      throw new UnauthorizedException('Invalid signature')
+    for (const secret of secrets) {
+      const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(payload).digest('hex')
+      if (signature === expected) return
     }
+
+    throw new UnauthorizedException('Invalid webhook signature')
   }
 
   private async processMessages(
@@ -128,16 +208,34 @@ export class WebhookController {
         },
       })
 
-      // Enqueue AI processing job
+      // Bubble conversation to top of inbox (sorted by updated_at desc)
+      await this.prisma.conversation.update({
+        where: { id: conversationId },
+        data: { updated_at: new Date() },
+      })
+
+      // Check bot override: if a human agent is managing this conversation,
+      // skip AI processing and set/refresh the 60-second auto-restore countdown.
+      if (this.redis) {
+        const overrideKey = `conv_override:${conversationId}`
+        const isOverridden = await this.redis.exists(overrideKey)
+        if (isOverridden) {
+          await this.redis.expire(overrideKey, 60)
+          this.logger.log(`Bot override active for conv ${conversationId} — skipping AI, 60s auto-restore timer set`)
+          continue
+        }
+      }
+
+      // Process AI job directly in-process (bypasses Redis BullMQ queue to avoid allkeys-lru eviction)
       if (this.aiProcessor) {
-        await this.aiProcessor.enqueue({
+        this.aiProcessor.scheduleProcess({
           conversationId,
           messageId: message.id,
           tenantId,
           customerId,
           content: msg.text,
         })
-        this.logger.log(`Enqueued AI job for message ${message.id}`)
+        this.logger.log(`Scheduled direct AI processing for message ${message.id}`)
       } else {
         this.logger.warn('AI processor not available — message saved but not processed')
       }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { setSession } from '@/lib/auth'
 import { API_BASE_URL } from '@/lib/constants'
@@ -20,6 +20,14 @@ interface ConfirmResponse {
 }
 
 export default function ConfirmEmailPage() {
+  return (
+    <Suspense fallback={null}>
+      <ConfirmEmailInner />
+    </Suspense>
+  )
+}
+
+function ConfirmEmailInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -49,6 +57,7 @@ export default function ConfirmEmailPage() {
           role: data.user.role,
           email: data.user.email,
           name: data.user.name ?? null,
+          onboardingCompleted: false,
         })
         setStatus('success')
         // Small delay so user sees the success state before redirect

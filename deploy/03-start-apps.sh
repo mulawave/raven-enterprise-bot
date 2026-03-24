@@ -32,9 +32,9 @@ EOF
   done
 }
 
-write_customconf "api.raven-ai.online"   3000
-write_customconf "app.raven-ai.online"   3001
-write_customconf "admin.raven-ai.online" 3002
+write_customconf "api.raven-ai.online"   4010
+write_customconf "app.raven-ai.online"   4011
+write_customconf "admin.raven-ai.online" 4012
 
 echo ""
 echo "=== Step 2: Rebuild Apache httpd.conf ==="
@@ -54,8 +54,8 @@ echo "=== Step 4: Append PORT to dashboard & admin .env if missing ==="
 ENV_DASH="/home/${CPANEL_USER}/raven-enterprise-bot/dashboard/.env"
 ENV_ADMIN="/home/${CPANEL_USER}/raven-enterprise-bot/admin-console/.env"
 
-grep -q '^PORT=' "${ENV_DASH}" || { echo "PORT=3001" >> "${ENV_DASH}"; echo "  Added PORT=3001 to dashboard .env"; }
-grep -q '^PORT=' "${ENV_ADMIN}" || { echo "PORT=3002" >> "${ENV_ADMIN}"; echo "  Added PORT=3002 to admin .env"; }
+grep -q '^PORT=' "${ENV_DASH}" || { echo "PORT=4011" >> "${ENV_DASH}"; echo "  Added PORT=4011 to dashboard .env"; }
+grep -q '^PORT=' "${ENV_ADMIN}" || { echo "PORT=4012" >> "${ENV_ADMIN}"; echo "  Added PORT=4012 to admin .env"; }
 
 echo ""
 echo "=== Step 5: Start all apps via PM2 ==="
@@ -87,9 +87,9 @@ sleep 5
 
 echo ""
 echo "=== Step 7: Health check (internal) ==="
-curl -sf http://127.0.0.1:3000/health && echo " API /health OK" || echo " API /health FAILED"
-curl -sf -o /dev/null -w "%{http_code}" http://127.0.0.1:3001/ && echo " Dashboard OK" || echo " Dashboard FAILED"
-curl -sf -o /dev/null -w "%{http_code}" http://127.0.0.1:3002/ && echo " Admin OK" || echo " Admin FAILED"
+curl -sf http://127.0.0.1:4010/health && echo " API /health OK" || echo " API /health FAILED"
+curl -sf -o /dev/null -w "%{http_code}" http://127.0.0.1:4011/ && echo " Dashboard OK" || echo " Dashboard FAILED"
+curl -sf -o /dev/null -w "%{http_code}" http://127.0.0.1:4012/ && echo " Admin OK" || echo " Admin FAILED"
 
 echo ""
 echo "All done."

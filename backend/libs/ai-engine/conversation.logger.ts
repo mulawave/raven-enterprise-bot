@@ -15,7 +15,8 @@ export class ConversationLogger {
     intent: string,
     state: string,
   ): Promise<void> {
-    // TODO: Add ConversationLog table to schema if conversation logging is needed
+    // Currently log-only (no DB persistence). If persisted conversation logging is needed,
+    // add a ConversationLog model to Prisma schema and write records here.
     this.logger.log(
       `tenant=${tenantId} conversation=${conversationId} intent=${intent} state=${state}`,
     )

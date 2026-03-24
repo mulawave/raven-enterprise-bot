@@ -26,7 +26,10 @@ export class WebhookHandler {
     return hash === signature
   }
 
-  async handlePaystackWebhook(event: PaystackWebhookEvent): Promise<void> {
+  async handlePaystackWebhook(
+    event: PaystackWebhookEvent,
+    onSuccess?: (orderId: string, tenantId: string, paymentRef: string) => Promise<void>,
+  ): Promise<void> {
     if (event.event !== 'charge.success') {
       return
     }
@@ -61,6 +64,13 @@ export class WebhookHandler {
         where: { id: payment.order_id },
         data: { status: 'confirmed' },
       })
+      if (onSuccess) {
+        try {
+          await onSuccess(payment.order_id, payment.tenant_id, ref)
+        } catch (err) {
+          this.logger.warn(`onSuccess callback failed (non-fatal): ${(err as Error).message}`)
+        }
+      }
     }
 
     if (status === 'paid' && payment.booking_id) {

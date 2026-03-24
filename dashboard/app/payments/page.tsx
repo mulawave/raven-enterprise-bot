@@ -38,7 +38,7 @@ export default function PaymentsPage() {
       setIsLoading(true)
       setError(null)
       try {
-        const data = await api<Payment[]>(`/api/payments/status?tenantId=${tenant?.id ?? ''}`)
+        const data = await api<Payment[]>(`/api/payments/list`)
         if (isActive) setPayments(Array.isArray(data) ? data : [])
       } catch {
         if (isActive) setError('Failed to load payments')
@@ -63,7 +63,7 @@ export default function PaymentsPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              {['Customer', 'Amount', 'Provider', 'Status', 'Date'].map((h) => (
+              {['Customer', 'Reference', 'Amount', 'Provider', 'Status', 'Date'].map((h) => (
                 <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {h}
                 </th>
@@ -74,7 +74,7 @@ export default function PaymentsPage() {
             {isLoading
               ? SHIMMER_ROWS.map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 5 }).map((__, j) => (
+                    {Array.from({ length: 6 }).map((__, j) => (
                       <td key={j} className="px-6 py-4">
                         <div className="h-4 rounded bg-gray-200 animate-pulse" style={{ width: '60%' }} />
                       </td>
@@ -84,7 +84,7 @@ export default function PaymentsPage() {
               : payments.length === 0
               ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500">
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
                       No payment transactions yet
                     </td>
                   </tr>
@@ -93,6 +93,13 @@ export default function PaymentsPage() {
                   <tr key={payment.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {payment.customerName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                      {payment.orderId
+                        ? <span title="Order ID">Order #{payment.orderId.slice(-8)}</span>
+                        : payment.bookingId
+                        ? <span title="Booking ID">Booking #{payment.bookingId.slice(-8)}</span>
+                        : <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatNaira(payment.amount)}

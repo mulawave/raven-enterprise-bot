@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { TenantContext, TenantContextValue } from '@/lib/tenant-context'
 import { API_BASE_URL } from '@/lib/constants'
-import { getAccessToken } from '@/lib/auth'
+import { getAccessToken, clearSession } from '@/lib/auth'
 import LoadingSpinner from '@/components/LoadingSpinner'
 
 function clamp(value: number, min: number, max: number) {
@@ -29,6 +30,7 @@ function adjustColor({ r, g, b }: { r: number; g: number; b: number }, amount: n
 }
 
 export default function TenantProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const [contextValue, setContextValue] = useState<TenantContextValue | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -55,6 +57,12 @@ export default function TenantProvider({ children }: { children: React.ReactNode
         })
 
         if (!response.ok) {
+          if (response.status === 401) {
+            // Token expired or invalid — clear stale session and send to login
+            clearSession()
+            router.replace('/login')
+            return
+          }
           throw new Error(`Failed to fetch tenant context (${response.status})`)
         }
 
@@ -73,7 +81,8 @@ export default function TenantProvider({ children }: { children: React.ReactNode
             status: raw.subscription?.status ?? 'active',
             conversations_used: raw.subscription?.conversations_used ?? 0,
             conversations_limit: raw.subscription?.conversations_limit ?? 1000,
-            current_period_end: raw.subscription?.current_period_end ?? new Date().toISOString(),
+            current_period_start: raw.subscription?.current_period_start,
+            current_period_end: raw.subscription?.current_period_end,
           },
           branding: {
             businessName: raw.branding?.businessName ?? '',
@@ -152,6 +161,12 @@ export default function TenantProvider({ children }: { children: React.ReactNode
           <p className="mt-4 text-xs text-gray-500">
             Ensure the API is running and the tenant exists in the database.
           </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-5 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            Try again
+          </button>
         </div>
       </div>
     )

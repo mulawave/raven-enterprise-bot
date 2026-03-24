@@ -3,7 +3,7 @@ Set-Location "z:\REBASS\raven-enterprise-bot\backend"
 $env:DATABASE_URL = "postgresql://app_user:change_me@localhost:5432/app_db"
 $env:REDIS_URL = "redis://localhost:6379"
 $env:JWT_SECRET = "dev-only-jwt-secret-replace-before-going-to-production-minimum-64-chars"
-$env:CORS_ORIGINS = "http://localhost:3000,http://localhost:3001"
+$env:CORS_ORIGINS = "http://localhost:4011,http://localhost:4012"
 $env:PORT = "4000"
 $env:NODE_ENV = "development"
 

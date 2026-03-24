@@ -40,8 +40,8 @@ echo ✓ Both servers are starting!
 echo ====================================
 echo.
 echo Backend: http://localhost:4000
-echo Frontend: http://localhost:3000
-echo Admin Console: http://localhost:3000/admin
+echo Frontend: http://localhost:4011
+echo Admin Console: http://localhost:4012
 echo.
 echo Check the new terminal windows for server output
 echo Press any key to exit this window...

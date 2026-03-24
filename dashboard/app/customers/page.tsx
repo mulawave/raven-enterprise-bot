@@ -29,7 +29,7 @@ export default function CustomersPage() {
       setError(null)
       try {
         const data = await api<Customer[]>(
-          `/api/admin/customers?tenantId=${tenant?.id ?? ''}`
+          `/api/customers`
         )
         if (isActive) setCustomers(Array.isArray(data) ? data : [])
       } catch {

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { api } from '@/lib/api'
 import Button from '@/components/Button'
 import {
-  Eye, EyeOff, Check, AlertCircle, RefreshCw, Key, MessageSquare, Brain, Info,
+  Eye, EyeOff, Check, AlertCircle, RefreshCw, Key, MessageSquare, Brain, Info, Shield, Bell,
 } from 'lucide-react'
 
 interface ConfigKey {
@@ -42,9 +42,23 @@ const GROUP_META: Record<string, {
     accent: 'border-violet-500/40',
     badge: 'bg-violet-500/15 text-violet-300',
   },
+  security: {
+    label: 'Security',
+    icon: Shield,
+    description: 'CAPTCHA and other security keys that protect public-facing forms from bots.',
+    accent: 'border-blue-500/40',
+    badge: 'bg-blue-500/15 text-blue-300',
+  },
+  firebase: {
+    label: 'Firebase / Push Notifications',
+    icon: Bell,
+    description: 'Firebase project credentials for FCM push notifications. Client config values are public by design — only the Service Account JSON is secret.',
+    accent: 'border-orange-500/40',
+    badge: 'bg-orange-500/15 text-orange-300',
+  },
 }
 
-const VISIBLE_GROUPS = ['whatsapp', 'ai']
+const VISIBLE_GROUPS = ['whatsapp', 'ai', 'security', 'firebase']
 
 function KeyRow({ item, onSaved }: { item: ConfigKey; onSaved: (updated: ConfigKey) => void }) {
   const [value, setValue] = useState(item.value ?? '')
@@ -53,6 +67,12 @@ function KeyRow({ item, onSaved }: { item: ConfigKey; onSaved: (updated: ConfigK
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [dirty, setDirty] = useState(false)
+
+  // Keep the input in sync whenever the server sends a fresh value (page load, refresh, post-save)
+  useEffect(() => {
+    setValue(item.value ?? '')
+    setDirty(false)
+  }, [item.value]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChange = (v: string) => { setValue(v); setDirty(true); setError(null); setSuccess(false) }
 
@@ -213,7 +233,7 @@ export default function ApiKeysPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">API Keys</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Integration credentials for WhatsApp / Meta and OpenAI.
+            Integration credentials for WhatsApp / Meta, OpenAI and Firebase push notifications.
           </p>
         </div>
         <Button variant="secondary" size="sm" isLoading={isLoading} loadingText="Refreshing..." onClick={fetchConfig} disabled={isLoading} className="shrink-0">
@@ -268,6 +288,10 @@ export default function ApiKeysPage() {
             <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-700/40 space-y-1">
               <p className="text-slate-200 font-medium">OpenAI</p>
               <p>Create an API key at platform.openai.com/api-keys. Used for AI-assisted WhatsApp responses.</p>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-700/40 space-y-1">
+              <p className="text-slate-200 font-medium">Firebase / Push Notifications</p>
+              <p>Create a project at console.firebase.google.com. Client config is in <em>Project Settings → General → Your apps</em>. VAPID key is in <em>Cloud Messaging → Web Push certificates</em>. Service Account JSON is in <em>Project Settings → Service Accounts → Generate new private key</em>.</p>
             </div>
             <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-700/40">
               <p className="text-amber-400 font-medium">Important</p>

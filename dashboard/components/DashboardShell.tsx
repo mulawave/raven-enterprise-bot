@@ -20,6 +20,9 @@ const STANDALONE_ROUTES = [
   '/privacy',
   '/terms',
   '/guide',
+  '/data-deletion',
+  // Public payment callback — customers land here from Paystack redirect; no auth required
+  '/payment',
 ]
 
 function isStandalone(pathname: string) {
@@ -53,6 +56,15 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     if (!auth && !isStandalone(pathname)) {
       router.replace('/login')
       return
+    }
+
+    // Enforce onboarding gate — no dashboard access until onboarding is complete
+    if (auth && !isStandalone(pathname)) {
+      const session = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('session') ?? '{}') : {}
+      if (session.onboardingCompleted === false) {
+        router.replace('/onboarding')
+        return
+      }
     }
 
     // Already logged-in users don't need the login or register page

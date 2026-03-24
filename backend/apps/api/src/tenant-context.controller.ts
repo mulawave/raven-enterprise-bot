@@ -65,6 +65,9 @@ export class TenantContextController {
         status: subscription?.status ?? 'trial',
         conversations_used: subscription?.conversations_used ?? 0,
         conversations_limit: subscription?.conversations_limit ?? 0,
+        current_period_start: subscription?.current_period_start
+          ? subscription.current_period_start.toISOString()
+          : new Date().toISOString(),
         current_period_end: subscription?.current_period_end
           ? subscription.current_period_end.toISOString()
           : new Date().toISOString(),

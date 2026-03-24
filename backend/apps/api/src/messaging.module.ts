@@ -5,6 +5,7 @@ import { Module } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
 import Redis from 'ioredis'
 import { BillingModule } from './billing.module'
+import { AuthModule } from './auth.module'
 
 // Controllers
 import { WebhookController } from '../messaging/webhook.controller'
@@ -21,10 +22,14 @@ import { BroadcastLimiter } from '../admin/broadcast/broadcast.limiter'
 import { ChannelCooldownTracker } from '../admin/broadcast/cooldown.tracker'
 
 @Module({
-  imports: [BillingModule],
+  imports: [BillingModule, AuthModule],
   controllers: [WebhookController, AdminBroadcastController, ConversationsController],
   providers: [
     AiMessageProcessor,
+    {
+      provide: 'AI_MESSAGE_PROCESSOR',
+      useExisting: AiMessageProcessor,
+    },
     {
       provide: BroadcastLimiter,
       useValue: new BroadcastLimiter({ perTenant: { limit: 100, windowMs: 3_600_000 }, perChannel: {} }),

@@ -1,4 +1,4 @@
-# =============================================================================
+﻿# =============================================================================
 # Raven Enterprise — DEPLOY TO PRODUCTION
 # Windows PowerShell deploy script. Builds locally where needed, packages
 # changed source, SCPs to server and runs the remote deploy pipeline.
@@ -25,8 +25,8 @@ $Root = Split-Path $PSScriptRoot -Parent
 $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
 function Log { param([string]$Msg) Write-Host "[$Timestamp] $Msg" -ForegroundColor Cyan }
-function Ok  { param([string]$Msg) Write-Host "  ✓ $Msg" -ForegroundColor Green }
-function Err { param([string]$Msg) Write-Host "  ✗ $Msg" -ForegroundColor Red; exit 1 }
+function Ok  { param([string]$Msg) Write-Host "  [OK] $Msg" -ForegroundColor Green }
+function Err { param([string]$Msg) Write-Host "  [ERR] $Msg" -ForegroundColor Red; exit 1 }
 
 Log "Raven Enterprise Deploy — target: $Service"
 
@@ -42,17 +42,12 @@ function Invoke-ServiceBuild {
     Log "Building $Name..."
     Push-Location "$Root\$Dir"
     try {
-        npm ci --prefer-offline 2>&1 | Out-Null
-        npm run build 2>&1 | Select-FilteredOutput
-        # Copy static assets into standalone so they serve correctly
-        if (Test-Path ".next\standalone") {
-            if (Test-Path ".next\static") {
-                Copy-Item -Recurse -Force ".next\static" ".next\standalone\.next\static"
-            }
-            if (Test-Path "public") {
-                Copy-Item -Recurse -Force "public" ".next\standalone\public"
-            }
-        }
+        $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+        $null = npm install 2>&1
+        if ($LASTEXITCODE -ne 0) { $ErrorActionPreference = $prev; Err "npm install failed for $Name" }
+        $null = npm run build 2>&1
+        if ($LASTEXITCODE -ne 0) { $ErrorActionPreference = $prev; Err "npm build failed for $Name" }
+        $ErrorActionPreference = $prev
         Ok "$Name built"
     } finally {
         Pop-Location
@@ -69,8 +64,19 @@ if ($Service -eq "all" -or $Service -eq "api") {
     Log "Building backend..."
     Push-Location "$Root\backend"
     try {
-        npm ci --prefer-offline 2>&1 | Out-Null
-        npm run build:all 2>&1 | Select-FilteredOutput
+        $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+        $null = npm install 2>&1
+        if ($LASTEXITCODE -ne 0) { $ErrorActionPreference = $prev; Err "npm install failed for backend" }
+        # Re-create the Prisma .prisma junction (Windows: npm install can remove it)
+        $junctionPath = "node_modules\@prisma\client\.prisma"
+        if (-not (Test-Path $junctionPath)) {
+            cmd /c mklink /J $junctionPath "node_modules\.prisma" 2>$null | Out-Null
+        }
+        $null = npx prisma generate 2>&1
+        if ($LASTEXITCODE -ne 0) { $ErrorActionPreference = $prev; Err "prisma generate failed" }
+        $null = npm run build:all 2>&1
+        if ($LASTEXITCODE -ne 0) { $ErrorActionPreference = $prev; Err "npm build:all failed for backend" }
+        $ErrorActionPreference = $prev
         Ok "backend built"
     } finally { Pop-Location }
 }
@@ -79,50 +85,70 @@ if ($Service -eq "all" -or $Service -eq "api") {
 function Publish-Standalone {
     param([string]$Name, [string]$LocalDir, [string]$RemoteDir, [string]$Port, [string]$Pm2Name)
 
-    Log "Uploading $Name standalone to server (tar archive)..."
+    Log "Packaging $Name .next build..."
 
-    # Use tar to avoid SCP disconnects with thousands of small node_modules files
-    $tarFile = "$env:TEMP\$Name-standalone.tar.gz"
+    # Archive the full .next/ output (server + static bundles, everything except cache/standalone/types).
+    # On the server, standalone/.next is the live Next.js output directory read by standalone/server.js.
+    # We replace ONLY that directory — keeping server.js and node_modules from the existing deployment.
+    $tarFile = "$env:TEMP\$Name-next-content.tar.gz"
     Push-Location "$Root\$LocalDir\.next"
     try {
-        tar --format=pax -czf $tarFile standalone
-        if ($LASTEXITCODE -ne 0) { Err "tar failed for $Name standalone" }
+        $items = Get-ChildItem -Name | Where-Object { $_ -notin @('standalone','cache','types') }
+        tar --format=pax -czf $tarFile $items
+        if ($LASTEXITCODE -ne 0) { Err "tar failed for $Name .next content" }
     } finally { Pop-Location }
 
-    & scp $tarFile "raven-user:~/$Name-standalone.tar.gz"
+    & scp $tarFile "raven-user:~/$Name-next-content.tar.gz"
     if ($LASTEXITCODE -ne 0) { Err "SCP failed for $Name" }
     Remove-Item $tarFile -ErrorAction SilentlyContinue
+
+    # Also ship the public/ folder — Next.js standalone needs it at standalone/public/
+    $publicDir = "$Root\$LocalDir\public"
+    if (Test-Path $publicDir) {
+        $pubTarFile = "$env:TEMP\$Name-public.tar.gz"
+        Push-Location $publicDir
+        try {
+            tar --format=pax -czf $pubTarFile .
+            if ($LASTEXITCODE -ne 0) { Err "tar failed for $Name public/" }
+        } finally { Pop-Location }
+        & scp $pubTarFile "raven-user:~/$Name-public.tar.gz"
+        if ($LASTEXITCODE -ne 0) { Err "SCP failed for $Name public/" }
+        Remove-Item $pubTarFile -ErrorAction SilentlyContinue
+    }
+
     Ok "$Name uploaded"
 
-    Log "Atomically swapping $Name on server..."
-    ssh raven-user @"
-set -e
-rm -rf /tmp/${Name}-standalone-new
-mkdir -p /tmp/${Name}-standalone-new
-tar -xzf ~/${Name}-standalone.tar.gz -C /tmp/${Name}-standalone-new
-cd $RemoteDir/.next
-rm -rf standalone_old
-mv standalone standalone_old 2>/dev/null || true
-mv /tmp/${Name}-standalone-new/standalone .
-echo SWAPPED
-"@ 2>&1 | Out-Null
-    Ok "$Name swapped"
-
-    # Restart
+    Log "Swapping $Name .next bundle on server..."
     if ($Pm2Name) {
-        Log "Restarting $Name via PM2..."
-        ssh raven-user "pm2 restart $Pm2Name" 2>&1 | Out-Null
-        Ok "$Name PM2 restarted"
+        $remotePm2 = "pm2 restart $Pm2Name"
     } else {
-        Log "Restarting $Name via port kill..."
-        ssh raven-user @"
-pid=\$(ss -tlnp 2>/dev/null | grep ':$Port' | grep -oP 'pid=\K[0-9]+' | head -1 || true)
-[[ -n "\$pid" ]] && kill -9 "\$pid" && echo "Killed PID \$pid" || echo "No process on $Port"
-mkdir -p $RemoteDir/tmp
-touch $RemoteDir/tmp/restart.txt
-echo RESTARTED
-"@ 2>&1 | Select-String "Killed|RESTARTED" | ForEach-Object { Ok $_.Line }
+        $remotePm2 = "pm2 restart raven-dashboard"
     }
+    $remoteSwap = (@"
+set -e
+STANDALONE=$RemoteDir/.next/standalone
+rm -rf /tmp/$Name-next-new
+mkdir -p /tmp/$Name-next-new
+tar -xzf ~/$Name-next-content.tar.gz -C /tmp/$Name-next-new 2>/dev/null
+rm -rf "`$STANDALONE/.next_old"
+mv "`$STANDALONE/.next" "`$STANDALONE/.next_old" 2>/dev/null || rm -rf "`$STANDALONE/.next"
+mv /tmp/$Name-next-new "`$STANDALONE/.next"
+rm -f ~/$Name-next-content.tar.gz
+# Deploy public/ assets if uploaded
+if [ -f ~/$Name-public.tar.gz ]; then
+  mkdir -p "`$STANDALONE/public"
+  tar -xzf ~/$Name-public.tar.gz -C "`$STANDALONE/public" 2>/dev/null
+  rm -f ~/$Name-public.tar.gz
+fi
+$remotePm2
+echo SWAPPED
+"@).Replace("`r", "")
+    $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    $swapOut = $remoteSwap | ssh raven-user bash 2>&1
+    $sshEc = $LASTEXITCODE
+    $ErrorActionPreference = $prev
+    if ($sshEc -ne 0) { Err "Remote swap failed for $Name (exit $sshEc)" }
+    Ok "$Name deployed and restarted"
 }
 
 function Publish-Backend {
@@ -140,21 +166,54 @@ function Publish-Backend {
     if ($LASTEXITCODE -ne 0) { Err "SCP failed for backend dist archive" }
     Remove-Item $tarFile -ErrorAction SilentlyContinue
 
+    # Ship package.json + package-lock.json so server-side npm install picks up new deps
+    & scp "$Root\backend\package.json" "raven-user:~/backend-package.json"
+    if ($LASTEXITCODE -ne 0) { Err "SCP failed for backend package.json" }
+    if (Test-Path "$Root\backend\package-lock.json") {
+        & scp "$Root\backend\package-lock.json" "raven-user:~/backend-package-lock.json"
+    }
+
+    # Also sync the prisma/migrations folder so new migrations are applied
+    Log "Uploading prisma migrations to server..."
+    $migrationsFile = "$env:TEMP\backend-migrations.tar.gz"
+    Push-Location "$Root\backend\prisma"
+    try {
+        tar --format=pax -czf $migrationsFile migrations schema.prisma
+        if ($LASTEXITCODE -ne 0) { Err "tar failed for prisma migrations" }
+    } finally { Pop-Location }
+
+    & scp $migrationsFile "raven-user:~/backend-migrations.tar.gz"
+    if ($LASTEXITCODE -ne 0) { Err "SCP failed for prisma migrations archive" }
+    Remove-Item $migrationsFile -ErrorAction SilentlyContinue
+
     Log "Extracting, migrating, and swapping backend..."
-    ssh raven-user @'
+    $backendScript = (@'
 set -e
 cd ~/raven-enterprise-bot/backend
 rm -rf dist_new
 mkdir -p dist_new
-tar -xzf ~/backend-dist.tar.gz -C dist_new
+tar -xzf ~/backend-dist.tar.gz -C dist_new 2>/dev/null
 rm -rf dist_old
 mv dist dist_old 2>/dev/null || true
 mv dist_new dist
+# Update package.json if a new one was uploaded
+if [ -f ~/backend-package.json ]; then mv ~/backend-package.json package.json; fi
+if [ -f ~/backend-package-lock.json ]; then mv ~/backend-package-lock.json package-lock.json; fi
+npm install --production --silent 2>&1 | tail -3
+tar -xzf ~/backend-migrations.tar.gz -C prisma 2>/dev/null
+rm -f ~/backend-migrations.tar.gz
 npx prisma migrate deploy --schema=prisma/schema.prisma
+npx prisma generate --schema=prisma/schema.prisma
 pm2 restart raven-api raven-worker
 echo BACKEND_DONE
-'@ 2>&1 | Select-String "BACKEND_DONE|error|Error" | ForEach-Object { Write-Host "  $_" }
-    Ok "Backend deployed and restarted"
+'@).Replace("`r", "")
+    $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    $deployOut = $backendScript | ssh raven-user bash 2>&1
+    $sshEc = $LASTEXITCODE
+    $ErrorActionPreference = $prev
+    if ($sshEc -ne 0) { Err "Remote backend deploy failed (exit $sshEc)" }
+    if ($deployOut -match "BACKEND_DONE") { Ok "Backend deployed and restarted" }
+    else { Err "BACKEND_DONE not seen — deploy may have failed" }
 }
 
 if ($Service -eq "all" -or $Service -eq "admin") {
@@ -163,7 +222,7 @@ if ($Service -eq "all" -or $Service -eq "admin") {
         -LocalDir   "admin-console" `
         -RemoteDir  "~/raven-enterprise-bot/admin-console" `
         -Port       "4012" `
-        -Pm2Name    ""
+        -Pm2Name    "raven-admin"
 }
 if ($Service -eq "all" -or $Service -eq "dash") {
     Publish-Standalone `

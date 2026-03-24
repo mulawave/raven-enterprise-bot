@@ -27,20 +27,25 @@ import {
 import { PrismaClient } from '@prisma/client'
 import { PaystackService } from '../../../libs/payments/paystack.service'
 import { FlutterwaveService } from '../../../libs/payments/flutterwave.service'
+import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
 import { JwtAuthGuard } from '../../../libs/auth/guards/jwt-auth.guard'
 import { CurrentUser } from '../../../libs/auth/decorators/current-user.decorator'
 
 @Controller('tenant/banking')
 @UseGuards(JwtAuthGuard)
 export class TenantBankingController {
-  private readonly paystack: PaystackService
-  private readonly flutterwave: FlutterwaveService | null
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly configLoader: ConfigLoaderService,
+  ) {}
 
-  constructor(private readonly prisma: PrismaClient) {
-    this.paystack = new PaystackService(process.env.PAYSTACK_SECRET_KEY ?? '')
-    this.flutterwave = process.env.FLUTTERWAVE_SECRET_KEY
-      ? new FlutterwaveService(process.env.FLUTTERWAVE_SECRET_KEY)
-      : null
+  private async getPaystack(): Promise<PaystackService> {
+    return new PaystackService(await this.configLoader.getPaystackSecret())
+  }
+
+  private async getFlutterwave(): Promise<FlutterwaveService | null> {
+    const key = await this.configLoader.getFlutterwaveSecret()
+    return key ? new FlutterwaveService(key) : null
   }
 
   // ── BANKS ──────────────────────────────────────────────────────────────────
@@ -48,7 +53,8 @@ export class TenantBankingController {
   @Get('banks')
   async getBanks() {
     try {
-      const banks = await this.paystack.getBankList()
+      const paystack = await this.getPaystack()
+      const banks = await paystack.getBankList()
       return banks
         .filter(b => b.active)
         .map(b => ({ code: b.code, name: b.name }))
@@ -73,7 +79,8 @@ export class TenantBankingController {
       throw new BadRequestException('accountNumber must be exactly 10 digits')
     }
     try {
-      const result = await this.paystack.verifyAccountNumber(body.accountNumber, body.bankCode)
+      const paystack = await this.getPaystack()
+      const result = await paystack.verifyAccountNumber(body.accountNumber, body.bankCode)
       return { accountName: result.account_name, accountNumber: result.account_number }
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? 'Could not verify account number'
@@ -279,9 +286,10 @@ export class TenantBankingController {
     })
 
     // Try Flutterwave first
-    if (this.flutterwave) {
+    const flutterwave = await this.getFlutterwave()
+    if (flutterwave) {
       try {
-        const result = await this.flutterwave.initiateTransfer(
+        const result = await flutterwave.initiateTransfer(
           body.amountKobo,
           bank.account_number,
           bank.bank_code,
@@ -302,13 +310,14 @@ export class TenantBankingController {
 
     // Paystack fallback
     try {
-      const recipientCode = await this.paystack.createTransferRecipient(
+      const paystack = await this.getPaystack()
+      const recipientCode = await paystack.createTransferRecipient(
         bank.account_number,
         bank.bank_code,
         bank.account_name,
       )
       const paystackRef = `${reference}-PS`
-      const result = await this.paystack.initiateTransfer(body.amountKobo, recipientCode, paystackRef)
+      const result = await paystack.initiateTransfer(body.amountKobo, recipientCode, paystackRef)
       if (result.status === 'success') {
         await this.prisma.withdrawal.update({
           where: { id: withdrawal.id },

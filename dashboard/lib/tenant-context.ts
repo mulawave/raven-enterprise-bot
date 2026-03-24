@@ -17,6 +17,7 @@ export interface SubscriptionInfo {
   status: SubscriptionStatus
   conversations_used: number
   conversations_limit: number
+  current_period_start?: string
   current_period_end: string
 }
 

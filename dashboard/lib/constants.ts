@@ -1,6 +1,3 @@
-// Hardcoded tenant for development
-export const TENANT_ID = "test-tenant-1"
-
 const DEFAULT_DEV_API_URL = 'http://localhost:4000'
 const DEFAULT_PROD_API_URL = 'https://api.raven-ai.online'
 

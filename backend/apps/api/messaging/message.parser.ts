@@ -23,6 +23,13 @@ export class MessageParser {
                 text: msg.text.body,
                 timestamp: msg.timestamp || String(Date.now()),
               })
+            } else if (msg.type === 'interactive' && msg.interactive?.type === 'list_reply') {
+              messages.push({
+                conversationId: value.metadata?.phone_number_id || '',
+                from: msg.from || '',
+                text: `__CART_ADD__:${msg.interactive.list_reply.id}`,
+                timestamp: msg.timestamp || String(Date.now()),
+              })
             }
           }
         }

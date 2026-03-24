@@ -16,7 +16,7 @@ describe('OrderingController', () => {
     getAssignedBranches: jest.fn(),
   }
 
-  const controller = new OrderingController(prisma as any, staffScopeService as any)
+  const controller = new OrderingController(prisma as any, staffScopeService as any, null as any)
 
   beforeEach(() => {
     jest.clearAllMocks()

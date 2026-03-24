@@ -55,7 +55,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 inset-x-0 z-50 bg-[#0a0f1a]/80 backdrop-blur border-b border-white/5">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <span className="text-lg font-bold tracking-tight">
-            <span className="text-indigo-400">Raven</span> AI
+            <span className="text-indigo-400">Raven Business Automator (RBA)</span>
           </span>
           <div className="flex items-center gap-3">
             <Link href="/guide" className="hidden sm:block text-sm text-slate-400 hover:text-white transition-colors">
@@ -91,7 +91,7 @@ export default function LandingPage() {
             </span>
           </h1>
           <p className="text-lg text-slate-400 max-w-xl mx-auto">
-            Raven AI handles customer conversations, orders, bookings, and follow-ups — automatically, at scale.
+            Raven Business Automator (RBA) handles customer conversations, orders, bookings, and follow-ups — automatically, at scale.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
             <Link href="/register"
@@ -167,7 +167,7 @@ export default function LandingPage() {
       {/* ── FOOTER ── */}
       <footer className="border-t border-white/5 py-10 px-6">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
-          <span>&copy; {year} Raven AI. All rights reserved.</span>
+          <span>&copy; {year} Raven Business Automator. All rights reserved.</span>
           <div className="flex items-center gap-6">
             <Link href="/guide" className="hover:text-white transition-colors">User Guide</Link>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>

@@ -41,6 +41,13 @@ model Tenant {
   kyc                 TenantKyc?
   bankAccount         TenantBankAccount?
   withdrawals         Withdrawal[]
+  dataDeletionRequests DataDeletionRequest[]
+  faqs                TenantFaq[]
+  contacts            Contact[]
+  botConfig           TenantBotConfig?
+  emailList           EmailList[]
+  fcmTokens           FcmToken[]
+  appNotifications    AppNotification[]
 
   @@index([created_at])
 }
@@ -89,6 +96,8 @@ model User {
   orderAudits        OrderAudit[]
   staffNotifications StaffNotification[]
   consents           Consent[]
+  fcmTokens          FcmToken[]
+  appNotifications   AppNotification[]
 
   @@index([tenant_id])
   @@index([email])
@@ -182,6 +191,7 @@ model MenuItem {
   tenant_id   String
   category_id String
   name        String
+  description String?
   price_kobo  Int
   available   Boolean  @default(true)
   created_at  DateTime @default(now())
@@ -443,6 +453,72 @@ model AppSettings {
 }
 
 // ---------------------------------------------------------------------------
+// Tenant Bot Personality / LLM Configuration
+// ---------------------------------------------------------------------------
+model TenantBotConfig {
+  id                 String   @id @default(uuid())
+  tenant_id          String   @unique
+  /// Custom system prompt prefix — injected before FAQ + catalogue blocks
+  system_prompt      String?
+  /// Tone: "professional" | "friendly" | "casual"
+  personality_tone   String   @default("professional")
+  /// Fallback reply when no intent / FAQ matches
+  fallback_reply     String?
+  /// Text sent for "What can you do?" queries
+  about_reply_text   String?
+  /// Image URL attached after the about text
+  about_image_url    String?
+  /// CTA URL appended after the about image
+  about_cta_url      String?
+  /// Label for the CTA link
+  about_cta_label    String   @default("Start for free")
+  /// Message sent when customer requests a human agent
+  escalation_message String   @default("I'll have a team member reach you shortly.")
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+}
+
+// ---------------------------------------------------------------------------
+// Tenant FAQs (knowledge base for AI + customer-facing FAQ page)
+// ---------------------------------------------------------------------------
+model TenantFaq {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  question   String
+  answer     String
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([tenant_id, sort_order])
+}
+
+// ---------------------------------------------------------------------------
+// Contacts (saved WhatsApp contacts from conversations)
+// ---------------------------------------------------------------------------
+model Contact {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  name       String
+  phone      String
+  notes      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, phone])
+  @@index([tenant_id])
+}
+
+// ---------------------------------------------------------------------------
 // System Configuration (API keys & integration settings stored in DB)
 // ---------------------------------------------------------------------------
 model SystemConfig {
@@ -609,4 +685,90 @@ model Withdrawal {
 
   @@index([tenant_id])
   @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Compliance: Data deletion requests (GDPR / Meta platform policy)
+// ---------------------------------------------------------------------------
+model DataDeletionRequest {
+  id                String    @id @default(uuid())
+  tenant_id         String
+  confirmation_code String    @unique
+  identifier        String    // email or phone of the end-customer
+  identifier_type   String    // "email" | "phone"
+  status            String    @default("pending") // pending | completed | failed
+  source            String    @default("manual") // "manual" | "customer_portal" | "webhook"
+  requested_at      DateTime  @default(now())
+  completed_at      DateTime?
+  notes             String?
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([status])
+  @@index([confirmation_code])
+  @@index([identifier])
+}
+
+// ---------------------------------------------------------------------------
+// Checkout: Email list — customer contact data collected at checkout
+// ---------------------------------------------------------------------------
+model EmailList {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  customer_id String?
+  email       String
+  name        String
+  city        String?
+  state       String?
+  country     String?
+  created_at  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([email])
+  @@index([created_at])
+}
+// ---------------------------------------------------------------------------
+// FCM: Device push tokens (one per browser/device session per user)
+// ---------------------------------------------------------------------------
+model FcmToken {
+  id         String   @id @default(uuid())
+  user_id    String?
+  tenant_id  String?
+  token      String   @unique
+  platform   String   @default("web") // web | android | ios | desktop
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user   User?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([tenant_id])
+  @@index([token])
+}
+
+// ---------------------------------------------------------------------------
+// In-app notifications (persisted for the notification bell panel)
+// ---------------------------------------------------------------------------
+model AppNotification {
+  id         String   @id @default(uuid())
+  user_id    String?
+  tenant_id  String?
+  title      String
+  body       String
+  type       String   // escalation | order_new | order_status | payment | new_tenant | alert | broadcast
+  data       String?  // JSON metadata
+  read       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user   User?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([tenant_id])
+  @@index([read])
+  @@index([created_at])
 }

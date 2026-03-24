@@ -3,7 +3,7 @@ import './globals.css'
 import { ToastProvider } from '@/lib/toast-context'
 
 export const metadata: Metadata = {
-  title: 'Raven Admin Console',
+  title: 'Raven Business Automator (RBA) — Admin',
   description: 'Enterprise Admin Control Plane',
 }
 

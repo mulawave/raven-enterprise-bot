@@ -89,8 +89,11 @@ export class OrderService {
         tenant_id: tenantId,
         ...(branchIds?.length ? { branch_id: { in: branchIds } } : {}),
       },
-      include: { orderItems: true, customer: true },
+      include: {
+        customer: true,
+        orderItems: { include: { menuItem: { select: { name: true } } } },
+      },
       orderBy: { created_at: 'desc' },
-    })
+    }) as any
   }
 }

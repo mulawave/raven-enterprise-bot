@@ -74,13 +74,13 @@ services:
       - ../dashboard:/app/dashboard
     environment:
       NODE_ENV: production
-      PORT: "3000"
+      PORT: "4011"
       NEXT_PUBLIC_API_URL: http://api:4000
     depends_on:
       - api
     command: ["node", "-e", "setInterval(()=>{}, 1e9)"]
     ports:
-      - "3000:3000"
+      - "4011:4011"
     networks:
       - raven-net
 

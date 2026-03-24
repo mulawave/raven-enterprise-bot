@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
 import * as crypto from 'crypto'
 import { JwtAuthGuard } from '../../../../libs/auth/guards/jwt-auth.guard'
@@ -234,6 +234,235 @@ export class AdminTenantsController {
       tenant_id: id,
       status,
       message: `Tenant ${status === 'suspended' ? 'suspended' : 'activated'} successfully`,
+    }
+  }
+
+  /**
+   * POST /admin/tenants/:id/reset
+   * Reset a tenant's subscription, billing counters, invoices, and onboarding state.
+   * Preserves all business data (orders, bookings, messages, customers, users).
+   */
+  @Post(':id/reset')
+  @HttpCode(HttpStatus.OK)
+  async resetTenant(@Param('id') id: string) {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id } })
+    if (!tenant) {
+      return { error: { code: 'NOT_FOUND', message: 'Tenant not found' } }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Reset subscription counters and status
+      await tx.subscription.updateMany({
+        where: { tenant_id: id },
+        data: {
+          status: 'pending_payment',
+          conversations_used: 0,
+          overage_cost_kobo: 0,
+        },
+      })
+
+      // 2. Delete all invoices for this tenant
+      await tx.invoice.deleteMany({ where: { tenant_id: id } })
+
+      // 3. Zero out all usage records for this tenant
+      await tx.usage.deleteMany({ where: { tenant_id: id } })
+
+      // 4. Reset onboarding state in theme so tenant must complete onboarding again
+      const currentTheme = (() => {
+        try { return JSON.parse(tenant.theme as string ?? '{}') } catch { return {} }
+      })()
+      await tx.tenant.update({
+        where: { id },
+        data: {
+          theme: JSON.stringify({
+            ...currentTheme,
+            onboardingCompleted: false,
+            onboardingStep: 'payment',
+          }),
+        },
+      })
+
+      // 5. Audit log
+      await tx.auditLog.create({
+        data: {
+          tenant_id: id,
+          entity_id: id,
+          action: 'TENANT_BILLING_RESET',
+          metadata: JSON.stringify({ reset_by: 'super_admin', reset_at: new Date().toISOString() }),
+          timestamp: new Date(),
+        },
+      })
+    })
+
+    return {
+      success: true,
+      tenant_id: id,
+      message: 'Tenant subscription, billing counters, invoices, and onboarding state have been reset.',
+    }
+  }
+
+  /**
+   * GET /admin/tenants/:id/backup
+   * Export a JSON snapshot of all data that a reset would destroy.
+   * Captures: subscription, invoices, usage records, and tenant theme/onboarding state.
+   */
+  @Get(':id/backup')
+  async backupTenant(@Param('id') id: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        logo_url: true,
+        theme: true,
+        suspended: true,
+        created_at: true,
+        updated_at: true,
+        subscription: true,
+        invoices: true,
+        usages: true,
+      },
+    })
+
+    if (!tenant) {
+      return { error: { code: 'NOT_FOUND', message: 'Tenant not found' } }
+    }
+
+    return {
+      backup_version: '1',
+      created_at: new Date().toISOString(),
+      tenant_id: id,
+      tenant_name: tenant.name,
+      data: {
+        tenant: {
+          name: tenant.name,
+          logo_url: tenant.logo_url,
+          theme: tenant.theme,
+          suspended: tenant.suspended,
+        },
+        subscription: tenant.subscription,
+        invoices: tenant.invoices,
+        usages: tenant.usages,
+      },
+    }
+  }
+
+  /**
+   * POST /admin/tenants/:id/restore
+   * Restore a tenant's billing state from a JSON backup created by the backup endpoint.
+   * Restores: subscription, invoices, usage records, and tenant theme.
+   * Does NOT touch business data (orders, bookings, customers, messages).
+   */
+  @Post(':id/restore')
+  @HttpCode(HttpStatus.OK)
+  async restoreTenant(@Param('id') id: string, @Body() body: any) {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id } })
+    if (!tenant) {
+      return { error: { code: 'NOT_FOUND', message: 'Tenant not found' } }
+    }
+
+    if (!body?.data) {
+      return { error: { code: 'VALIDATION_ERROR', message: 'Invalid backup: missing data field' } }
+    }
+
+    const { data } = body
+
+    await this.prisma.$transaction(async (tx) => {
+      // Restore tenant theme / onboarding state
+      if (data.tenant) {
+        await tx.tenant.update({
+          where: { id },
+          data: {
+            ...(data.tenant.theme !== undefined ? { theme: data.tenant.theme } : {}),
+            ...(data.tenant.logo_url !== undefined ? { logo_url: data.tenant.logo_url } : {}),
+          },
+        })
+      }
+
+      // Restore subscription
+      if (data.subscription) {
+        const sub = data.subscription
+        await tx.subscription.upsert({
+          where: { tenant_id: id },
+          create: {
+            tenant_id: id,
+            plan_tier: sub.plan_tier,
+            status: sub.status,
+            current_period_start: new Date(sub.current_period_start),
+            current_period_end: new Date(sub.current_period_end),
+            conversations_used: sub.conversations_used ?? 0,
+            conversations_limit: sub.conversations_limit ?? 500,
+            overage_cost_kobo: sub.overage_cost_kobo ?? 0,
+            paystack_plan_code: sub.paystack_plan_code ?? null,
+            paystack_subscription_code: sub.paystack_subscription_code ?? null,
+          },
+          update: {
+            plan_tier: sub.plan_tier,
+            status: sub.status,
+            current_period_start: new Date(sub.current_period_start),
+            current_period_end: new Date(sub.current_period_end),
+            conversations_used: sub.conversations_used ?? 0,
+            conversations_limit: sub.conversations_limit ?? 500,
+            overage_cost_kobo: sub.overage_cost_kobo ?? 0,
+            paystack_plan_code: sub.paystack_plan_code ?? null,
+            paystack_subscription_code: sub.paystack_subscription_code ?? null,
+          },
+        })
+      }
+
+      // Restore invoices: delete current, recreate from backup
+      if (Array.isArray(data.invoices)) {
+        await tx.invoice.deleteMany({ where: { tenant_id: id } })
+        if (data.invoices.length > 0) {
+          await tx.invoice.createMany({
+            data: data.invoices.map((inv: any) => ({
+              id: inv.id,
+              tenant_id: id,
+              plan: inv.plan,
+              period: inv.period,
+              amount: inv.amount,
+              status: inv.status,
+              reference: inv.reference ?? null,
+              created_at: new Date(inv.created_at),
+              updated_at: new Date(inv.updated_at),
+            })),
+          })
+        }
+      }
+
+      // Restore usage records
+      if (Array.isArray(data.usages)) {
+        await tx.usage.deleteMany({ where: { tenant_id: id } })
+        if (data.usages.length > 0) {
+          await tx.usage.createMany({
+            data: data.usages.map((u: any) => ({
+              id: u.id,
+              tenant_id: id,
+              key: u.key,
+              count: u.count ?? 0,
+              created_at: new Date(u.created_at),
+              updated_at: new Date(u.updated_at),
+            })),
+          })
+        }
+      }
+
+      // Audit log
+      await tx.auditLog.create({
+        data: {
+          tenant_id: id,
+          entity_id: id,
+          action: 'TENANT_BILLING_RESTORED',
+          metadata: JSON.stringify({ restored_by: 'super_admin', restored_at: new Date().toISOString() }),
+          timestamp: new Date(),
+        },
+      })
+    })
+
+    return {
+      success: true,
+      tenant_id: id,
+      message: 'Tenant subscription, billing, and onboarding state have been restored from backup.',
     }
   }
 }

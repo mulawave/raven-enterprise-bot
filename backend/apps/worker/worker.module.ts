@@ -2,6 +2,9 @@ import { Module, OnApplicationShutdown } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
 import Redis from 'ioredis'
 import { AiMessageProcessor } from './messaging/ai-message.processor'
+import { NotificationService } from '../../libs/notifications/notification.service'
+import { ConfigLoaderService } from '../../libs/config/config-loader.service'
+import { EmailService } from '../../libs/email/email.service'
 
 const prisma = new PrismaClient()
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -13,6 +16,9 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   providers: [
     { provide: PrismaClient, useValue: prisma },
     { provide: Redis, useValue: redis },
+    ConfigLoaderService,
+    EmailService,
+    NotificationService,
     AiMessageProcessor,
   ],
 })

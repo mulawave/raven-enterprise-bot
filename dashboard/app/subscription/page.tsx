@@ -1,6 +1,6 @@
 "use client"
 
-import { formatDate } from '@/lib/formatters'
+import { formatBillingDate } from '@/lib/formatters'
 import UsageMeter from '@/components/UsageMeter'
 import PlanUpgradeModal from '@/components/PlanUpgradeModal'
 import { useTenantContext } from '@/lib/tenant-context'
@@ -8,10 +8,9 @@ import { useTenantContext } from '@/lib/tenant-context'
 export default function SubscriptionPage() {
   const { subscription } = useTenantContext()
 
-  const daysRemaining = Math.max(
-    0,
-    Math.ceil((new Date(subscription?.current_period_end ?? Date.now()).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
-  )
+  const daysRemaining = subscription?.current_period_end
+    ? Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0
 
   const isActive = subscription?.status === 'active'
 
@@ -41,15 +40,15 @@ export default function SubscriptionPage() {
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div>
-            <p className="text-sm text-gray-600">Billing Period</p>
+            <p className="text-sm text-gray-600">Billing Started</p>
             <p className="text-sm font-medium text-gray-900 mt-1">
-              {formatDate(subscription?.current_period_end ?? '')}
+              {formatBillingDate(subscription?.current_period_start)}
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-600">Next Renewal</p>
             <p className="text-sm font-medium text-gray-900 mt-1">
-              {formatDate(subscription?.current_period_end ?? '')}
+              {formatBillingDate(subscription?.current_period_end)}
             </p>
           </div>
         </div>

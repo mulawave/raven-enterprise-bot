@@ -2,6 +2,7 @@ export type Intent =
   | 'Greeting'
   | 'HelpRequest'
   | 'MenuBrowse'
+  | 'AboutInquiry'
   | 'PriceInquiry'
   | 'AvailabilityInquiry'
   | 'OrderDraft'
@@ -25,11 +26,16 @@ export class IntentRouter {
       return { intent: 'Greeting' }
     }
 
-    if (this.matches(t, ['help', 'how do i', 'can you help', 'what can you do', 'assist'])) {
+    // "What can you do?" / "What are you?" — must be checked before HelpRequest
+    if (this.matches(t, ['what can you do', 'what are you', 'who are you', 'about you', 'about raven', 'tell me about', 'what is rba', 'what is raven', 'what do you do', 'describe yourself'])) {
+      return { intent: 'AboutInquiry' }
+    }
+
+    if (this.matches(t, ['i need help', 'need help', 'have a problem', 'i have a problem', 'help', 'how do i', 'can you help', 'assist', 'not working'])) {
       return { intent: 'HelpRequest' }
     }
 
-    if (this.matches(t, ['menu', 'categories', 'items', 'dish', 'food', 'drink', 'beverage'])) {
+    if (this.matches(t, ['menu', 'categories', 'items', 'dish', 'food', 'drink', 'beverage', 'catalogue', 'catalog', 'services', 'what services', 'what do you offer', 'what do you sell', 'what products', 'offerings', 'product list', 'what can i get', 'what do you have'])) {
       return { intent: 'MenuBrowse' }
     }
 
