@@ -54,24 +54,35 @@ export default function OverviewPage() {
   const usageDisplay = `${subscription?.conversations_used ?? 0} / ${subscription?.conversations_limit ?? 0}`
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Overview</h1>
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 ring-1 ring-indigo-200">
+          <span className="text-lg">📊</span>
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Overview</h1>
+          <p className="text-sm text-gray-500">Your business at a glance</p>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-6">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 border-t-4 border-t-indigo-500 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Plan</p>
-              <p className="text-xl font-semibold text-gray-900">
+              <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Current Plan</p>
+              <p className="text-xl font-bold text-gray-900 mt-1">
                 {((subscription?.plan ?? 'starter').charAt(0).toUpperCase() + (subscription?.plan ?? 'starter').slice(1))} Plan
               </p>
               <p className="mt-1 text-sm text-gray-500">Renews {renewalDate}</p>
             </div>
-            <div className="text-sm text-gray-500">
-              {usagePercent}% used
+            <div className="flex flex-col items-end">
+              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${usagePercent >= 90 ? 'bg-red-100 text-red-700' : usagePercent >= 70 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                {usagePercent}% used
+              </span>
             </div>
           </div>
-          <div className="mt-4">
+          <div className="mt-5 pt-4 border-t border-gray-100">
             <UsageMeter
               label="Conversations"
               used={subscription?.conversations_used ?? 0}
@@ -85,25 +96,27 @@ export default function OverviewPage() {
           value={usageDisplay}
           subtitle={`${usagePercent}% used`}
           icon="💬"
+          accentColor="sky"
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         {isLoading ? (
           Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-lg border border-gray-200 p-6 space-y-3">
+            <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 space-y-3 shadow-sm">
               <div className="h-4 w-24 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" />
               <div className="h-8 w-32 rounded bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer" />
             </div>
           ))
         ) : (
           <>
-            <StatCard title="Total Orders" value={orderCount} icon="🛒" />
+            <StatCard title="Total Orders" value={orderCount} icon="🛒" accentColor="blue" />
             <StatCard
               title="Revenue"
               value={formatNaira(totalRevenue)}
               subtitle="From completed orders"
               icon="💰"
+              accentColor="green"
             />
           </>
         )}

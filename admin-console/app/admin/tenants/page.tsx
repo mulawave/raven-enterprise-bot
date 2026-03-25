@@ -87,6 +87,40 @@ export default function TenantsPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden border border-slate-200">
+        {/* Mobile card layout */}
+        <div className="lg:hidden divide-y divide-slate-200">
+          {isLoading
+            ? Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="p-4 space-y-2">
+                  <div className="h-4 w-1/2 rounded bg-slate-200 animate-pulse" />
+                  <div className="h-3 w-1/3 rounded bg-slate-100 animate-pulse" />
+                </div>
+              ))
+            : tenants.length === 0
+            ? <div className="px-6 py-12 text-center text-slate-500">No tenants found</div>
+            : tenants.map((tenant) => (
+                <div key={tenant.id} className="p-4 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{tenant.name}</p>
+                    <StatusBadge status={tenant.subscriptionStatus} />
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-slate-600 capitalize">{tenant.planTier}</p>
+                    <p className="text-xs text-slate-500">{new Date(tenant.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <Link
+                    href={`${ROUTES.TENANTS}/${tenant.id}`}
+                    className="inline-block text-xs font-semibold text-blue-600 hover:text-blue-900 mt-1"
+                  >
+                    View details →
+                  </Link>
+                </div>
+              ))
+          }
+        </div>
+
+        {/* Desktop table layout */}
+        <div className="hidden lg:block overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
@@ -155,6 +189,7 @@ export default function TenantsPage() {
             }
           </tbody>
         </table>
+        </div>
 
         {tenants.length === 0 && (
           <div className="text-center py-12">

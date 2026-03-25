@@ -316,8 +316,58 @@ export default function AdminUsersPage() {
         </select>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Mobile card layout */}
+      <div className="lg:hidden space-y-3">
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-slate-200 animate-pulse shrink-0" />
+                <div className="space-y-1.5 flex-1">
+                  <div className="h-4 w-28 rounded bg-slate-200 animate-pulse" />
+                  <div className="h-3 w-36 rounded bg-slate-200 animate-pulse" />
+                </div>
+              </div>
+            </div>
+          ))
+        ) : error ? (
+          <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
+            <p className="text-slate-600 text-sm">{error}</p>
+            <button onClick={load} className="text-blue-600 text-sm hover:underline mt-2">Retry</button>
+          </div>
+        ) : users.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
+            <p className="text-slate-500 text-sm">No admin users found</p>
+          </div>
+        ) : (
+          users.map((user) => (
+            <div key={user.id} className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+              <div className="flex items-center gap-3">
+                <Avatar user={user} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-900 truncate">{user.name || '—'}</p>
+                  <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                </div>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${ROLE_BADGE[user.role] || 'bg-slate-100 text-slate-700'}`}>
+                  {user.role}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                <span>{new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                <div className="flex gap-3">
+                  <button onClick={() => setModal({ mode: 'edit', user })} className="text-blue-600 font-medium hover:underline">Edit</button>
+                  <button onClick={() => handleDelete(user)} disabled={deletingId === user.id} className="text-red-600 font-medium hover:underline disabled:opacity-50">
+                    {deletingId === user.id ? 'Deleting…' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden lg:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         {isLoading ? (
           <table className="w-full text-sm">
             <thead>

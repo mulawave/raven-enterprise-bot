@@ -104,8 +104,41 @@ export default function CustomersPage() {
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 text-sm">{error}</div>
       )}
 
-      {/* Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+      {/* Mobile card layout */}
+      <div className="lg:hidden space-y-3">
+        {isLoading
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+                <div className="h-4 w-28 rounded bg-slate-200 animate-pulse" />
+                <div className="h-3 w-full rounded bg-slate-200 animate-pulse" />
+                <div className="h-3 w-2/3 rounded bg-slate-200 animate-pulse" />
+              </div>
+            ))
+          : data?.customers.length === 0
+            ? <div className="bg-white border border-slate-200 rounded-xl px-4 py-12 text-center text-slate-500">{search ? `No customers matching "${search}".` : 'No customers yet.'}</div>
+            : data?.customers.map((customer) => (
+                <div key={customer.id} className="bg-white border border-slate-200 rounded-xl p-4 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{customer.name ?? <span className="text-slate-400 italic">unnamed</span>}</p>
+                      <p className="text-xs text-slate-400 font-mono">{customer.id.slice(0, 8)}…</p>
+                    </div>
+                    <span className="text-xs text-slate-500 shrink-0">{customer.tenant?.name ?? '—'}</span>
+                  </div>
+                  {customer.phone && <p className="text-xs text-slate-700">{customer.phone}</p>}
+                  {customer.email && <p className="text-xs text-slate-500">{customer.email}</p>}
+                  <div className="flex items-center gap-4 text-xs pt-1">
+                    <span className="text-blue-600 font-medium">{customer._count.conversations} chats</span>
+                    <span className="text-green-600 font-medium">{customer._count.orders} orders</span>
+                  </div>
+                  <p className="text-xs text-slate-400">{new Date(customer.created_at).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                </div>
+              ))
+        }
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden lg:block bg-white border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-left bg-slate-50">

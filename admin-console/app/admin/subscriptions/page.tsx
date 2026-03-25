@@ -96,7 +96,7 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Subscriptions</h1>
           <p className="text-sm text-slate-600 mt-1">
@@ -105,7 +105,7 @@ export default function SubscriptionsPage() {
               : `${total.toLocaleString()} total`}
           </p>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 flex-wrap gap-y-2">
           {['all', 'active', 'past_due', 'cancelled'].map((f) => (
             <button
               key={f}
@@ -122,7 +122,45 @@ export default function SubscriptionsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden border border-slate-200">
+      {/* Mobile card layout */}
+      <div className="lg:hidden space-y-3">
+        {isLoading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+                <div className="h-4 w-28 rounded bg-slate-200 animate-pulse" />
+                <div className="h-3 w-full rounded bg-slate-200 animate-pulse" />
+                <div className="h-2 w-full rounded bg-slate-200 animate-pulse" />
+              </div>
+            ))
+          : subscriptions.length === 0
+            ? <div className="bg-white border border-slate-200 rounded-xl px-4 py-12 text-center text-slate-500">No subscriptions found</div>
+            : subscriptions.map((sub) => (
+                <div key={sub.id} className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{sub.tenantName}</p>
+                    <StatusBadge status={sub.status as any} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-600 capitalize">{sub.planTier}</span>
+                    <span className="text-slate-900 font-medium">₦{(sub.overageCostKobo / 100).toLocaleString()} overage</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
+                      <span>Usage</span>
+                      <span>{sub.conversationsUsed.toLocaleString()} / {sub.conversationsLimit.toLocaleString()}</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-1.5">
+                      <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${sub.conversationsLimit > 0 ? Math.min(100, (sub.conversationsUsed / sub.conversationsLimit) * 100) : 0}%` }} />
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400">Ends {new Date(sub.currentPeriodEnd).toLocaleDateString()}</p>
+                </div>
+              ))
+        }
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden lg:block bg-white rounded-lg shadow overflow-x-auto border border-slate-200">
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>

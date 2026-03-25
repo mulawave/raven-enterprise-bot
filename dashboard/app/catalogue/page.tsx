@@ -309,13 +309,89 @@ export default function CataloguePage() {
 
       {/* Header */}
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-gray-900">Catalogue</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Manage your menu categories and items. Customers browse and order through WhatsApp.</p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 ring-1 ring-indigo-200">
+            <span className="text-lg">🛍️</span>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Catalogue</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Manage your menu categories and items. Customers browse and order through WhatsApp.</p>
+          </div>
+        </div>
       </div>
 
-      <div className="flex gap-5 items-start">
-        {/* Categories panel */}
-        <div className="w-64 shrink-0">
+      {/* Mobile: horizontal category pills */}
+      <div className="lg:hidden mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide">Categories</p>
+          <button
+            onClick={() => { setShowAddCat(true); setEditCatId(null) }}
+            className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            title="Add category"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Add category form — mobile */}
+        {showAddCat && (
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3 mb-3">
+            <input
+              value={catName}
+              onChange={(e) => setCatName(e.target.value)}
+              placeholder="Category name"
+              autoFocus
+              className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2"
+              onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
+            />
+            <div className="flex gap-1.5">
+              <button
+                onClick={handleAddCategory}
+                disabled={!catName.trim() || isSavingCat}
+                className="flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {isSavingCat && <span className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                {isSavingCat ? 'Adding…' : 'Add'}
+              </button>
+              <button
+                onClick={() => { setShowAddCat(false); setCatName('') }}
+                className="rounded-lg border border-gray-300 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+          {isLoadingCats
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-8 w-24 rounded-full bg-gray-200 animate-pulse shrink-0" />
+              ))
+            : categories.length === 0
+            ? <p className="text-xs text-gray-400">No categories yet</p>
+            : categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCatId(cat.id)}
+                  className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                    selectedCatId === cat.id
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))
+          }
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-5 items-start">
+        {/* Categories panel — desktop only */}
+        <div className="hidden lg:block w-64 shrink-0">
           <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
               <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide">Categories</p>
@@ -481,7 +557,7 @@ export default function CataloguePage() {
               {showAddItem && (
                 <div className="px-5 py-4 border-b border-indigo-100 bg-indigo-50 space-y-3">
                   <p className="text-xs font-semibold text-indigo-900">New Item</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Name *</label>
                       <input
@@ -560,7 +636,7 @@ export default function CataloguePage() {
                       <div key={item.id}>
                         {editItemId === item.id ? (
                           <div className="px-5 py-4 bg-indigo-50 border-l-4 border-indigo-500 space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
                                 <input
@@ -608,24 +684,27 @@ export default function CataloguePage() {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-between px-5 py-4 gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
-                                <span
-                                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                    item.available ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
-                                  }`}
-                                >
-                                  {item.available ? 'Available' : 'Hidden'}
-                                </span>
+                          <div className="px-4 sm:px-5 py-4">
+                            <div className="flex items-start sm:items-center justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
+                                  <span
+                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                      item.available ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                                    }`}
+                                  >
+                                    {item.available ? 'Available' : 'Hidden'}
+                                  </span>
+                                </div>
+                                {item.description && (
+                                  <p className="text-xs text-gray-500 mt-0.5 truncate">{item.description}</p>
+                                )}
+                                <p className="text-sm font-bold text-gray-900 mt-1 sm:hidden">{formatNaira(item.price_kobo)}</p>
                               </div>
-                              {item.description && (
-                                <p className="text-xs text-gray-500 mt-0.5 truncate">{item.description}</p>
-                              )}
+                              <span className="hidden sm:block text-sm font-semibold text-gray-900 shrink-0">{formatNaira(item.price_kobo)}</span>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-sm font-semibold text-gray-900">{formatNaira(item.price_kobo)}</span>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
                               <button
                                 onClick={() => handleToggleAvailability(item)}
                                 disabled={togglingItemId === item.id}

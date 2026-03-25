@@ -5,6 +5,7 @@ import { clearAdminToken } from '@/lib/auth'
 import { ROUTES } from '@/lib/constants'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/lib/api'
+import { useTheme } from '@/lib/theme-context'
 
 interface AdminNotification {
   id: string
@@ -75,6 +76,7 @@ async function registerAdminFcmToken() {
 export default function AdminHeader({ onMobileMenuToggle }: { onMobileMenuToggle: () => void }) {
   const router = useRouter()
   const pathname = usePathname()
+  const { theme, toggleTheme } = useTheme()
   const [showDropdown, setShowDropdown] = useState(false)
   const [now, setNow] = useState<Date | null>(null)
   const [notifications, setNotifications] = useState<AdminNotification[]>([])
@@ -146,14 +148,14 @@ export default function AdminHeader({ onMobileMenuToggle }: { onMobileMenuToggle
   }
 
   return (
-    <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 sticky top-0 z-10 shadow-sm w-full">
+    <header className="h-16 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-700/80 sticky top-0 z-10 shadow-sm w-full transition-colors">
       <div className="h-full px-4 lg:px-6 flex items-center justify-between">
         <div className="flex items-center gap-4 lg:gap-6">
           {/* Mobile hamburger menu */}
           <button
             type="button"
             onClick={onMobileMenuToggle}
-            className="p-2 -ml-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors lg:hidden"
+            className="p-2 -ml-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors lg:hidden"
             aria-label="Open menu"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -161,10 +163,10 @@ export default function AdminHeader({ onMobileMenuToggle }: { onMobileMenuToggle
             </svg>
           </button>
           <div>
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               {getCurrentPage()}
             </h2>
-            <p className="text-xs text-slate-500 font-medium">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
               {now
                 ? now.toLocaleDateString('en-US', {
                     weekday: 'long',
@@ -179,30 +181,48 @@ export default function AdminHeader({ onMobileMenuToggle }: { onMobileMenuToggle
 
         <div className="flex items-center gap-4">
           {/* Quick Stats */}
-          <div className="hidden md:flex items-center gap-4 px-4 py-2 bg-slate-50 rounded-xl border border-slate-200">
+          <div className="hidden md:flex items-center gap-4 px-4 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-xs font-semibold text-slate-600">Live</span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Live</span>
             </div>
-            <div className="w-px h-4 bg-slate-300"></div>
+            <div className="w-px h-4 bg-slate-300 dark:bg-slate-600"></div>
             <div className="flex items-center gap-1.5">
-              <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-xs font-semibold text-slate-600">
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
                 {now ? now.toLocaleTimeString() : '--:--:--'}
               </span>
             </div>
           </div>
 
+          {/* ── Theme Toggle ────────────────────────────────────────────── */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="flex items-center justify-center w-10 h-10 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl transition-colors border border-slate-200 dark:border-slate-600"
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? (
+              <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            )}
+          </button>
+
           {/* Notification Bell */}
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => { setShowNotifs(!showNotifs); setShowDropdown(false) }}
-              className="relative flex items-center justify-center w-10 h-10 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors border border-slate-200"
+              className="relative flex items-center justify-center w-10 h-10 bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl transition-colors border border-slate-200 dark:border-slate-600"
               aria-label="Notifications"
             >
-              <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
               {unreadCount > 0 && (

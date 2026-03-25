@@ -94,7 +94,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
   return (
     <TenantProvider>
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-gray-50 dark:bg-slate-900 transition-colors">
         <Sidebar mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header onMobileMenuToggle={() => setMobileNavOpen(v => !v)} />
@@ -110,7 +110,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         </div>
 
         {/* Mobile bottom navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur-xl shadow-lg shadow-gray-200/50 lg:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl shadow-lg shadow-gray-200/50 dark:shadow-black/30 lg:hidden">
           <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
             {[
               { label: 'Home', href: '/overview', icon: '\ud83d\udcca' },

@@ -87,14 +87,14 @@ export default function BroadcastPage() {
           <label className="block text-sm font-medium text-gray-700 mb-3">
             Channel
           </label>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             {CHANNELS.map((ch) => (
               <button
                 key={ch.id}
                 type="button"
                 disabled={!ch.available}
                 onClick={() => ch.available && setChannel(ch.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border transition-colors shrink-0 ${
                   !ch.available
                     ? 'opacity-50 cursor-not-allowed bg-gray-50 text-gray-400 border-gray-200'
                     : channel === ch.id

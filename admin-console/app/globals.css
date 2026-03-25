@@ -10,6 +10,136 @@ body {
   color: rgb(var(--foreground-rgb));
 }
 
+/* ─── Dark Mode Content Adaptation Layer ───────────────────────────────── */
+html.dark {
+  color-scheme: dark;
+}
+
+/* ── Backgrounds ───────────────────────────────────────────────────────── */
+html.dark main [class~="bg-white"] {
+  background-color: #1e293b;
+}
+
+html.dark main [class~="bg-gray-50"],
+html.dark main [class~="bg-slate-50"] {
+  background-color: #0f172a;
+}
+
+html.dark main [class~="bg-gray-100"],
+html.dark main [class~="bg-slate-100"] {
+  background-color: #1e293b;
+}
+
+html.dark main [class~="bg-blue-50"],
+html.dark main [class~="bg-blue-50/40"] {
+  background-color: rgba(30, 58, 138, 0.25);
+}
+
+html.dark main [class~="bg-emerald-50"],
+html.dark main [class~="bg-green-50"] {
+  background-color: rgba(6, 78, 59, 0.25);
+}
+
+html.dark main [class~="bg-red-50"] {
+  background-color: rgba(127, 29, 29, 0.25);
+}
+
+html.dark main [class~="bg-amber-50"],
+html.dark main [class~="bg-yellow-50"] {
+  background-color: rgba(120, 53, 15, 0.25);
+}
+
+/* ── Text ──────────────────────────────────────────────────────────────── */
+html.dark main [class~="text-gray-900"],
+html.dark main [class~="text-slate-900"] {
+  color: #f1f5f9;
+}
+
+html.dark main [class~="text-gray-800"],
+html.dark main [class~="text-slate-800"] {
+  color: #f1f5f9;
+}
+
+html.dark main [class~="text-gray-700"],
+html.dark main [class~="text-slate-700"] {
+  color: #cbd5e1;
+}
+
+html.dark main [class~="text-gray-600"],
+html.dark main [class~="text-slate-600"] {
+  color: #94a3b8;
+}
+
+html.dark main [class~="text-gray-500"],
+html.dark main [class~="text-slate-500"] {
+  color: #94a3b8;
+}
+
+/* ── Borders ───────────────────────────────────────────────────────────── */
+html.dark main [class~="border-gray-200"],
+html.dark main [class~="border-slate-200"] {
+  border-color: #334155;
+}
+
+html.dark main [class~="border-gray-100"],
+html.dark main [class~="border-slate-100"] {
+  border-color: #1e293b;
+}
+
+html.dark main [class~="border-gray-300"],
+html.dark main [class~="border-slate-300"] {
+  border-color: #475569;
+}
+
+/* ── Dividers ──────────────────────────────────────────────────────────── */
+html.dark main [class~="divide-gray-200"] > * + *,
+html.dark main [class~="divide-slate-200"] > * + * {
+  border-color: #334155;
+}
+
+/* ── Hover states ──────────────────────────────────────────────────────── */
+html.dark main [class~="hover:bg-gray-50"]:hover,
+html.dark main [class~="hover:bg-slate-50"]:hover {
+  background-color: #334155;
+}
+
+/* ── Gradient headers ──────────────────────────────────────────────────── */
+html.dark main [class~="from-gray-50"],
+html.dark main [class~="from-slate-50"] {
+  --tw-gradient-from: #1e293b var(--tw-gradient-from-position);
+}
+
+/* ── Form inputs ───────────────────────────────────────────────────────── */
+html.dark main input,
+html.dark main textarea,
+html.dark main select {
+  background-color: #0f172a;
+  border-color: #475569;
+  color: #f1f5f9;
+}
+
+html.dark main input::placeholder,
+html.dark main textarea::placeholder {
+  color: #64748b;
+}
+
+/* ── Dropdowns & overlays ──────────────────────────────────────────────── */
+html.dark [class~="bg-white"][class~="shadow-2xl"] {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+html.dark [class~="bg-white"][class~="shadow-lg"] {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+/* ── Shimmer in dark mode ──────────────────────────────────────────────── */
+html.dark .animate-shimmer {
+  background: linear-gradient(to right, #1e293b 0%, #334155 50%, #1e293b 100%);
+  background-size: 1000px 100%;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

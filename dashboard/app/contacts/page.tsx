@@ -107,14 +107,19 @@ export default function ContactsPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {isLoading ? 'Loading…' : `${contacts.length} saved contacts`}
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 ring-1 ring-indigo-200">
+            <span className="text-lg">📇</span>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
+            <p className="text-sm text-gray-500">
+              {isLoading ? 'Loading…' : `${contacts.length} saved contact${contacts.length !== 1 ? 's' : ''}`}
+            </p>
+          </div>
         </div>
         <button
           onClick={() => { setShowAdd(true); setEditId(null); setError(null) }}
@@ -129,7 +134,7 @@ export default function ContactsPage() {
 
       {/* Add contact form */}
       {showAdd && (
-        <div className="mb-5 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-5 shadow-sm">
           <p className="text-sm font-semibold text-indigo-900 mb-3">New Contact</p>
           {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -178,10 +183,68 @@ export default function ContactsPage() {
       )}
 
       {/* Contacts table */}
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        {/* Mobile card layout */}
+        <div className="lg:hidden divide-y divide-gray-100">
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="p-4 space-y-2">
+                <div className="h-4 w-1/3 rounded bg-gray-200 animate-pulse" />
+                <div className="h-3 w-1/2 rounded bg-gray-100 animate-pulse" />
+              </div>
+            ))
+          ) : contacts.length === 0 ? (
+            <div className="px-4 py-16 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 ring-1 ring-indigo-200 mx-auto mb-3"><span className="text-2xl">📇</span></div>
+              <p className="text-sm font-medium text-gray-500">No contacts yet</p>
+              <p className="text-xs text-gray-400 mt-1">Save contacts from conversations, or add one manually above.</p>
+            </div>
+          ) : (
+            contacts.map((contact) => {
+              const hasOpenConv = contact.conversation?.status === 'open'
+              return (
+                <div key={contact.id} className="p-4 space-y-2 hover:bg-gray-50/50 transition-colors">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 shrink-0">
+                        {contact.name.charAt(0).toUpperCase()}
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900 truncate">{contact.name}</p>
+                    </div>
+                    <Link
+                      href={`/conversations?phone=${encodeURIComponent(contact.phone)}`}
+                      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold shrink-0 ${
+                        hasOpenConv
+                          ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                          : 'bg-gray-50 text-gray-600 ring-1 ring-gray-200'
+                      }`}
+                    >
+                      Chat
+                    </Link>
+                  </div>
+                  <p className="text-xs text-gray-500 font-mono">{contact.phone}</p>
+                  {contact.notes && <p className="text-xs text-gray-400">{contact.notes}</p>}
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => startEdit(contact)} className="text-xs font-semibold text-indigo-600">Edit</button>
+                    <button
+                      onClick={() => handleDelete(contact.id)}
+                      disabled={deletingId === contact.id}
+                      className="text-xs font-semibold text-red-600 disabled:opacity-50"
+                    >
+                      {deletingId === contact.id ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Desktop table layout */}
+        <div className="hidden lg:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
+              <tr className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100/50">
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Name</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Phone</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</th>
@@ -288,6 +351,7 @@ export default function ContactsPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

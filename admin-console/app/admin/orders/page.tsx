@@ -102,8 +102,41 @@ export default function OrdersPage() {
         <div className="bg-red-900/40 border border-red-700 rounded-lg px-4 py-3 text-red-300 text-sm">{error}</div>
       )}
 
-      {/* Table */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+      {/* Mobile card layout */}
+      <div className="lg:hidden space-y-3">
+        {isLoading
+          ? Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-2">
+                <Shimmer className="h-4 w-24" />
+                <Shimmer className="h-3 w-full" />
+                <Shimmer className="h-3 w-2/3" />
+              </div>
+            ))
+          : data?.orders.length === 0
+            ? <div className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-12 text-center text-slate-400">No orders found.</div>
+            : data?.orders.map((order) => (
+                <div key={order.id} className="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-white truncate">{order.customer?.name ?? '—'}</p>
+                    <StatusBadge status={order.status} />
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400 font-mono">{order.id.slice(0, 8)}…</span>
+                    <span className="text-white font-semibold">{koboToNaira(order.total_kobo)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>{order.tenant?.name ?? '—'}</span>
+                    <span>{order.orderItems.length} item{order.orderItems.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  {order.customer?.phone && <p className="text-xs text-slate-500">{order.customer.phone}</p>}
+                  <p className="text-xs text-slate-500">{new Date(order.created_at).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                </div>
+              ))
+        }
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden lg:block bg-slate-800 border border-slate-700 rounded-xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-700 text-left">

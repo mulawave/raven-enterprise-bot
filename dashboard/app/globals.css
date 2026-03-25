@@ -17,3 +17,156 @@ body {
   color: rgb(var(--foreground-rgb));
   background: white;
 }
+
+/* ─── Dark Mode Content Adaptation Layer ───────────────────────────────── */
+/* Automatically adapts light-themed components when html.dark is active.  */
+/* Uses [class~=] attribute selectors that match exact Tailwind class       */
+/* tokens, with higher specificity than the utility itself.                 */
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* ── Backgrounds ───────────────────────────────────────────────────────── */
+html.dark body {
+  background-color: #0f172a; /* slate-900 */
+  color: #e2e8f0;           /* slate-200 */
+}
+
+html.dark main [class~="bg-white"] {
+  background-color: #1e293b; /* slate-800 */
+}
+
+html.dark main [class~="bg-gray-50"] {
+  background-color: #0f172a; /* slate-900 */
+}
+
+html.dark main [class~="bg-gray-100"] {
+  background-color: #1e293b; /* slate-800 */
+}
+
+html.dark main [class~="bg-blue-50"],
+html.dark main [class~="bg-blue-50/40"] {
+  background-color: rgba(30, 58, 138, 0.25); /* blue-900/25 */
+}
+
+html.dark main [class~="bg-indigo-50/50"] {
+  background-color: rgba(49, 46, 129, 0.2);
+}
+
+html.dark main [class~="bg-emerald-50"],
+html.dark main [class~="bg-green-50"] {
+  background-color: rgba(6, 78, 59, 0.25);
+}
+
+html.dark main [class~="bg-red-50"] {
+  background-color: rgba(127, 29, 29, 0.25);
+}
+
+html.dark main [class~="bg-amber-50"],
+html.dark main [class~="bg-yellow-50"] {
+  background-color: rgba(120, 53, 15, 0.25);
+}
+
+/* ── Text ──────────────────────────────────────────────────────────────── */
+html.dark main [class~="text-gray-900"] {
+  color: #f1f5f9; /* slate-100 */
+}
+
+html.dark main [class~="text-gray-800"] {
+  color: #f1f5f9; /* slate-100 */
+}
+
+html.dark main [class~="text-gray-700"] {
+  color: #cbd5e1; /* slate-300 */
+}
+
+html.dark main [class~="text-gray-600"] {
+  color: #94a3b8; /* slate-400 */
+}
+
+html.dark main [class~="text-gray-500"] {
+  color: #94a3b8; /* slate-400 */
+}
+
+html.dark main [class~="text-gray-400"] {
+  color: #64748b; /* slate-500 */
+}
+
+/* ── Borders ───────────────────────────────────────────────────────────── */
+html.dark main [class~="border-gray-200"] {
+  border-color: #334155; /* slate-700 */
+}
+
+html.dark main [class~="border-gray-100"] {
+  border-color: #1e293b; /* slate-800 */
+}
+
+html.dark main [class~="border-gray-300"] {
+  border-color: #475569; /* slate-600 */
+}
+
+/* ── Dividers ──────────────────────────────────────────────────────────── */
+html.dark main [class~="divide-gray-200"] > * + * {
+  border-color: #334155;
+}
+
+html.dark main [class~="divide-gray-100"] > * + * {
+  border-color: #1e293b;
+}
+
+html.dark main [class~="divide-gray-50"] > * + * {
+  border-color: #1e293b;
+}
+
+/* ── Hover states ──────────────────────────────────────────────────────── */
+html.dark main [class~="hover:bg-gray-50"]:hover {
+  background-color: #334155;
+}
+
+html.dark main [class~="hover:bg-gray-100"]:hover {
+  background-color: #334155;
+}
+
+/* ── Gradient table headers ────────────────────────────────────────────── */
+html.dark main [class~="from-gray-50"] {
+  --tw-gradient-from: #1e293b var(--tw-gradient-from-position);
+}
+
+html.dark main [class~="to-gray-100\\/50"] {
+  --tw-gradient-to: rgba(15, 23, 42, 0.5) var(--tw-gradient-to-position);
+}
+
+/* ── Form inputs ───────────────────────────────────────────────────────── */
+html.dark main input,
+html.dark main textarea,
+html.dark main select {
+  background-color: #0f172a;
+  border-color: #475569;
+  color: #f1f5f9;
+}
+
+html.dark main input::placeholder,
+html.dark main textarea::placeholder {
+  color: #64748b;
+}
+
+/* ── Shadows ───────────────────────────────────────────────────────────── */
+html.dark main [class~="shadow-sm"] {
+  --tw-shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+/* ── Notification dropdown ─────────────────────────────────────────────── */
+html.dark [class~="bg-white"][class~="shadow-2xl"] {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+html.dark [class~="bg-white"][class~="shadow-2xl"] [class~="bg-blue-50\\/40"] {
+  background-color: rgba(30, 58, 138, 0.2);
+}
+
+html.dark [class~="bg-white"][class~="shadow-lg"] {
+  background-color: #1e293b;
+  border-color: #334155;
+}

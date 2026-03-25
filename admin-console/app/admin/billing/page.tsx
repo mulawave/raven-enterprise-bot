@@ -124,7 +124,35 @@ export default function BillingPage() {
             )}
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-slate-200">
+      {/* Mobile card layout */}
+      <div className="lg:hidden space-y-3">
+        <h2 className="text-lg font-semibold text-slate-900">Recent Payments</h2>
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+              <div className="h-4 w-28 rounded bg-slate-200 animate-pulse" />
+              <div className="h-3 w-full rounded bg-slate-200 animate-pulse" />
+            </div>
+          ))
+        ) : payments.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-xl px-4 py-12 text-center text-slate-500">No payments recorded yet</div>
+        ) : (
+          payments.map((payment) => (
+            <div key={payment.id} className="bg-white border border-slate-200 rounded-xl p-4 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-900 truncate">{payment.tenantName}</p>
+                <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full shrink-0 ${payment.status === 'paid' ? 'bg-green-100 text-green-800' : payment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{payment.status}</span>
+              </div>
+              <p className="text-sm font-bold text-slate-900">{payment.amountFormatted}</p>
+              <p className="text-xs text-slate-500">{payment.provider ? `${payment.provider} • ` : ''}{payment.reference ?? '—'}</p>
+              <p className="text-xs text-slate-400">{new Date(payment.createdAt).toLocaleDateString()}</p>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden lg:block bg-white rounded-lg shadow overflow-x-auto border border-slate-200">
         <div className="px-6 py-4 border-b border-slate-200">
           <h2 className="text-lg font-semibold text-slate-900">Recent Payments</h2>
         </div>

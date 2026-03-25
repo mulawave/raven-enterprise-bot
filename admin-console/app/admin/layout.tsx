@@ -49,7 +49,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 transition-colors">
       <AdminSidebar mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <AdminHeader onMobileMenuToggle={() => setMobileNavOpen(v => !v)} />
@@ -61,7 +61,7 @@ export default function AdminLayout({
       </div>
 
       {/* Mobile bottom navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-lg shadow-slate-200/50 lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl shadow-lg shadow-slate-200/50 dark:shadow-black/30 lg:hidden">
         <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
           {[
             { label: 'Overview', href: ROUTES.OVERVIEW, icon: '📊' },
