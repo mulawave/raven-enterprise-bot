@@ -54,7 +54,7 @@ function NotificationItem({ n, onRead }: { n: AppNotification; onRead: (id: stri
   )
 }
 
-export default function Header() {
+export default function Header({ onMobileMenuToggle }: { onMobileMenuToggle: () => void }) {
   const { tenant, branding } = useTenantContext()
   const isSuspended = tenant?.status === 'SUSPENDED'
   const router = useRouter()
@@ -93,8 +93,19 @@ export default function Header() {
           This account is suspended. Contact support.
         </div>
       )}
-      <header className="flex h-16 items-center justify-between border-b bg-white px-6">
-        <div>
+      <header className="flex h-16 items-center justify-between border-b bg-white px-4 lg:px-6">
+        <div className="flex items-center gap-3">
+          {/* Mobile hamburger menu */}
+          <button
+            type="button"
+            onClick={onMobileMenuToggle}
+            className="p-2 -ml-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors lg:hidden"
+            aria-label="Open menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
           <h2 className="text-lg font-semibold text-gray-900">Dashboard</h2>
         </div>
 
@@ -118,7 +129,7 @@ export default function Header() {
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 top-12 z-50 w-80 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+              <div className="absolute right-0 top-12 z-50 w-[calc(100vw-2rem)] sm:w-80 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <div className="flex items-center gap-2">

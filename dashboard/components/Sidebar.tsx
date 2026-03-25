@@ -156,7 +156,7 @@ const navigation = [
   { name: 'Settings',      href: '/settings',       Icon: IconSettings },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: boolean; onMobileClose: () => void }) {
   const { branding } = useTenantContext()
   const pathname = usePathname()
   const [loadingRoute, setLoadingRoute] = useState<string | null>(null)
@@ -167,11 +167,29 @@ export default function Sidebar() {
   const handleNavClick = (href: string) => {
     setLoadingRoute(href)
     setTimeout(() => setLoadingRoute(null), 2000)
+    onMobileClose()
   }
 
   return (
-    <div className="flex h-screen w-64 flex-col bg-gray-900">
-      <div className="flex h-16 items-center gap-3 px-5">
+    <>
+      {/* Mobile backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity lg:hidden ${mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onMobileClose}
+      />
+      <div className={`flex h-screen w-64 flex-col bg-gray-900 fixed inset-y-0 left-0 lg:sticky lg:top-0 z-50 transition-transform duration-300 ease-in-out ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        {/* Mobile close button */}
+        <button
+          type="button"
+          onClick={onMobileClose}
+          className="absolute top-4 right-3 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors lg:hidden z-10"
+          aria-label="Close menu"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <div className="flex h-16 items-center gap-3 px-5">
         {logoSrc ? (
           <img
             src={logoSrc}
@@ -217,5 +235,6 @@ export default function Sidebar() {
         <p className="text-xs text-slate-600">Raven Business Automator (RBA) v1.0</p>
       </div>
     </div>
+    </>
   )
 }

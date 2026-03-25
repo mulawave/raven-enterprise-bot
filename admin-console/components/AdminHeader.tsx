@@ -72,7 +72,7 @@ async function registerAdminFcmToken() {
   } catch { /* non-critical */ }
 }
 
-export default function AdminHeader() {
+export default function AdminHeader({ onMobileMenuToggle }: { onMobileMenuToggle: () => void }) {
   const router = useRouter()
   const pathname = usePathname()
   const [showDropdown, setShowDropdown] = useState(false)
@@ -147,8 +147,19 @@ export default function AdminHeader() {
 
   return (
     <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 sticky top-0 z-10 shadow-sm w-full">
-      <div className="h-full px-6 flex items-center justify-between">
-        <div className="flex items-center gap-6">
+      <div className="h-full px-4 lg:px-6 flex items-center justify-between">
+        <div className="flex items-center gap-4 lg:gap-6">
+          {/* Mobile hamburger menu */}
+          <button
+            type="button"
+            onClick={onMobileMenuToggle}
+            className="p-2 -ml-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors lg:hidden"
+            aria-label="Open menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
           <div>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               {getCurrentPage()}
@@ -202,7 +213,7 @@ export default function AdminHeader() {
             </button>
 
             {showNotifs && (
-              <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50">
                 <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200 flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-slate-900 text-sm">Notifications</h3>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { isAuthenticated } from '@/lib/auth'
+import Link from 'next/link'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import TenantProvider from '@/components/TenantProvider'
@@ -35,6 +36,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const [mounted, setMounted] = useState(false)
   const [authed, setAuthed] = useState(false)
   const [showTour, setShowTour] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -93,10 +95,10 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   return (
     <TenantProvider>
       <div className="flex h-screen bg-gray-50">
-        <Sidebar />
+        <Sidebar mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6">
+          <Header onMobileMenuToggle={() => setMobileNavOpen(v => !v)} />
+          <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6">
             {/* Beginners checklist — shown on overview until all steps done */}
             {pathname === '/overview' && (
               <div className="mb-6">
@@ -106,6 +108,34 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             {children}
           </main>
         </div>
+
+        {/* Mobile bottom navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur-xl shadow-lg shadow-gray-200/50 lg:hidden">
+          <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
+            {[
+              { label: 'Home', href: '/overview', icon: '\ud83d\udcca' },
+              { label: 'Chats', href: '/conversations', icon: '\ud83d\udcac' },
+              { label: 'Orders', href: '/orders', icon: '\ud83d\udce6' },
+              { label: 'Payments', href: '/payments', icon: '\ud83d\udcb3' },
+              { label: 'Settings', href: '/settings', icon: '\u2699\ufe0f' },
+            ].map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileNavOpen(false)}
+                  className={`flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-lg transition-colors min-w-0 ${
+                    isActive ? 'text-emerald-600' : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  <span className="text-lg leading-none">{item.icon}</span>
+                  <span className={`text-[10px] font-semibold leading-tight ${isActive ? 'text-emerald-600' : 'text-gray-400'}`}>{item.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+        </nav>
       </div>
 
       {/* First-time dashboard tour overlay */}

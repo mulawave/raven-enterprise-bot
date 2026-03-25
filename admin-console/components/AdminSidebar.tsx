@@ -29,10 +29,11 @@ const bottomNavItems = [
   { label: 'Settings', href: ROUTES.SETTINGS, icon: '⚙️', description: 'Configuration' },
 ]
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ mobileOpen = false, onMobileClose }: { mobileOpen?: boolean; onMobileClose: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [_isCollapsed, setIsCollapsed] = useState(false)
+  const isCollapsed = mobileOpen ? false : _isCollapsed
   const [loadingRoute, setLoadingRoute] = useState<string | null>(null)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
@@ -70,12 +71,19 @@ export default function AdminSidebar() {
     e.preventDefault()
     setLoadingRoute(href)
     router.push(href)
+    onMobileClose()
   }
 
   return (
-    <div
-      className={`${isCollapsed ? 'w-20' : 'w-64'} bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white h-screen sticky top-0 transition-all duration-300 ease-in-out border-r border-slate-700/50 backdrop-blur-xl flex flex-col shrink-0 z-20`}
-    >
+    <>
+      {/* Mobile backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity lg:hidden ${mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onMobileClose}
+      />
+      <div
+        className={`${isCollapsed ? 'w-20' : 'w-64'} bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white h-screen fixed inset-y-0 left-0 lg:sticky lg:top-0 transition-all duration-300 ease-in-out border-r border-slate-700/50 backdrop-blur-xl flex flex-col shrink-0 z-50 ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+      >
       <div
         className="absolute inset-0 opacity-40 pointer-events-none"
         style={{
@@ -85,6 +93,17 @@ export default function AdminSidebar() {
       ></div>
 
       <div className="p-6 border-b border-slate-700/50 relative">
+        {/* Mobile close button */}
+        <button
+          type="button"
+          onClick={onMobileClose}
+          className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors lg:hidden z-10"
+          aria-label="Close menu"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
         <div className="flex items-start justify-between gap-3">
           {!isCollapsed ? (
             <div className="flex items-center gap-3">
@@ -119,7 +138,7 @@ export default function AdminSidebar() {
           <button
             type="button"
             onClick={() => setIsCollapsed((v) => !v)}
-            className="shrink-0 p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-colors"
+            className="shrink-0 p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-colors hidden lg:block"
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={isCollapsed ? 'Expand' : 'Collapse'}
           >
@@ -224,5 +243,6 @@ export default function AdminSidebar() {
         )}
       </div>
     </div>
+    </>
   )
 }
