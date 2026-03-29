@@ -215,13 +215,26 @@ export class WebhookController {
       })
 
       // Check bot override: if a human agent is managing this conversation,
-      // skip AI processing and set/refresh the 60-second auto-restore countdown.
+      // skip AI processing entirely. The bot will NOT auto-resume — a human
+      // must explicitly re-enable it or accept a takeover prompt.
       if (this.redis) {
         const overrideKey = `conv_override:${conversationId}`
         const isOverridden = await this.redis.exists(overrideKey)
         if (isOverridden) {
-          await this.redis.expire(overrideKey, 60)
-          this.logger.log(`Bot override active for conv ${conversationId} — skipping AI, 60s auto-restore timer set`)
+          this.logger.log(`Bot override active for conv ${conversationId} — skipping AI (indefinite until tenant re-enables)`)
+
+          // Reset the takeover prompt timer — new customer activity pushes the next prompt forward
+          const stateKey = `conv_takeover_state:${conversationId}`
+          const stateRaw = await this.redis.get(stateKey)
+          if (stateRaw) {
+            try {
+              const state = JSON.parse(stateRaw)
+              const currentInterval = state.baseInterval * (state.attempt + 1)
+              state.nextPromptAt = Date.now() + currentInterval
+              await this.redis.set(stateKey, JSON.stringify(state))
+            } catch { /* ignore malformed state */ }
+          }
+
           continue
         }
       }

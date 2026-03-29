@@ -82,7 +82,7 @@ export class AppModule implements NestModule {
     // Tenant JWT resolution — exclude public routes
     consumer
       .apply(TenantMiddleware)
-      .exclude('/health', '/readiness', '/admin/auth/login', '/admin/auth/refresh', '/api/auth/login', '/api/config/public', '/api/config/branding', '/webhooks/(.*)', '/api/data-deletion/status/(.*)', '/api/data-deletion/public')
+      .exclude('/health', '/readiness', '/admin/auth/login', '/admin/auth/refresh', '/api/auth/login', '/api/config/public', '/api/config/branding', '/webhooks/(.*)', '/api/data-deletion/status/(.*)', '/api/data-deletion/public', '/api/auth/confirm-by-code', '/api/auth/resend-confirmation')
       .forRoutes('*')
 
     // Branch context — only needed for routes that scope to a branch

@@ -90,8 +90,8 @@ export class TenantPaymentsController {
     const rows = await this.prisma.payment.findMany({
       where: { tenant_id: tenantId },
       include: {
-        order:   { select: { id: true } },
-        booking: { select: { id: true } },
+        order:   { select: { id: true, status: true, customer: { select: { name: true, phone: true } } } },
+        booking: { select: { id: true, customer: { select: { name: true, phone: true } } } },
       },
       orderBy: { created_at: 'desc' },
       take: 200,
@@ -106,6 +106,9 @@ export class TenantPaymentsController {
       provider:     p.provider ?? 'paystack',
       reference:    p.reference,
       createdAt:    p.created_at,
+      customerName: p.order?.customer?.name ?? p.booking?.customer?.name ?? null,
+      customerPhone: p.order?.customer?.phone ?? p.booking?.customer?.phone ?? null,
+      orderStatus:  p.order?.status ?? null,
     }))
   }
 }

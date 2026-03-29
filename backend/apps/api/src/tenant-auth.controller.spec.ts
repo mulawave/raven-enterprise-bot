@@ -18,7 +18,15 @@ describe('TenantAuthController', () => {
     getAssignedBranches: jest.fn(),
   }
 
-  const controller = new TenantAuthController(authService as any, prisma as any, staffScopeService as any)
+  const emailService = {
+    send: jest.fn(),
+  }
+
+  const configLoader = {
+    get: jest.fn(),
+  }
+
+  const controller = new TenantAuthController(authService as any, prisma as any, staffScopeService as any, emailService as any, configLoader as any)
 
   beforeEach(() => {
     jest.clearAllMocks()

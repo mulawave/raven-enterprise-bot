@@ -34,3 +34,16 @@ redis-data/
 # Deploy archives
 *.tar.gz
 *.zip
+
+# Signing keys
+key/
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Mobile build outputs
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/ios/build/
+mobile/node_modules/
+mobile/.expo/

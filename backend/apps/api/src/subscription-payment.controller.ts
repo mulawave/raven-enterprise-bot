@@ -96,7 +96,7 @@ export class SubscriptionPaymentController {
   @Post('api/subscription/payment/initialize')
   async initializePayment(
     @CurrentUser() user: any,
-    @Body() body: { newPlanTier?: string } = {},
+    @Body() body: { newPlanTier?: string; platform?: string } = {},
   ) {
     if (!user?.tenant_id) throw new UnauthorizedException()
 
@@ -142,9 +142,17 @@ export class SubscriptionPaymentController {
       throw new BadRequestException('NEXT_PUBLIC_DASHBOARD_URL is not configured. Set it in System Config or environment.')
     }
     // Upgrade payments return to the subscription page; initial activation to onboarding
-    const callbackUrl = isUpgrade
-      ? `${dashboardUrl}/subscription/payment-callback`
-      : `${dashboardUrl}/onboarding/payment-callback`
+    // Mobile clients pass platform=mobile to get a deep-link callback instead
+    let callbackUrl: string
+    if (body.platform === 'mobile') {
+      callbackUrl = isUpgrade
+        ? 'raven://payment-callback?type=upgrade'
+        : 'raven://payment-callback'
+    } else {
+      callbackUrl = isUpgrade
+        ? `${dashboardUrl}/subscription/payment-callback`
+        : `${dashboardUrl}/onboarding/payment-callback`
+    }
 
     if (isUpgrade) {
       // For upgrades, create a fresh invoice (no upsert — each upgrade is its own record)

@@ -1,0 +1,43 @@
+{
+  "cli": {
+    "version": ">= 16.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "credentialsSource": "local"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "credentialsSource": "local"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle",
+        "credentialsSource": "local"
+      }
+    },
+    "production-apk": {
+      "android": {
+        "buildType": "apk",
+        "credentialsSource": "local"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./play-store-key.json",
+        "track": "internal"
+      }
+    }
+  }
+}

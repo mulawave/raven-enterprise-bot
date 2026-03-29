@@ -16,6 +16,8 @@ import { ConversationsController } from '../messaging/conversations.controller'
 import { AiMessageProcessor } from '../../worker/messaging/ai-message.processor'
 import { OutboundMessageWorker } from '../../worker/messaging/outbound-message.worker'
 import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
+import { TakeoverMonitorService } from '../../../libs/conversations/takeover-monitor.service'
+import { OpenAIResponseGenerator } from '../../../libs/ai-engine/openai-response.generator'
 
 // Broadcast rate-limiting (value instances — not injectable classes)
 import { BroadcastLimiter } from '../admin/broadcast/broadcast.limiter'
@@ -26,6 +28,12 @@ import { ChannelCooldownTracker } from '../admin/broadcast/cooldown.tracker'
   controllers: [WebhookController, AdminBroadcastController, ConversationsController],
   providers: [
     AiMessageProcessor,
+    TakeoverMonitorService,
+    {
+      provide: OpenAIResponseGenerator,
+      useFactory: (configLoader: ConfigLoaderService) => new OpenAIResponseGenerator(configLoader),
+      inject: [ConfigLoaderService],
+    },
     {
       provide: 'AI_MESSAGE_PROCESSOR',
       useExisting: AiMessageProcessor,

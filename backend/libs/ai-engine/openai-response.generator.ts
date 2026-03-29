@@ -9,6 +9,8 @@ export interface ChatContext {
   conversationHistory: { role: 'user' | 'assistant'; content: string }[]
   /** FAQs from the tenant's knowledge base */
   faqs?: { question: string; answer: string }[]
+  /** Hidden FAQs learned from past human↔customer conversations (internal bot knowledge) */
+  hiddenFaqs?: { question: string; answer: string }[]
   /** Available catalogue items with prices already converted to naira */
   catalogueItems?: { category: string; name: string; description?: string | null; priceNaira: number; available: boolean }[]
   /** Override the entire system prompt base (still appends FAQ + catalogue blocks) */
@@ -96,9 +98,18 @@ Your PRIMARY goal is CONVERSION — turn every enquiry into a sale, booking, or 
 6. If a human agent is requested, say: "${ctx.escalationMessage ?? "I'll have a team member reach you shortly."}" then stop.
 7. You can discuss and quote products/services from the catalogue freely.
 8. NEVER confirm, place, or cancel an order/booking autonomously — guide customer to confirm with staff.
-9. Detected intent: ${ctx.intent}`
+9. Detected intent: ${ctx.intent}
+10. If you determine this conversation requires specialized human expertise — such as complaints, refund disputes, technical issues not covered in your FAQ, repeated customer frustration, or complex queries you genuinely cannot resolve — prefix your reply EXACTLY with [NEEDS_HUMAN] followed by your best response. The system will notify a human agent while still delivering your response to the customer. Only use this when truly needed, not for simple questions.`
 
-      const systemPrompt = basePrompt + faqBlock + catalogueBlock
+      // Build internal knowledge block from hidden (learned) FAQs
+      let hiddenFaqBlock = ''
+      if (ctx.hiddenFaqs && ctx.hiddenFaqs.length > 0) {
+        hiddenFaqBlock =
+          '\n\n## INTERNAL KNOWLEDGE (from past resolved conversations \u2014 use for context, never quote directly to customer)\n' +
+          ctx.hiddenFaqs.map((f) => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')
+      }
+
+      const systemPrompt = basePrompt + faqBlock + hiddenFaqBlock + catalogueBlock
 
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPrompt },

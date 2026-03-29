@@ -187,12 +187,18 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
     }
 
     // Fetch all context upfront in a single parallel batch
-    const [branding, tenantFaqs, menuCategories, recentMessages, convo, sessionJson, botConfig] = await Promise.all([
+    const [branding, tenantFaqs, hiddenFaqs, menuCategories, recentMessages, convo, sessionJson, botConfig] = await Promise.all([
       this.brandingService.getBranding(tenantId),
       this.prisma.tenantFaq.findMany({
-        where: { tenant_id: tenantId },
+        where: { tenant_id: tenantId, hidden: false },
         select: { question: true, answer: true },
         orderBy: { sort_order: 'asc' },
+      }),
+      this.prisma.tenantFaq.findMany({
+        where: { tenant_id: tenantId, hidden: true },
+        select: { question: true, answer: true },
+        orderBy: { created_at: 'desc' },
+        take: 20,
       }),
       this.prisma.menuCategory.findMany({
         where: { tenant_id: tenantId },
@@ -395,6 +401,7 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
         intent: output.intent,
         conversationHistory,
         faqs: tenantFaqs,
+        hiddenFaqs,
         catalogueItems,
         systemPromptOverride: botConfig?.system_prompt ?? undefined,
         escalationMessage: botConfig?.escalation_message ?? undefined,
@@ -403,6 +410,14 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
       if (aiResponse) responseText = aiResponse
     } catch (err) {
       this.logger.warn(`OpenAI generate failed, using rule-based: ${(err as Error).message}`)
+    }
+
+    // ── Detect bot-initiated escalation via [NEEDS_HUMAN] prefix ─────────
+    let botDetectedEscalation = false
+    if (responseText.startsWith('[NEEDS_HUMAN]')) {
+      responseText = responseText.replace(/^\[NEEDS_HUMAN\]\s*/, '')
+      botDetectedEscalation = true
+      this.logger.log(`Bot detected escalation need for conversation ${conversationId}`)
     }
 
     // Store last bot reply for context on next message
@@ -419,7 +434,7 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
     }
 
     // ── Escalation side-effects ─────────────────────────────────────────────
-    if (output.intent === 'EscalationRequest') {
+    if (output.intent === 'EscalationRequest' || botDetectedEscalation) {
       this.handleEscalationSideEffects(conversationId, tenantId, customerId, customerPhone).catch((err) => {
         this.logger.error(`Escalation side-effects failed: ${(err as Error).message}`)
       })
@@ -446,12 +461,24 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
       data: { status: 'escalated' },
     })
 
-    // 2. Look up customer name for notification body
+    // 2. Look up customer name for notification body — prefer saved contact name
     const customer = await this.prisma.customer.findUnique({
       where: { id: customerId },
       select: { name: true, phone: true },
     })
-    const label = customer?.name ?? customer?.phone ?? customerPhone ?? 'A customer'
+    const phone = customer?.phone ?? customerPhone
+    let label = customer?.name
+    if (!label && phone) {
+      // Check saved contacts for a friendly name
+      const savedContact = await this.prisma.contact.findFirst({
+        where: { tenant_id: tenantId, phone },
+        select: { name: true },
+      })
+      label = savedContact?.name
+    }
+    if (!label) {
+      label = phone ? `Customer ${phone.slice(-4)}` : 'A customer'
+    }
 
     // 3. Create StaffNotification for every user in this tenant
     const tenantUsers = await this.prisma.user.findMany({
@@ -464,7 +491,7 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
         data: tenantUsers.map((u) => ({
           tenant_id: tenantId,
           user_id: u.id,
-          message: `${label} is requesting a live agent. Conversation ID: ${conversationId}`,
+          message: `${label} needs your specialized assistance with this chat.`,
         })),
       })
     }
@@ -472,8 +499,8 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
     // 4. Send push + in-app notification (high-priority) to all tenant users
     await this.notificationService.send({
       tenantId,
-      title: '🔴 Live Agent Requested',
-      body: `${label} needs assistance. Tap to open the conversation.`,
+      title: '🔴 Human Assistance Needed',
+      body: `${label} needs your specialized assistance with this chat.`,
       type: 'escalation',
       data: { conversationId, customerId, customerPhone: customerPhone ?? '' },
     })

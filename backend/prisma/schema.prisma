@@ -486,18 +486,26 @@ model TenantBotConfig {
 // Tenant FAQs (knowledge base for AI + customer-facing FAQ page)
 // ---------------------------------------------------------------------------
 model TenantFaq {
-  id         String   @id @default(uuid())
-  tenant_id  String
-  question   String
-  answer     String
-  sort_order Int      @default(0)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id                      String   @id @default(uuid())
+  tenant_id               String
+  question                String
+  answer                  String
+  sort_order              Int      @default(0)
+  /// Hidden FAQs are not shown in the tenant's FAQ management UI but ARE
+  /// included in the bot's AI context for internal learning.
+  hidden                  Boolean  @default(false)
+  /// 'manual' = created by tenant, 'learned' = extracted from human↔customer conversation
+  source                  String?
+  /// The conversation this FAQ was extracted from (if source = 'learned')
+  source_conversation_id  String?
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
   @@index([tenant_id, sort_order])
+  @@index([tenant_id, hidden])
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query, Headers, HttpCode, HttpStatus, UnauthorizedException, Req, Res, BadRequestException, ForbiddenException, UseGuards, Logger } from '@nestjs/common'
+import { Controller, Post, Get, Patch, Param, Body, Query, Headers, HttpCode, HttpStatus, UnauthorizedException, Req, Res, BadRequestException, ForbiddenException, UseGuards, Logger } from '@nestjs/common'
 import { RawBodyRequest } from '@nestjs/common'
 import { Request, Response } from 'express'
 import { PrismaClient } from '@prisma/client'
@@ -255,6 +255,52 @@ export class PaymentController {
   </div>
 </body>
 </html>`
+  }
+
+  @Patch(':id/status')
+  @UseGuards(JwtAuthGuard)
+  async updatePaymentStatus(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() body: { status: string },
+  ) {
+    if (!user?.tenant_id || user.scope === 'SYSTEM') {
+      throw new ForbiddenException('Tenant credentials required')
+    }
+
+    const allowed = ['paid', 'declined']
+    const newStatus = (body.status || '').toLowerCase()
+    if (!allowed.includes(newStatus)) {
+      throw new BadRequestException(`status must be one of: ${allowed.join(', ')}`)
+    }
+
+    const payment = await this.prisma.payment.findFirst({
+      where: { id, tenant_id: user.tenant_id },
+    })
+    if (!payment) {
+      throw new ForbiddenException('Payment not found or access denied')
+    }
+    if (payment.status !== 'pending') {
+      throw new BadRequestException('Only pending payments can be overridden')
+    }
+
+    const updated = await this.prisma.payment.update({
+      where: { id },
+      data: { status: newStatus },
+    })
+
+    // If marked paid and has an order, confirm the order + trigger fulfillment
+    if (newStatus === 'paid' && updated.order_id) {
+      const order = await this.prisma.order.findUnique({ where: { id: updated.order_id } })
+      if (order && order.status !== 'confirmed') {
+        await this.prisma.order.update({ where: { id: updated.order_id }, data: { status: 'confirmed' } })
+        this.fulfillmentService.processOrderFulfillment(updated.order_id, updated.tenant_id, updated.reference).catch((err: Error) => {
+          this.logger.error(`Manual payment fulfillment error: ${err.message}`)
+        })
+      }
+    }
+
+    return { id: updated.id, status: updated.status }
   }
 
   @Post('webhook/paystack')

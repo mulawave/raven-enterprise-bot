@@ -15,8 +15,16 @@ export class FaqController {
   @Get()
   async list(@CurrentUser() user: any) {
     return this.prisma.tenantFaq.findMany({
-      where: { tenant_id: user.tenant_id },
+      where: { tenant_id: user.tenant_id, hidden: false },
       orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+    })
+  }
+
+  @Get('learned')
+  async listLearned(@CurrentUser() user: any) {
+    return this.prisma.tenantFaq.findMany({
+      where: { tenant_id: user.tenant_id, hidden: true },
+      orderBy: { created_at: 'desc' },
     })
   }
 

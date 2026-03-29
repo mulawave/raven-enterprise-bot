@@ -320,6 +320,8 @@ function ConversationsInner() {
   const [sendText, setSendText] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [isTogglingOverride, setIsTogglingOverride] = useState(false)
+  const [isAcceptingTakeover, setIsAcceptingTakeover] = useState(false)
+  const [isDecliningTakeover, setIsDecliningTakeover] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -728,15 +730,50 @@ function ConversationsInner() {
                 )}
               </div>
 
-              {/* Bot override active banner */}
+              {/* Bot override active banner — with takeover accept/decline */}
               {selectedConversation.botOverride && (
-                <div className="flex items-center gap-2 px-5 py-2 bg-amber-50 border-b border-amber-200 shrink-0">
-                  <svg className="h-3.5 w-3.5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                  </svg>
-                  <p className="text-xs text-amber-700 font-medium">
-                    Bot is paused — you are managing this conversation. Bot will auto-resume 60 seconds after the next customer message if you don&apos;t reply.
-                  </p>
+                <div className="flex items-center justify-between gap-3 px-5 py-2.5 bg-amber-50 border-b border-amber-200 shrink-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <svg className="h-3.5 w-3.5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                    <p className="text-xs text-amber-700 font-medium">
+                      Bot is paused — you are managing this conversation. The bot will remain paused until you re-activate it.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={async () => {
+                        if (isAcceptingTakeover) return
+                        setIsAcceptingTakeover(true)
+                        try {
+                          await api(`/api/messaging/conversations/${selectedId}/takeover-accept`, { method: 'POST' })
+                          setConversations((prev) => prev.map((c) => c.id === selectedId ? { ...c, botOverride: false } : c))
+                          showToast('Bot re-activated for this conversation', 'success')
+                        } catch { showToast('Failed to re-activate bot', 'error') } finally { setIsAcceptingTakeover(false) }
+                      }}
+                      disabled={isAcceptingTakeover}
+                      className="rounded-md bg-emerald-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1"
+                    >
+                      {isAcceptingTakeover && <span className="h-2.5 w-2.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                      Activate Bot
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (isDecliningTakeover) return
+                        setIsDecliningTakeover(true)
+                        try {
+                          await api(`/api/messaging/conversations/${selectedId}/takeover-decline`, { method: 'POST' })
+                          showToast('Dismissed — you\'ll be reminded again later', 'success')
+                        } catch { showToast('Failed to dismiss', 'error') } finally { setIsDecliningTakeover(false) }
+                      }}
+                      disabled={isDecliningTakeover}
+                      className="rounded-md bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-50 flex items-center gap-1"
+                    >
+                      {isDecliningTakeover && <span className="h-2.5 w-2.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />}
+                      Not Yet
+                    </button>
+                  </div>
                 </div>
               )}
 

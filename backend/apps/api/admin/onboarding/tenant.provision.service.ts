@@ -6,6 +6,7 @@ import { FALLBACK_TEXT } from '../../../../libs/ai-engine/prompts'
 export interface ProvisionUserInput {
   email: string
   password: string
+  name?: string
 }
 
 export interface TenantProvisionInput {
@@ -35,6 +36,7 @@ export class TenantProvisionService {
           email: input.owner.email,
           password: ownerHash,
           role: 'owner',
+          name: input.owner.name ?? null,
         },
       })
 
@@ -44,6 +46,7 @@ export class TenantProvisionService {
           email: input.staff.email,
           password: staffHash,
           role: 'staff',
+          name: input.staff.name ?? null,
         },
       })
 

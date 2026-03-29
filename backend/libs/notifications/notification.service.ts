@@ -11,6 +11,7 @@ export type NotificationType =
   | 'new_tenant'
   | 'alert'
   | 'broadcast'
+  | 'takeover_prompt'
 
 export interface SendNotificationOpts {
   /** Target a single user (dashboard staff/owner) */

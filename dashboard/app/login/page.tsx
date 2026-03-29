@@ -49,17 +49,26 @@ export default function LoginPage() {
         throw new Error(res.status === 401 ? 'Invalid tenant credentials.' : `API error (${res.status})`)
       }
 
-      const data = await res.json() as TenantLoginResponse
+      const data = await res.json()
+
+      // Handle pending/expired verification — redirect to check-email page
+      if (data.pending_verification || data.expired_verification) {
+        const encodedEmail = encodeURIComponent(data.email || email.trim())
+        router.replace(`/register/check-email?email=${encodedEmail}`)
+        return
+      }
+
+      const loginData = data as TenantLoginResponse
 
       setSession({
-        accessToken: data.access_token,
-        tenantId: data.user.tenant_id,
-        role: data.user.role,
-        email: data.user.email,
-        name: data.user.name ?? null,
-        onboardingCompleted: data.onboarding_completed ?? false,
+        accessToken: loginData.access_token,
+        tenantId: loginData.user.tenant_id,
+        role: loginData.user.role,
+        email: loginData.user.email,
+        name: loginData.user.name ?? null,
+        onboardingCompleted: loginData.onboarding_completed ?? false,
       })
-      if (!data.onboarding_completed) {
+      if (!loginData.onboarding_completed) {
         router.replace('/onboarding')
       } else {
         router.replace('/overview')
