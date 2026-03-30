@@ -24,6 +24,8 @@ const STANDALONE_ROUTES = [
   '/data-deletion',
   // Public payment callback — customers land here from Paystack redirect; no auth required
   '/payment',
+  // Product sales landing page — public, no auth required
+  '/rba_sales',
 ]
 
 function isStandalone(pathname: string) {
