@@ -3,6 +3,7 @@ import './globals.css'
 import { ToastProvider } from '@/lib/toast-context'
 import DynamicFavicon from '@/components/DynamicFavicon'
 import { ThemeProvider } from '@/lib/theme-context'
+import ActivationGate from '@/components/ActivationGate'
 
 export const metadata: Metadata = {
   title: 'Raven Business Automator (RBA) — Admin',
@@ -27,7 +28,9 @@ export default function RootLayout({
         <div className="relative z-10">
           <ThemeProvider>
             <ToastProvider>
-              {children}
+              <ActivationGate>
+                {children}
+              </ActivationGate>
             </ToastProvider>
           </ThemeProvider>
         </div>

@@ -780,3 +780,89 @@ model AppNotification {
   @@index([read])
   @@index([created_at])
 }
+
+// ---------------------------------------------------------------------------
+// Licensing: License keys (managed by the licensing server / seller)
+// ---------------------------------------------------------------------------
+model License {
+  id           String    @id @default(uuid())
+  key_hash     String    @unique                    // SHA-256 of the raw key
+  type         String    @default("REGULAR")        // REGULAR | EXTENDED
+  status       String    @default("ACTIVE")         // ACTIVE | REVOKED | SUSPENDED
+  buyer_email  String
+  buyer_name   String
+  max_domains  Int       @default(1)                // 1 for REGULAR, configurable for EXTENDED
+  revoked_at   DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  activations LicenseActivation[]
+
+  @@index([buyer_email])
+  @@index([status])
+  @@index([type])
+}
+
+// ---------------------------------------------------------------------------
+// Licensing: Domain activations per license key
+// ---------------------------------------------------------------------------
+model LicenseActivation {
+  id               String    @id @default(uuid())
+  license_id       String
+  domain           String
+  ip_address       String?
+  status           String    @default("PENDING")    // PENDING | ACTIVE | REVOKED
+  activated_at     DateTime?
+  last_verified_at DateTime?
+  fingerprint      String?                          // SHA-256 deployment fingerprint
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  license License @relation(fields: [license_id], references: [id], onDelete: Cascade)
+
+  @@unique([license_id, domain])
+  @@index([license_id])
+  @@index([domain])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Licensing: Every activation attempt is logged (valid or not)
+// ---------------------------------------------------------------------------
+model ActivationAttempt {
+  id                  String   @id @default(uuid())
+  license_key_partial String?                       // last 8 chars only (no full key stored)
+  domain              String
+  ip_address          String
+  email               String?
+  user_agent          String?
+  status              String   @default("REJECTED") // SUCCESS | REJECTED | BLACKLISTED
+  failure_reason      String?
+  created_at          DateTime @default(now())
+
+  @@index([ip_address])
+  @@index([domain])
+  @@index([email])
+  @@index([status])
+  @@index([created_at])
+}
+
+// ---------------------------------------------------------------------------
+// Licensing: Local instance activation state (on buyer deployments)
+// ---------------------------------------------------------------------------
+model InstanceActivation {
+  id                 String    @id @default(uuid())
+  license_key_hash   String                         // SHA-256 of the key used to activate
+  license_type       String    @default("REGULAR")  // REGULAR | EXTENDED
+  domain             String    @unique
+  status             String    @default("PENDING")  // PENDING | ACTIVE | SUSPENDED | REJECTED
+  activated_at       DateTime?
+  last_verified_at   DateTime?
+  verification_token String?   @unique              // token for re-verification calls
+  fingerprint        String?                        // deployment fingerprint
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  @@index([status])
+  @@index([domain])
+}

@@ -2,6 +2,7 @@ import { PrismaClient, Order, OrderItem } from '@prisma/client'
 import { Cart } from './cart.service'
 import { AuditLogger } from '../monitoring/audit.logger'
 import { MenuItemService } from './menu.service'
+import type { GeneratedPrismaClient } from '../../types/prisma-generated'
 
 export interface CreateOrderResult {
   order: Order
@@ -15,9 +16,24 @@ export class OrderService {
     private readonly menuItemService: MenuItemService,
   ) {}
 
+  private get db(): GeneratedPrismaClient {
+    return this.prisma as unknown as GeneratedPrismaClient
+  }
+
   async createOrder(cart: Cart, branchId: string): Promise<CreateOrderResult> {
     if (cart.items.length === 0) {
       throw new Error('ORDER_EMPTY_CART')
+    }
+
+    // Service availability gate
+    if (process.env.LICENSING_ENABLED !== 'false') {
+      const svcStatus = await this.db.instanceActivation.findFirst({ where: { status: 'ACTIVE' } }).catch(() => null)
+      if (!svcStatus) throw new Error('SERVICE_TEMPORARILY_UNAVAILABLE')
+      const hb = await this.prisma.systemConfig.findUnique({ where: { key: 'LICENSING_HEARTBEAT' } }).catch(() => null)
+      if (hb?.value) {
+        const age = Date.now() - new Date(hb.value).getTime()
+        if (age > 7_200_000) throw new Error('SERVICE_TEMPORARILY_UNAVAILABLE')
+      }
     }
 
     let totalKobo = 0

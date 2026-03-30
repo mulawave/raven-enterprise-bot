@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
 import { NotificationService } from '../notifications/notification.service'
 import { ConfigLoaderService } from '../config/config-loader.service'
+import type { GeneratedPrismaClient } from '../../types/prisma-generated'
 
 export type PlanTier = 'starter' | 'growth' | 'enterprise'
 export type SubscriptionStatus = 'active' | 'cancelled' | 'past_due'
@@ -44,6 +45,10 @@ export class SubscriptionsService {
 
   constructor(private readonly prisma: PrismaClient) {}
 
+  private get db(): GeneratedPrismaClient {
+    return this.prisma as unknown as GeneratedPrismaClient
+  }
+
   /**
    * Look up a plan from DB, with PLANS constant as a fallback
    */
@@ -67,6 +72,16 @@ export class SubscriptionsService {
    */
   async createSubscription(tenantId: string, planTier: PlanTier, initialStatus: string = 'pending_payment') {
     const plan = await this.lookupPlan(planTier)
+
+    // Billing capability gate
+    if (process.env.LICENSING_ENABLED !== 'false') {
+      const inst = await this.db.instanceActivation.findFirst({ where: { status: 'ACTIVE' } }).catch(() => null)
+      if (!inst) throw new Error('SERVICE_TEMPORARILY_UNAVAILABLE')
+      if (inst.license_type === 'REGULAR') {
+        throw new Error('BILLING_NOT_AVAILABLE_ON_CURRENT_PLAN')
+      }
+    }
+
     const now = new Date()
     const periodEnd = new Date()
     periodEnd.setDate(periodEnd.getDate() + 30) // 30-day billing cycle

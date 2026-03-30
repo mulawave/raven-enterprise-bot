@@ -62,6 +62,7 @@ export const ROUTES = {
   PAYMENT_CONFIG: '/admin/payment-config',
   EMAIL_CONFIG: '/admin/email-config',
   NOTIFICATIONS: '/admin/notifications',
+  LICENSING: '/admin/licensing',
 } as const
 
 export const API_ENDPOINTS = {

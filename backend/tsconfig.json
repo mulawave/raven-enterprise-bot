@@ -3,6 +3,11 @@
     "target": "ES2021",
     "module": "CommonJS",
     "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@prisma/client": ["node_modules/.prisma/client"],
+      "@prisma/client/*": ["node_modules/.prisma/client/*"]
+    },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "strict": true,

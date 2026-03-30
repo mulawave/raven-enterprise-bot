@@ -13,6 +13,10 @@ import { ComplianceModule } from './compliance.module'
 import { AdminModule } from './admin.module'
 import { AppConfigModule } from './app-config.module'
 
+// ── Licensing ──────────────────────────────────────────────────────────────
+import { LicensingModule } from '../../../libs/licensing/licensing.module'
+import { LicensingGuard } from '../../../libs/licensing/licensing.guard'
+
 // ── Core controllers (remain in AppModule — only need PrismaClient) ────────
 import { HealthController } from './health.controller'
 import { ReadinessController } from './readiness.controller'
@@ -54,6 +58,7 @@ import { BranchResolverMiddleware } from '../../../libs/tenant/branch.middleware
     AnalyticsModule,
     ComplianceModule,
     AdminModule,
+    LicensingModule,
   ],
   controllers: [
     HealthController,
@@ -73,6 +78,9 @@ import { BranchResolverMiddleware } from '../../../libs/tenant/branch.middleware
     TenantPaymentsController,
     TenantBroadcastController,
   ],
+  providers: [
+    { provide: 'APP_GUARD', useClass: LicensingGuard },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
@@ -82,7 +90,7 @@ export class AppModule implements NestModule {
     // Tenant JWT resolution — exclude public routes
     consumer
       .apply(TenantMiddleware)
-      .exclude('/health', '/readiness', '/admin/auth/login', '/admin/auth/refresh', '/api/auth/login', '/api/config/public', '/api/config/branding', '/webhooks/(.*)', '/api/data-deletion/status/(.*)', '/api/data-deletion/public', '/api/auth/confirm-by-code', '/api/auth/resend-confirmation')
+      .exclude('/health', '/readiness', '/admin/auth/login', '/admin/auth/refresh', '/api/auth/login', '/api/config/public', '/api/config/branding', '/webhooks/(.*)', '/api/data-deletion/status/(.*)', '/api/data-deletion/public', '/api/auth/confirm-by-code', '/api/auth/resend-confirmation', '/api/licensing/(.*)')
       .forRoutes('*')
 
     // Branch context — only needed for routes that scope to a branch

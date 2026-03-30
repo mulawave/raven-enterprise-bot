@@ -19,6 +19,7 @@ const navItems = [
   { label: 'System Health', href: ROUTES.SYSTEM, icon: '🏥', description: 'System status' },
   { label: 'Admin Users', href: ROUTES.USERS, icon: '👥', description: 'User management' },
   { label: 'Platform Reset', href: ROUTES.RESET, icon: '🔄', description: 'Reset all tenant data' },
+  { label: 'Licensing', href: ROUTES.LICENSING, icon: '🔐', description: 'License keys & activations' },
 ]
 
 const bottomNavItems = [

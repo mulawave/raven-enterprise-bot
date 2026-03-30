@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client'
 import { MessageSender } from '../../../apps/api/messaging/message.sender'
 import Redis from 'ioredis'
 import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
+import type { GeneratedPrismaClient } from '../../../types/prisma-generated'
 
 export interface OutboundMessageJob {
   conversationId: string
@@ -71,6 +72,10 @@ export class OutboundMessageWorker {
     })
   }
 
+  private get db(): GeneratedPrismaClient {
+    return this.prisma as unknown as GeneratedPrismaClient
+  }
+
   async enqueue(data: OutboundMessageJob): Promise<void> {
     await this.queue.add('send-message', data, {
       attempts: 5,
@@ -98,6 +103,15 @@ export class OutboundMessageWorker {
     const { conversationId, tenantId, customerId, content, platform, to } = job.data
 
     this.logger.log(`Sending message to ${to} on ${platform}`)
+
+    // Delivery gate
+    if (process.env.LICENSING_ENABLED !== 'false') {
+      const active = await this.db.instanceActivation.findFirst({ where: { status: 'ACTIVE' } }).catch(() => null)
+      if (!active) {
+        this.logger.warn(`Message delivery suspended for ${to}`)
+        return
+      }
+    }
 
     // Prefer per-tenant keys from Tenant.theme, fall back to global DB config, then env vars
     let accessToken = ''
