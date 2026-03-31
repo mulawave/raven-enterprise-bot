@@ -311,7 +311,7 @@ export class ConversationsController {
     const mediaId = await sender.uploadMedia(file.path, mimeType)
     await sender.sendMediaMessage(customerPhone, mediaId, mediaType as 'image' | 'audio' | 'video' | 'document', body.caption)
 
-    const mediaUrl = `https://api.raven-ai.online/uploads/media/${file.filename}`
+    const mediaUrl = `${process.env.API_PUBLIC_URL || 'https://api.yourdomain.com'}/uploads/media/${file.filename}`
     const content = JSON.stringify({
       __media: true,
       type: mediaType,
@@ -529,8 +529,8 @@ export class ConversationsController {
       lastMessageAt: lastMsg?.created_at?.toISOString() ?? null,
       lastMessageBy: lastMsg?.sender_type ?? null,
       lastMessagePreview: lastMsg?.content?.slice(0, 80) ?? null,
-      webhookUrl: 'https://api.raven-ai.online/api/messaging/webhook/whatsapp',
-      webhookVerifyUrl: 'https://api.raven-ai.online/api/messaging/webhook/verify',
+      webhookUrl: `${process.env.API_PUBLIC_URL || 'https://api.yourdomain.com'}/api/messaging/webhook/whatsapp`,
+      webhookVerifyUrl: `${process.env.API_PUBLIC_URL || 'https://api.yourdomain.com'}/api/messaging/webhook/verify`,
     }
   }
 }
