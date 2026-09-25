@@ -574,14 +574,57 @@ model WebsiteKnowledgeSource {
   source_label    String
   source_url      String?
   is_enabled      Boolean  @default(true)
-  crawl_status    String?
+  crawl_status    String?  // queued | crawling | ready | failed
   last_crawled_at DateTime?
+  raw_text        String?  // for source_type = 'text' (pasted content)
+  pages_indexed   Int      @default(0)
+  last_error      String?
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
   assistant WebsiteAssistant @relation(fields: [assistant_id], references: [id], onDelete: Cascade)
+  documents KnowledgeDocument[]
 
   @@index([assistant_id])
+  @@index([crawl_status])
+}
+
+// One fetched page (or pasted text) belonging to a knowledge source
+model KnowledgeDocument {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  source_id    String
+  url          String
+  title        String?
+  content_hash String
+  status       String   // indexed | failed | excluded
+  error        String?
+  fetched_at   DateTime?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  source WebsiteKnowledgeSource @relation(fields: [source_id], references: [id], onDelete: Cascade)
+  chunks KnowledgeChunk[]
+
+  @@unique([source_id, url])
+  @@index([tenant_id, status])
+}
+
+// Retrieval unit. search_tsv is a generated tsvector column with a GIN index
+// (see migration 20260926000000_add_knowledge_index); Prisma never writes it.
+model KnowledgeChunk {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  document_id String
+  ordinal     Int
+  text        String
+  token_count Int
+  search_tsv  Unsupported("tsvector")?
+
+  document KnowledgeDocument @relation(fields: [document_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([document_id])
 }
 
 model WebsiteVisitor {
@@ -746,6 +789,7 @@ model Plan {
   conversations_limit Int      // -1 = unlimited
   overage_price_kobo  Int
   features            String   @default("[]") // JSON array of feature strings
+  knowledge_page_limit Int     @default(50)   // max website pages indexed for the assistant
   is_active           Boolean  @default(true)
   sort_order          Int      @default(0)
   created_at          DateTime @default(now())

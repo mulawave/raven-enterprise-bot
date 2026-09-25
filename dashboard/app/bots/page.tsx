@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { api } from '@/lib/api'
+import KnowledgePanel from '@/components/KnowledgePanel'
 import { useTenantContext } from '@/lib/tenant-context'
 
 interface WebsiteAssistantDomain {
@@ -757,6 +758,12 @@ export default function BotsPage() {
                     )}
                   </div>
                 </section>
+
+                <KnowledgePanel
+                  assistantId={selectedAssistant.id}
+                  verifiedHosts={selectedAssistant.domains.filter((d) => d.verification_status === 'verified').map((d) => d.hostname)}
+                  onToast={showToast}
+                />
 
                 <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

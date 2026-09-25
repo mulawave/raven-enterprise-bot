@@ -29,6 +29,9 @@ import { TenantKeysController } from './tenant-keys.controller'
 import { ContactController } from './contact.controller'
 import { BotConfigController } from './bot-config.controller'
 import { WebsiteAssistantController } from './website-assistant.controller'
+import { KnowledgeController } from './knowledge.controller'
+import { KnowledgeIndexService } from '../../../libs/knowledge/knowledge-index.service'
+import { PrismaClient } from '@prisma/client'
 import { WidgetController } from './widget.controller'
 import { PlansController } from './plans.controller'
 import { EmailListController } from './email-list.controller'
@@ -75,6 +78,7 @@ import { BranchResolverMiddleware } from '../../../libs/tenant/branch.middleware
     ContactController,
     BotConfigController,
     WebsiteAssistantController,
+    KnowledgeController,
     WidgetController,
     PlansController,
     EmailListController,
@@ -86,6 +90,11 @@ import { BranchResolverMiddleware } from '../../../libs/tenant/branch.middleware
   ],
   providers: [
     { provide: 'APP_GUARD', useClass: LicensingGuard },
+    {
+      provide: KnowledgeIndexService,
+      useFactory: (prisma: PrismaClient) => new KnowledgeIndexService(prisma),
+      inject: [PrismaClient],
+    },
   ],
 })
 export class AppModule implements NestModule {

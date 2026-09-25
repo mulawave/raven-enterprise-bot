@@ -8,6 +8,7 @@ import { RedisSessionStore, RedisClient } from '../../../libs/ai-engine/session.
 import { FallbackHandler } from '../../../libs/ai-engine/ai.service'
 import { AuditLogger } from '../../../libs/monitoring/audit.logger'
 import { SubscriptionsService } from '../../../libs/billing/subscriptions.service'
+import { KnowledgeRetriever } from '../../../libs/knowledge/knowledge-retriever'
 import { BrandingService } from '../../../libs/tenant/branding/branding.service'
 import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
 import { OpenAIResponseGenerator } from '../../../libs/ai-engine/openai-response.generator'
@@ -76,6 +77,7 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
   private aiService!: AiService
   private openaiGenerator!: OpenAIResponseGenerator
   private readonly subscriptionsService: SubscriptionsService
+  private readonly knowledgeRetriever: KnowledgeRetriever
   private readonly brandingService: BrandingService
   private readonly configLoader: ConfigLoaderService
   private outboundDirect!: OutboundMessageWorker
@@ -86,6 +88,7 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
     private readonly notificationService: NotificationService,
   ) {
     this.subscriptionsService = new SubscriptionsService(this.prisma)
+    this.knowledgeRetriever = new KnowledgeRetriever(this.prisma)
     this.brandingService = new BrandingService(this.prisma)
     this.configLoader = new ConfigLoaderService(this.prisma)
   }
@@ -401,9 +404,11 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
         } catch { /* ignore */ }
       }
 
+      const knowledgePassages = await this.knowledgeRetriever.search(tenantId, content)
       const aiResponse = await this.openaiGenerator.generate({
         businessName,
         userMessage: content,
+        knowledgePassages,
         intent: output.intent,
         conversationHistory,
         faqs: tenantFaqs,

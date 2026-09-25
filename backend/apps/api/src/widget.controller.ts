@@ -22,6 +22,7 @@ import { AuditLogger } from '../../../libs/monitoring/audit.logger'
 import { NotificationService } from '../../../libs/notifications/notification.service'
 import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
 import { SubscriptionsService } from '../../../libs/billing/subscriptions.service'
+import { KnowledgePassage, KnowledgeRetriever } from '../../../libs/knowledge/knowledge-retriever'
 
 interface WidgetSessionDto {
   sessionToken?: string
@@ -92,6 +93,7 @@ export class WidgetController {
   private readonly aiService: AiService
   private readonly openaiGenerator: OpenAIResponseGenerator
   private readonly subscriptionsService: SubscriptionsService
+  private readonly knowledgeRetriever: KnowledgeRetriever
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -109,6 +111,7 @@ export class WidgetController {
     )
     this.openaiGenerator = new OpenAIResponseGenerator(this.configLoader)
     this.subscriptionsService = new SubscriptionsService(this.prisma)
+    this.knowledgeRetriever = new KnowledgeRetriever(this.prisma)
   }
 
   @Get('embed/:publicEmbedKey/script.js')
@@ -375,7 +378,10 @@ export class WidgetController {
       brandingName: assistant.name,
     })
 
-    const knowledge = await this.getAssistantKnowledge(assistant.id, assistant.tenant_id)
+    const [knowledge, passages] = await Promise.all([
+      this.getAssistantKnowledge(assistant.id, assistant.tenant_id),
+      this.knowledgeRetriever.search(assistant.tenant_id, message) as Promise<KnowledgePassage[]>,
+    ])
     let reply = this.buildKnowledgeDrivenReply(message, assistant.name, output.intent, knowledge)
 
     if (!reply) {
@@ -391,6 +397,7 @@ export class WidgetController {
       hiddenFaqs: knowledge.hiddenFaqs,
       catalogueItems: knowledge.catalogueItems,
       knowledgeSources: knowledge.knowledgeSources,
+      knowledgePassages: passages,
       systemPromptOverride: knowledge.botConfig?.system_prompt ?? undefined,
       escalationMessage: knowledge.botConfig?.escalation_message ?? undefined,
       apiKey: knowledge.tenantOpenAiKey,
@@ -433,6 +440,8 @@ export class WidgetController {
       state: output.state,
       intent: output.intent,
       requiresHandoff,
+      // Pages the answer could draw on, for "From: …" links under the reply
+      sources: aiResponse ? uniqueSources(passages) : [],
     }
   }
 
@@ -858,6 +867,26 @@ export class WidgetController {
     messages.scrollTop = messages.scrollHeight;
   }
 
+  function appendSources(sources) {
+    if (!sources || !sources.length) return;
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'max-width:82%;margin:-4px 0 10px;font:12px/1.4 sans-serif;color:#6B7280;';
+    wrap.appendChild(document.createTextNode('From: '));
+    sources.forEach(function (source, i) {
+      if (!/^https?:/i.test(source.url || '')) return;
+      if (i > 0) wrap.appendChild(document.createTextNode(' · '));
+      var link = document.createElement('a');
+      link.href = source.url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = source.title || source.url;
+      link.style.color = 'inherit';
+      wrap.appendChild(link);
+    });
+    messages.appendChild(wrap);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
   function ensureConfig() {
     if (state.config) return Promise.resolve(state.config);
     return fetch(apiBase + '/widget/config/' + publicEmbedKey)
@@ -919,6 +948,7 @@ export class WidgetController {
       })
       .then(function (payload) {
         appendMessage(payload.reply || 'How can I help?', 'assistant');
+        appendSources(payload.sources);
       })
       .catch(function () {
         appendMessage('Something went wrong. Please try again.', 'assistant');
@@ -926,4 +956,16 @@ export class WidgetController {
   });
 })();`
   }
+}
+
+function uniqueSources(passages: KnowledgePassage[]): { title: string; url: string }[] {
+  const seen = new Set<string>()
+  const out: { title: string; url: string }[] = []
+  for (const p of passages) {
+    if (!p.url || seen.has(p.url)) continue
+    seen.add(p.url)
+    out.push({ title: p.title ?? p.url, url: p.url })
+    if (out.length >= 3) break
+  }
+  return out
 }
