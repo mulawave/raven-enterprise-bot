@@ -29,6 +29,21 @@ async function bootstrap() {
     next()
   })
 
+  // Public widget requests originate from verified customer domains, not from the
+  // dashboard allowlist. Handle widget CORS explicitly without widening the rest
+  // of the API surface.
+  app.use((req: any, res: any, next: any) => {
+    if (req.path?.startsWith('/widget/')) {
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Origin,Referer,X-Requested-With')
+      if (req.method === 'OPTIONS') {
+        return res.sendStatus(204)
+      }
+    }
+    next()
+  })
+
   // Security headers
   app.use(helmet())
 

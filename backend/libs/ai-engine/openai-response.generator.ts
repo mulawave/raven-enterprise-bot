@@ -13,6 +13,8 @@ export interface ChatContext {
   hiddenFaqs?: { question: string; answer: string }[]
   /** Available catalogue items with prices already converted to naira */
   catalogueItems?: { category: string; name: string; description?: string | null; priceNaira: number; available: boolean }[]
+  /** Website assistant source descriptors used to hint what content is available */
+  knowledgeSources?: { source_type: string; source_label: string; source_url?: string | null }[]
   /** Override the entire system prompt base (still appends FAQ + catalogue blocks) */
   systemPromptOverride?: string
   /** Custom escalation message from TenantBotConfig */
@@ -83,6 +85,18 @@ export class OpenAIResponseGenerator {
         }
       }
 
+      let knowledgeSourceBlock = ''
+      if (ctx.knowledgeSources && ctx.knowledgeSources.length > 0) {
+        knowledgeSourceBlock =
+          '\n\n## WEBSITE KNOWLEDGE SOURCES (these describe the business content currently connected to the assistant)\n' +
+          ctx.knowledgeSources
+            .map((source) => {
+              const url = source.source_url ? ` (${source.source_url})` : ''
+              return `• ${source.source_type}: ${source.source_label}${url}`
+            })
+            .join('\n')
+      }
+
       const basePrompt = ctx.systemPromptOverride
         ? ctx.systemPromptOverride
         : `You are the AI sales and support assistant for ${ctx.businessName}, operating via WhatsApp.
@@ -109,7 +123,7 @@ Your PRIMARY goal is CONVERSION — turn every enquiry into a sale, booking, or 
           ctx.hiddenFaqs.map((f) => `Q: ${f.question}\nA: ${f.answer}`).join('\n\n')
       }
 
-      const systemPrompt = basePrompt + faqBlock + hiddenFaqBlock + catalogueBlock
+      const systemPrompt = basePrompt + faqBlock + hiddenFaqBlock + catalogueBlock + knowledgeSourceBlock
 
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
         { role: 'system', content: systemPrompt },

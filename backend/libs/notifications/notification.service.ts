@@ -12,8 +12,14 @@ export type NotificationType =
   | 'alert'
   | 'broadcast'
   | 'takeover_prompt'
+  | 'website_new_visitor'
+  | 'website_chat_started'
+  | 'website_lead_captured'
+  | 'website_handoff_requested'
 
 export interface SendNotificationOpts {
+  /** Target a specific set of users */
+  userIds?: string[]
   /** Target a single user (dashboard staff/owner) */
   userId?: string
   /** Target all users of a tenant */
@@ -142,6 +148,10 @@ export class NotificationService implements OnModuleInit {
 
   private async resolveUserIds(opts: SendNotificationOpts): Promise<string[]> {
     const ids = new Set<string>()
+
+    if (opts.userIds?.length) {
+      opts.userIds.forEach((id) => ids.add(id))
+    }
 
     if (opts.userId) ids.add(opts.userId)
 

@@ -35,20 +35,26 @@ export function BotsScreen({ navigation }: Props) {
 
   const fetchData = useCallback(async () => {
     try {
-      const [botRes, faqRes, catRes] = await Promise.all([
-        api<any>('/api/settings/bot').catch(() => null),
+      const [botRes, keysRes, faqRes, catRes] = await Promise.all([
+        api<any>('/api/bot-config').catch(() => null),
+        api<any>('/api/settings/keys').catch(() => []),
         api<any>('/api/faqs').catch(() => []),
         api<any>('/api/ordering/menu/categories').catch(() => []),
       ])
       const bot = botRes?.data ?? botRes
+      const keys: Array<{ key: string; has_value: boolean }> = Array.isArray(keysRes?.data ?? keysRes) ? (keysRes?.data ?? keysRes) : []
+      const hasOpenAiKey = keys.find((k) => k.key === 'OPENAI_API_KEY')?.has_value ?? false
+      const hasWaConfig =
+        (keys.find((k) => k.key === 'META_ACCESS_TOKEN')?.has_value ?? false) &&
+        (keys.find((k) => k.key === 'META_PHONE_NUMBER_ID')?.has_value ?? false)
       if (bot) {
         setConfig({
           enabled: bot.enabled ?? false,
-          systemPrompt: bot.systemPrompt || bot.system_prompt || '',
-          hasOpenAiKey: bot.hasOpenAiKey ?? bot.has_openai_key ?? false,
-          hasWaConfig: bot.hasWaConfig ?? bot.has_wa_config ?? false,
+          systemPrompt: bot.system_prompt || '',
+          hasOpenAiKey,
+          hasWaConfig,
         })
-        setPrompt(bot.systemPrompt || bot.system_prompt || '')
+        setPrompt(bot.system_prompt || '')
       }
       const faqs = faqRes?.data ?? faqRes ?? []
       setFaqCount(Array.isArray(faqs) ? faqs.length : 0)
@@ -73,8 +79,8 @@ export function BotsScreen({ navigation }: Props) {
     if (!config) return
     setIsToggling(true)
     try {
-      await api('/api/settings/bot', {
-        method: 'POST',
+      await api('/api/bot-config', {
+        method: 'PUT',
         body: { enabled: value },
       })
       setConfig({ ...config, enabled: value })
@@ -88,9 +94,9 @@ export function BotsScreen({ navigation }: Props) {
   async function handleSavePrompt() {
     setIsSaving(true)
     try {
-      await api('/api/settings/bot', {
-        method: 'POST',
-        body: { systemPrompt: prompt.trim() },
+      await api('/api/bot-config', {
+        method: 'PUT',
+        body: { system_prompt: prompt.trim() },
       })
       Alert.alert('Saved', 'Bot personality updated')
     } catch {

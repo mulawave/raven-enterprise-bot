@@ -143,7 +143,7 @@ const navigation = [
   { name: 'Conversations', href: '/conversations',  Icon: IconConversations },
   { name: 'Contacts',      href: '/contacts',       Icon: IconContacts },
   { name: 'Broadcast',     href: '/broadcast',      Icon: IconBroadcast },
-  { name: 'Bots',          href: '/bots',           Icon: IconBots },
+  { name: 'Website Assistant', href: '/bots',       Icon: IconBots },
   { name: 'FAQs',          href: '/faqs',           Icon: IconFaqs },
   { name: 'Catalogue',     href: '/catalogue',      Icon: IconCatalogue },
   { name: 'Email List',    href: '/email-list',     Icon: IconEmailList },
@@ -190,17 +190,11 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }: { mobileO
           </svg>
         </button>
         <div className="flex h-16 items-center gap-3 px-5">
-        {logoSrc ? (
-          <img
-            src={logoSrc}
-            alt={branding?.businessName || 'Logo'}
-            className="h-8 w-8 rounded-lg object-cover"
-          />
-        ) : (
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-sm font-bold text-white">
-            {branding?.businessName?.charAt(0)?.toUpperCase() || 'R'}
-          </div>
-        )}
+        <img
+          src={logoSrc || '/raven.png'}
+          alt={branding?.businessName || 'Logo'}
+          className="h-8 w-8 rounded-lg object-cover"
+        />
         <h1 className="truncate text-sm font-bold text-white leading-tight">
           {branding?.businessName || 'Raven Business Automator'}
         </h1>

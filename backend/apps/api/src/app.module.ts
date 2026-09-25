@@ -28,6 +28,9 @@ import { FaqController } from './faq.controller'
 import { TenantKeysController } from './tenant-keys.controller'
 import { ContactController } from './contact.controller'
 import { BotConfigController } from './bot-config.controller'
+import { WebsiteAssistantController } from './website-assistant.controller'
+import { WidgetController } from './widget.controller'
+import { PlansController } from './plans.controller'
 import { EmailListController } from './email-list.controller'
 import { NotificationController } from './notification.controller'
 import {
@@ -71,6 +74,9 @@ import { BranchResolverMiddleware } from '../../../libs/tenant/branch.middleware
     TenantKeysController,
     ContactController,
     BotConfigController,
+    WebsiteAssistantController,
+    WidgetController,
+    PlansController,
     EmailListController,
     NotificationController,
     TenantAnalyticsController,
@@ -90,7 +96,7 @@ export class AppModule implements NestModule {
     // Tenant JWT resolution — exclude public routes
     consumer
       .apply(TenantMiddleware)
-      .exclude('/health', '/readiness', '/admin/auth/login', '/admin/auth/refresh', '/api/auth/login', '/api/config/public', '/api/config/branding', '/webhooks/(.*)', '/api/data-deletion/status/(.*)', '/api/data-deletion/public', '/api/auth/confirm-by-code', '/api/auth/resend-confirmation', '/api/licensing/(.*)')
+      .exclude('/health', '/readiness', '/admin/auth/login', '/admin/auth/refresh', '/api/auth/login', '/api/config/public', '/api/config/branding', '/webhooks/(.*)', '/api/data-deletion/status/(.*)', '/api/data-deletion/public', '/api/auth/confirm-by-code', '/api/auth/resend-confirmation', '/api/licensing/(.*)', '/api/plans/public', '/widget/(.*)')
       .forRoutes('*')
 
     // Branch context — only needed for routes that scope to a branch

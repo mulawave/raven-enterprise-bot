@@ -153,7 +153,7 @@ export default function FaqsPage() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p className="text-xs text-blue-700">
-          FAQs are the knowledge base your AI bot uses to answer customer questions. Add your most common questions and their answers here — the more you add, the smarter the bot becomes. Configure and enable the bot in <a href="/bots" className="font-semibold underline">Bots settings</a>.
+          FAQs are part of the knowledge base your website assistant uses to answer customer questions. Add your most common questions and their answers here so the widget can respond with stronger coverage. Configure it in <a href="/bots" className="font-semibold underline">Website Assistant settings</a>.
         </p>
       </div>
 
@@ -208,7 +208,7 @@ export default function FaqsPage() {
               </svg>
             </div>
             <p className="text-sm font-medium text-gray-500">No FAQs yet</p>
-            <p className="text-xs text-gray-400 mt-1">Add your first FAQ to train the AI bot.</p>
+            <p className="text-xs text-gray-400 mt-1">Add your first FAQ to strengthen website assistant answers.</p>
             <button onClick={() => setShowAdd(true)} className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700">
               Add your first FAQ
             </button>
