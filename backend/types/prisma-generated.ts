@@ -5,6 +5,7 @@ export interface GeneratedModelDelegate {
 	findFirst(args?: unknown): Promise<any | null>
 	update(args: unknown): Promise<any>
 	updateMany(args: unknown): Promise<any>
+	delete(args: unknown): Promise<any>
 	count(args?: unknown): Promise<number>
 }
 

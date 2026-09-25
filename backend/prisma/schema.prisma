@@ -48,6 +48,10 @@ model Tenant {
   emailList           EmailList[]
   fcmTokens           FcmToken[]
   appNotifications    AppNotification[]
+  websiteAssistants   WebsiteAssistant[]
+  websiteVisitors     WebsiteVisitor[]
+  websiteVisitSessions WebsiteVisitSession[]
+  websiteEvents       WebsiteEvent[]
 
   @@index([created_at])
 }
@@ -98,6 +102,7 @@ model User {
   consents           Consent[]
   fcmTokens          FcmToken[]
   appNotifications   AppNotification[]
+  websiteAssistantAlertPreferences WebsiteAssistantAlertPreference[]
 
   @@index([tenant_id])
   @@index([email])
@@ -421,8 +426,12 @@ model SlaLog {
 model Subscription {
   id                          String   @id @default(uuid())
   tenant_id                   String   @unique
-  plan_tier                   String   // "starter" | "growth" | "enterprise"
-  status                      String   // "active" | "cancelled" | "past_due"
+  plan_tier                   String   // "promo" | "starter" | "growth" | "enterprise"
+  status                      String   // "active" | "cancelled" | "past_due" | "trial"
+  trial_started_at            DateTime?
+  trial_ends_at               DateTime?
+  trial_converted_at          DateTime?
+  promo_offer_code            String?
   current_period_start        DateTime
   current_period_end          DateTime
   conversations_used          Int      @default(0)
@@ -438,6 +447,7 @@ model Subscription {
   @@index([tenant_id])
   @@index([status])
   @@index([current_period_end])
+  @@index([trial_ends_at])
 }
 
 model AppSettings {
@@ -458,6 +468,8 @@ model AppSettings {
 model TenantBotConfig {
   id                 String   @id @default(uuid())
   tenant_id          String   @unique
+  /// Whether the AI bot is enabled for this tenant
+  enabled            Boolean  @default(false)
   /// Custom system prompt prefix — injected before FAQ + catalogue blocks
   system_prompt      String?
   /// Tone: "professional" | "friendly" | "casual"
@@ -480,6 +492,178 @@ model TenantBotConfig {
   tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
+}
+
+model WebsiteAssistant {
+  id                  String   @id @default(uuid())
+  tenant_id           String
+  name                String
+  status              String   @default("draft")
+  public_embed_key    String   @unique
+  welcome_message     String?
+  theme_color         String?
+  text_color          String?
+  avatar_url          String?
+  position            String   @default("bottom-right")
+  show_branding       Boolean  @default(true)
+  collect_name        Boolean  @default(false)
+  collect_email       Boolean  @default(false)
+  collect_phone       Boolean  @default(false)
+  handoff_enabled     Boolean  @default(true)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  domains WebsiteAssistantDomain[]
+  knowledgeSources WebsiteKnowledgeSource[]
+  visitors WebsiteVisitor[]
+  sessions WebsiteVisitSession[]
+  events WebsiteEvent[]
+  alertPreferences WebsiteAssistantAlertPreference[]
+
+  @@index([tenant_id])
+  @@index([status])
+}
+
+model WebsiteAssistantAlertPreference {
+  id                         String   @id @default(uuid())
+  assistant_id               String
+  user_id                    String
+  notify_new_visitor         Boolean  @default(true)
+  notify_chat_started        Boolean  @default(true)
+  notify_lead_captured       Boolean  @default(true)
+  notify_handoff_requested   Boolean  @default(true)
+  created_at                 DateTime @default(now())
+  updated_at                 DateTime @updatedAt
+
+  assistant WebsiteAssistant @relation(fields: [assistant_id], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([assistant_id, user_id])
+  @@index([assistant_id])
+  @@index([user_id])
+}
+
+model WebsiteAssistantDomain {
+  id                  String   @id @default(uuid())
+  assistant_id        String
+  hostname            String
+  verification_status String   @default("pending")
+  verification_token  String?
+  verified_at         DateTime?
+  created_at          DateTime @default(now())
+
+  assistant WebsiteAssistant @relation(fields: [assistant_id], references: [id], onDelete: Cascade)
+
+  @@unique([assistant_id, hostname])
+  @@index([hostname])
+}
+
+model WebsiteKnowledgeSource {
+  id              String   @id @default(uuid())
+  assistant_id    String
+  source_type     String
+  source_label    String
+  source_url      String?
+  is_enabled      Boolean  @default(true)
+  crawl_status    String?
+  last_crawled_at DateTime?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  assistant WebsiteAssistant @relation(fields: [assistant_id], references: [id], onDelete: Cascade)
+
+  @@index([assistant_id])
+}
+
+model WebsiteVisitor {
+  id                  String   @id @default(uuid())
+  assistant_id        String
+  tenant_id           String
+  visitor_fingerprint String
+  first_seen_at       DateTime
+  last_seen_at        DateTime
+  visit_count         Int      @default(1)
+  is_returning        Boolean  @default(false)
+  country_code        String?
+  country_name        String?
+  region_name         String?
+  city_name           String?
+  first_referrer      String?
+  first_landing_url   String?
+  last_landing_url    String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  assistant WebsiteAssistant @relation(fields: [assistant_id], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  sessions WebsiteVisitSession[]
+
+  @@unique([assistant_id, visitor_fingerprint])
+  @@index([tenant_id])
+  @@index([last_seen_at])
+}
+
+model WebsiteVisitSession {
+  id               String   @id @default(uuid())
+  assistant_id     String
+  visitor_id       String
+  tenant_id        String
+  session_token    String   @unique
+  started_at       DateTime @default(now())
+  ended_at         DateTime?
+  referrer_url     String?
+  landing_url      String?
+  entry_path       String?
+  utm_source       String?
+  utm_medium       String?
+  utm_campaign     String?
+  utm_term         String?
+  utm_content      String?
+  browser_name     String?
+  device_type      String?
+  os_name          String?
+  ip_hash          String?
+  ip_country_code  String?
+  ip_country_name  String?
+  event_count      Int      @default(0)
+  chat_opened      Boolean  @default(false)
+  chat_started     Boolean  @default(false)
+  lead_captured    Boolean  @default(false)
+  handoff_requested Boolean @default(false)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  assistant WebsiteAssistant @relation(fields: [assistant_id], references: [id], onDelete: Cascade)
+  visitor WebsiteVisitor @relation(fields: [visitor_id], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  events WebsiteEvent[]
+
+  @@index([tenant_id])
+  @@index([assistant_id])
+  @@index([started_at])
+}
+
+model WebsiteEvent {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  assistant_id String
+  visitor_id   String?
+  session_id   String
+  event_type   String
+  page_url     String?
+  page_path    String?
+  event_value  String?
+  metadata     String?
+  occurred_at  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  assistant WebsiteAssistant @relation(fields: [assistant_id], references: [id], onDelete: Cascade)
+  session WebsiteVisitSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([assistant_id, occurred_at])
+  @@index([event_type])
 }
 
 // ---------------------------------------------------------------------------
@@ -560,6 +744,25 @@ model Plan {
   updated_at          DateTime @updatedAt
 
   @@index([is_active])
+}
+
+model FunnelLead {
+  id                      String   @id @default(uuid())
+  name                    String?
+  email                   String?
+  phone                   String?
+  source                  String?
+  answers                 String   // JSON string of questionnaire responses
+  recommendation          String?
+  recommendation_metadata String?
+  intent_score            Int?
+  intent_label            String?
+  is_high_intent          Boolean  @default(false)
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
+
+  @@index([created_at])
+  @@index([intent_score])
 }
 
 // ---------------------------------------------------------------------------
@@ -787,6 +990,7 @@ model AppNotification {
 model License {
   id           String    @id @default(uuid())
   key_hash     String    @unique                    // SHA-256 of the raw key
+  key_display  String?                              // Raw key for admin display
   type         String    @default("REGULAR")        // REGULAR | EXTENDED
   status       String    @default("ACTIVE")         // ACTIVE | REVOKED | SUSPENDED
   buyer_email  String
