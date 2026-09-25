@@ -118,6 +118,28 @@ export class SubscriptionsService {
   }
 
   /**
+   * Whether the bot may answer customers for this tenant. Unpaid accounts
+   * (past_due / cancelled), trials past their end date (awaiting the card
+   * charge) and trials that used their conversation cap are paused. Setup and
+   * data are untouched, so paying resumes replies immediately.
+   */
+  async canBotReply(tenantId: string): Promise<boolean> {
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { tenant_id: tenantId },
+      select: { status: true, trial_ends_at: true, conversations_used: true, conversations_limit: true },
+    })
+    // Tenants provisioned before subscriptions existed keep working
+    if (!subscription) return true
+
+    if (subscription.status === 'past_due' || subscription.status === 'cancelled') return false
+    if (subscription.status === 'trial') {
+      if (subscription.trial_ends_at && subscription.trial_ends_at <= new Date()) return false
+      if (subscription.conversations_used >= subscription.conversations_limit) return false
+    }
+    return true
+  }
+
+  /**
    * Increment conversation counter (called from AI processor)
    */
   async incrementConversationCount(tenantId: string) {

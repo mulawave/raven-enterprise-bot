@@ -21,6 +21,7 @@ import { StateMachine } from '../../../libs/ai-engine/state.machine'
 import { AuditLogger } from '../../../libs/monitoring/audit.logger'
 import { NotificationService } from '../../../libs/notifications/notification.service'
 import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
+import { SubscriptionsService } from '../../../libs/billing/subscriptions.service'
 
 interface WidgetSessionDto {
   sessionToken?: string
@@ -90,6 +91,7 @@ function normalizeHostname(input: string): string | null {
 export class WidgetController {
   private readonly aiService: AiService
   private readonly openaiGenerator: OpenAIResponseGenerator
+  private readonly subscriptionsService: SubscriptionsService
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -106,6 +108,7 @@ export class WidgetController {
       new AuditLogger(this.prisma),
     )
     this.openaiGenerator = new OpenAIResponseGenerator(this.configLoader)
+    this.subscriptionsService = new SubscriptionsService(this.prisma)
   }
 
   @Get('embed/:publicEmbedKey/script.js')
@@ -331,6 +334,15 @@ export class WidgetController {
 
     if (!message) {
       throw new BadRequestException('message is required')
+    }
+
+    if (!(await this.subscriptionsService.canBotReply(assistant.tenant_id))) {
+      return {
+        reply: 'Our assistant is unavailable right now. Please leave your contact details and the team will get back to you.',
+        state: 'Validated',
+        intent: 'HelpRequest',
+        requiresHandoff: false,
+      }
     }
 
     if (!session.chat_started) {

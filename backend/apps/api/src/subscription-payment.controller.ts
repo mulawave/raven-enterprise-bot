@@ -1,5 +1,6 @@
 import {
   Controller,
+  Logger,
   Post,
   Get,
   Body,
@@ -14,11 +15,13 @@ import { CurrentUser } from '../../../libs/auth/decorators/current-user.decorato
 import { PaystackService } from '../../../libs/payments/paystack.service'
 import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
 import { SubscriptionsService } from '../../../libs/billing/subscriptions.service'
-import { TrialService } from '../../../libs/billing/trial.service'
+import { TrialService, TRIAL_CARD_CHECK_KOBO, TRIAL_DURATION_DAYS } from '../../../libs/billing/trial.service'
 
 @Controller()
 @UseGuards(JwtAuthGuard)
 export class SubscriptionPaymentController {
+  private readonly logger = new Logger(SubscriptionPaymentController.name)
+
   constructor(
     private readonly prisma: PrismaClient,
     private readonly paystack: PaystackService,
@@ -59,6 +62,9 @@ export class SubscriptionPaymentController {
       planTier: subscription.plan_tier,
       planName: plan.name,
       amountKobo: plan.priceKobo,
+      trialEligible: this.trialService.isEligible(subscription),
+      trialDays: TRIAL_DURATION_DAYS,
+      cardCheckKobo: TRIAL_CARD_CHECK_KOBO,
       onboardingStep: (theme.onboardingStep as string) ?? null,
       onboardingCompleted: theme.onboardingCompleted === true,
     }
@@ -98,7 +104,7 @@ export class SubscriptionPaymentController {
   @Post('api/subscription/payment/initialize')
   async initializePayment(
     @CurrentUser() user: any,
-    @Body() body: { newPlanTier?: string; platform?: string } = {},
+    @Body() body: { newPlanTier?: string; platform?: string; startTrial?: boolean } = {},
   ) {
     if (!user?.tenant_id) throw new UnauthorizedException()
 
@@ -107,6 +113,10 @@ export class SubscriptionPaymentController {
     })
 
     if (!subscription) throw new BadRequestException('No subscription found')
+
+    if (body.startTrial) {
+      return this.initializeTrialCardCheck(user, subscription, body.platform)
+    }
 
     const { newPlanTier } = body
     const validTiers = ['starter', 'growth', 'enterprise']
@@ -119,7 +129,7 @@ export class SubscriptionPaymentController {
       if (!validTiers.includes(newPlanTier)) {
         throw new BadRequestException('Invalid plan tier. Must be starter, growth, or enterprise.')
       }
-      if (newPlanTier === subscription.plan_tier) {
+      if (newPlanTier === subscription.plan_tier && subscription.status === 'active') {
         throw new BadRequestException('You are already on this plan.')
       }
       targetTier = newPlanTier
@@ -223,6 +233,10 @@ export class SubscriptionPaymentController {
       return { success: false, status: result?.data?.status ?? 'unknown' }
     }
 
+    if (reference.startsWith('trial-')) {
+      return this.completeTrialCardCheck(user.tenant_id, reference, result.data, paystack)
+    }
+
     // Fetch the invoice to determine the target plan
     const invoice = await this.prisma.invoice.findFirst({
       where: { tenant_id: user.tenant_id, reference },
@@ -234,10 +248,28 @@ export class SubscriptionPaymentController {
 
     const targetTier = invoice?.plan ?? currentSubscription?.plan_tier ?? 'starter'
     const isUpgrade = currentSubscription && targetTier !== currentSubscription.plan_tier
+    const newPlan = await this.subscriptionsService.lookupPlan(targetTier)
 
-    if (isUpgrade) {
-      // Apply plan change: update tier + conversations_limit
-      const newPlan = await this.subscriptionsService.lookupPlan(targetTier)
+    if (currentSubscription && currentSubscription.status !== 'active') {
+      // Activation from pending / trial / past_due / cancelled: start a fresh paid period
+      // so the renewal job doesn't see an already-elapsed period and charge again.
+      const now = new Date()
+      await this.prisma.subscription.update({
+        where: { tenant_id: user.tenant_id },
+        data: {
+          status: 'active',
+          plan_tier: targetTier,
+          conversations_limit: newPlan.conversationsLimit,
+          conversations_used: 0,
+          current_period_start: now,
+          current_period_end: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+          cancel_at_period_end: false,
+          last_charge_error: null,
+          ...(currentSubscription.status === 'trial' ? { trial_converted_at: now } : {}),
+        },
+      })
+    } else if (isUpgrade) {
+      // Mid-period upgrade: update tier + conversations_limit
       await this.prisma.subscription.update({
         where: { tenant_id: user.tenant_id },
         data: {
@@ -245,12 +277,6 @@ export class SubscriptionPaymentController {
           plan_tier: targetTier,
           conversations_limit: newPlan.conversationsLimit,
         },
-      })
-    } else {
-      // Initial activation — just activate
-      await this.prisma.subscription.update({
-        where: { tenant_id: user.tenant_id },
-        data: { status: 'active' },
       })
     }
 
@@ -296,73 +322,106 @@ export class SubscriptionPaymentController {
   }
 
   /**
-   * POST /api/subscription/trial/start
-   * Start a 7-day free trial for a new tenant.
-   * Accepts optional planTier; defaults to 'promo'.
-   */
-  @Post('api/subscription/trial/start')
-  async startTrial(
-    @CurrentUser() user: any,
-    @Body() body: { planTier?: string } = {},
-  ) {
-    if (!user?.tenant_id) throw new UnauthorizedException()
-
-    const planTier = body.planTier ?? 'promo'
-    const result = await this.trialService.startTrial(user.tenant_id, planTier)
-
-    return {
-      success: true,
-      trialStartedAt: result.trialStartedAt,
-      trialEndsAt: result.trialEndsAt,
-      daysRemaining: 7,
-    }
-  }
-
-  /**
    * GET /api/subscription/trial/status
-   * Get the current trial status (active, expired, days remaining, etc.).
+   * Trial state for the dashboard banner: days left, the plan that will be
+   * billed, the saved card, and whether auto-renew has been turned off.
    */
   @Get('api/subscription/trial/status')
   async getTrialStatus(@CurrentUser() user: any) {
     if (!user?.tenant_id) throw new UnauthorizedException()
-
-    const status = await this.trialService.getTrialStatus(user.tenant_id)
-
-    return {
-      isTrialActive: status.isTrialActive,
-      trialStartedAt: status.trialStartedAt,
-      trialEndsAt: status.trialEndsAt,
-      daysRemaining: status.daysRemaining,
-      hasExpired: status.hasExpired,
-      trialConvertedAt: status.trialConvertedAt,
-    }
+    return this.trialService.getTrialStatus(user.tenant_id)
   }
 
   /**
-   * POST /api/subscription/trial/convert
-   * Convert a trial subscription to a paid subscription.
-   * Requires the target plan tier in the request body.
+   * POST /api/subscription/cancel   { cancel?: boolean }
+   * Turn automatic billing off (default) or back on. The account keeps working
+   * until the end of the current trial or paid period.
    */
-  @Post('api/subscription/trial/convert')
-  async convertTrial(
-    @CurrentUser() user: any,
-    @Body() body: { planTier: string },
-  ) {
+  @Post('api/subscription/cancel')
+  async setCancelAtPeriodEnd(@CurrentUser() user: any, @Body() body: { cancel?: boolean } = {}) {
     if (!user?.tenant_id) throw new UnauthorizedException()
-    if (!body.planTier?.trim()) throw new BadRequestException('planTier is required')
+    return this.trialService.setCancelAtPeriodEnd(user.tenant_id, body.cancel !== false)
+  }
 
-    const validTiers = ['promo', 'starter', 'growth', 'enterprise']
-    if (!validTiers.includes(body.planTier)) {
-      throw new BadRequestException('Invalid plan tier. Must be promo, starter, growth, or enterprise.')
+  /**
+   * Card-up-front trial, step 1: a small card-only charge that yields a reusable
+   * authorization. It is refunded as soon as it is verified.
+   */
+  private async initializeTrialCardCheck(user: any, subscription: any, platform?: string) {
+    if (!this.trialService.isEligible(subscription)) {
+      throw new BadRequestException('This account is not eligible for a free trial')
     }
 
-    const result = await this.trialService.convertTrial(user.tenant_id, body.planTier)
+    const dbUser = await this.prisma.user.findUnique({ where: { id: user.sub }, select: { email: true } })
+    if (!dbUser?.email) throw new BadRequestException('User record not found')
 
+    const dashboardUrl = (await this.configLoader.get('NEXT_PUBLIC_DASHBOARD_URL'))
+      || process.env.NEXT_PUBLIC_DASHBOARD_URL
+    if (!dashboardUrl) {
+      throw new BadRequestException('NEXT_PUBLIC_DASHBOARD_URL is not configured. Set it in System Config or environment.')
+    }
+    const callbackUrl = platform === 'mobile'
+      ? 'raven://payment-callback?type=trial'
+      : `${dashboardUrl}/onboarding/payment-callback`
+
+    const reference = `trial-${user.tenant_id.slice(0, 8)}-${Date.now()}`
+    const paystack = await this.getPaystack()
+    const result = await paystack.initialize(TRIAL_CARD_CHECK_KOBO, dbUser.email, reference, callbackUrl, {
+      channels: ['card'],
+      metadata: { tenant_id: user.tenant_id, purpose: 'trial_card_check' },
+    })
+
+    const plan = await this.subscriptionsService.lookupPlan(subscription.plan_tier)
     return {
-      success: true,
-      status: result.status,
-      planTier: result.planTier,
-      convertedAt: result.convertedAt,
+      mode: 'trial',
+      authorizationUrl: result.data.authorization_url,
+      accessCode: result.data.access_code,
+      reference,
+      planName: plan.name,
+      amountKobo: TRIAL_CARD_CHECK_KOBO,
+      trialDays: TRIAL_DURATION_DAYS,
     }
+  }
+
+  /** Card-up-front trial, step 2: save the reusable card, start the trial, refund the check. */
+  private async completeTrialCardCheck(tenantId: string, reference: string, tx: any, paystack: PaystackService) {
+    if (tx?.metadata?.tenant_id !== tenantId) {
+      throw new BadRequestException('This payment does not belong to your account')
+    }
+
+    const subscription = await this.prisma.subscription.findUnique({ where: { tenant_id: tenantId } })
+    if (subscription?.status === 'trial' && subscription.trial_started_at) {
+      // Callback page reloaded — trial already started from this card
+      return { success: true, isTrial: true, trialEndsAt: subscription.trial_ends_at }
+    }
+
+    const auth = tx?.authorization
+    if (!auth?.authorization_code || auth.reusable !== true) {
+      await paystack.refund(reference).catch(err => this.logger.warn(`Trial card-check refund failed for ${reference}: ${err}`))
+      return {
+        success: false,
+        status: 'card_not_reusable',
+        message: 'This card cannot be used for automatic billing. Please try a different debit or credit card.',
+      }
+    }
+
+    const trial = await this.trialService.startTrialWithCard(tenantId, {
+      authorizationCode: auth.authorization_code,
+      last4: auth.last4,
+      brand: auth.card_type ?? auth.brand,
+      email: tx.customer?.email,
+    })
+
+    await paystack.refund(reference).catch(err => this.logger.warn(`Trial card-check refund failed for ${reference}: ${err}`))
+
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } })
+    let theme: Record<string, unknown> = {}
+    try { theme = JSON.parse(tenant?.theme ?? '{}') } catch { /* ignore */ }
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { theme: JSON.stringify({ ...theme, onboardingStep: 'profile' }) },
+    })
+
+    return { success: true, isTrial: true, trialEndsAt: trial.trialEndsAt }
   }
 }

@@ -1,10 +1,10 @@
 import { Injectable, OnModuleInit, OnApplicationShutdown, Logger } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client'
-import { ChargeScheduler } from './charging/charge.scheduler'
+import { BillingRenewalService } from './billing-renewal.service'
 import { GracePeriodChecker } from './enforcement/grace.checker'
 import { DataRetentionService } from '../compliance/retention.service'
 
-const BILLING_INTERVAL_MS = 24 * 60 * 60 * 1000 // 24 hours
+const RENEWAL_INTERVAL_MS = 60 * 60 * 1000 // 1 hour — trial endings and period renewals
 const GRACE_CHECK_INTERVAL_MS = 60 * 60 * 1000 // 1 hour
 const RETENTION_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
@@ -17,7 +17,7 @@ export class BillingLifecycleService implements OnModuleInit, OnApplicationShutd
 
   constructor(
     private readonly prisma: PrismaClient,
-    private readonly chargeScheduler: ChargeScheduler,
+    private readonly renewalService: BillingRenewalService,
     private readonly gracePeriodChecker: GracePeriodChecker,
     private readonly dataRetentionService: DataRetentionService,
   ) {}
@@ -30,18 +30,19 @@ export class BillingLifecycleService implements OnModuleInit, OnApplicationShutd
       void this.runGracePeriodChecks()
     }, GRACE_CHECK_INTERVAL_MS)
 
-    // Monthly charge scheduling — check every 24 h (actual charge only fires on billing day)
+    // Trial conversion + renewals via saved card — check every hour
     this.billingTimer = setInterval(() => {
-      void this.runMonthlyChargeCheck()
-    }, BILLING_INTERVAL_MS)
+      void this.runRenewals()
+    }, RENEWAL_INTERVAL_MS)
 
     // Data retention purge — run weekly
     this.retentionTimer = setInterval(() => {
       void this.runDataRetentionPurge()
     }, RETENTION_INTERVAL_MS)
 
-    // Run grace checks immediately on startup
+    // Run grace checks and renewals immediately on startup
     void this.runGracePeriodChecks()
+    void this.runRenewals()
   }
 
   onApplicationShutdown(): void {
@@ -71,40 +72,11 @@ export class BillingLifecycleService implements OnModuleInit, OnApplicationShutd
     }
   }
 
-  private async runMonthlyChargeCheck(): Promise<void> {
+  private async runRenewals(): Promise<void> {
     try {
-      const today = new Date()
-      // Only process on the 1st of each month
-      if (today.getDate() !== 1) return
-
-      const period = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
-      const subscriptions = await this.prisma.subscription.findMany({
-        where: { status: 'ACTIVE' },
-        select: { tenant_id: true, plan_tier: true },
-      })
-
-      await Promise.all(
-        subscriptions.map(async ({ tenant_id, plan_tier }) => {
-          try {
-            const result = await this.chargeScheduler.scheduleMonthlyCharge(
-              tenant_id,
-              plan_tier,
-              {},
-              period,
-            )
-            this.logger.log(
-              `Monthly charge scheduled for tenant ${tenant_id}: invoice ${result.invoiceId} — $${result.amount}`,
-            )
-          } catch (err) {
-            this.logger.error(
-              `Monthly charge failed for tenant ${tenant_id}`,
-              err instanceof Error ? err.message : String(err),
-            )
-          }
-        }),
-      )
+      await this.renewalService.processDueSubscriptions()
     } catch (err) {
-      this.logger.error('Monthly charge check failed', err instanceof Error ? err.message : String(err))
+      this.logger.error('Renewal run failed', err instanceof Error ? err.message : String(err))
     }
   }
 

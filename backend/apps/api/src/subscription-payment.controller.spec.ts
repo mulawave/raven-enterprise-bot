@@ -1,352 +1,165 @@
-import { Test, TestingModule } from '@nestjs/testing'
-import { BadRequestException, UnauthorizedException, CanActivate } from '@nestjs/common'
+import { BadRequestException, UnauthorizedException } from '@nestjs/common'
 import { SubscriptionPaymentController } from './subscription-payment.controller'
 import { PaystackService } from '../../../libs/payments/paystack.service'
-import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
-import { SubscriptionsService } from '../../../libs/billing/subscriptions.service'
-import { TrialService } from '../../../libs/billing/trial.service'
-import { PrismaClient } from '@prisma/client'
-import { JwtAuthGuard } from '../../../libs/auth/guards/jwt-auth.guard'
-
-// Mock guard to bypass authentication
-class MockJwtAuthGuard implements CanActivate {
-  canActivate() {
-    return true
-  }
-}
+import { TrialService, TRIAL_CARD_CHECK_KOBO } from '../../../libs/billing/trial.service'
 
 describe('SubscriptionPaymentController', () => {
-  let controller: SubscriptionPaymentController
-  let prisma: PrismaClient
-  let trialService: TrialService
-  let subscriptionsService: SubscriptionsService
-
-  const mockPrisma = {
-    subscription: {
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      create: jest.fn(),
-    },
-    tenant: {
-      findUnique: jest.fn(),
-      update: jest.fn(),
-    },
-    invoice: {
-      findFirst: jest.fn(),
-      updateMany: jest.fn(),
-    },
+  const prisma = {
+    subscription: { findUnique: jest.fn(), update: jest.fn() },
+    tenant: { findUnique: jest.fn(), update: jest.fn() },
+    user: { findUnique: jest.fn() },
+    invoice: { findFirst: jest.fn(), updateMany: jest.fn(), create: jest.fn(), upsert: jest.fn() },
   }
-
-  const mockPaystack = {
+  const paystack = {
     initialize: jest.fn(),
     verify: jest.fn(),
+    refund: jest.fn(),
   }
-
-  const mockConfigLoader = {
-    getPaystackSecret: jest.fn(),
+  const configLoader = {
+    getPaystackSecret: jest.fn().mockResolvedValue(''),
+    get: jest.fn().mockResolvedValue('https://dash.example.com'),
   }
-
-  const mockTrialService = {
-    startTrial: jest.fn(),
-    getTrialStatus: jest.fn(),
-    convertTrial: jest.fn(),
+  const subscriptionsService = {
+    lookupPlan: jest.fn().mockResolvedValue({ name: 'Starter Plan', priceKobo: 4900000, conversationsLimit: 500, overagePriceKobo: 12000 }),
   }
+  const trialService = new TrialService(prisma as any)
 
-  const mockSubscriptionsService = {
-    lookupPlan: jest.fn(),
-  }
+  const controller = new SubscriptionPaymentController(
+    prisma as any,
+    paystack as unknown as PaystackService,
+    configLoader as any,
+    subscriptionsService as any,
+    trialService,
+  )
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [SubscriptionPaymentController],
-      providers: [
-        {
-          provide: PrismaClient,
-          useValue: mockPrisma,
-        },
-        {
-          provide: PaystackService,
-          useValue: mockPaystack,
-        },
-        {
-          provide: ConfigLoaderService,
-          useValue: mockConfigLoader,
-        },
-        {
-          provide: TrialService,
-          useValue: mockTrialService,
-        },
-        {
-          provide: SubscriptionsService,
-          useValue: mockSubscriptionsService,
-        },
-      ],
-    })
-      .overrideGuard(JwtAuthGuard)
-      .useClass(MockJwtAuthGuard)
-      .compile()
+  const user = { sub: 'user-1', tenant_id: 'tenant-1234567890' }
+  const pendingSub = { tenant_id: user.tenant_id, status: 'pending_payment', plan_tier: 'starter', trial_started_at: null }
 
-    controller = module.get<SubscriptionPaymentController>(SubscriptionPaymentController)
-    prisma = module.get<PrismaClient>(PrismaClient)
-    trialService = module.get<TrialService>(TrialService)
-    subscriptionsService = module.get<SubscriptionsService>(SubscriptionsService)
-  })
-
-  afterEach(() => {
+  beforeEach(() => {
     jest.clearAllMocks()
+    configLoader.getPaystackSecret.mockResolvedValue('')
+    configLoader.get.mockResolvedValue('https://dash.example.com')
+    subscriptionsService.lookupPlan.mockResolvedValue({ name: 'Starter Plan', priceKobo: 4900000, conversationsLimit: 500, overagePriceKobo: 12000 })
+    prisma.user.findUnique.mockResolvedValue({ email: 'owner@example.com' })
+    prisma.tenant.findUnique.mockResolvedValue({ theme: '{}' })
+    paystack.refund.mockResolvedValue({ status: true })
   })
 
-  describe('startTrial', () => {
-    it('should start a trial with default promo plan', async () => {
-      const user = { tenant_id: 'tenant-1' }
-      const now = new Date()
-      const trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+  describe('trial card check', () => {
+    it('initializes a card-only ₦50 check tagged with the tenant', async () => {
+      prisma.subscription.findUnique.mockResolvedValue(pendingSub)
+      paystack.initialize.mockResolvedValue({ data: { authorization_url: 'https://paystack/checkout', access_code: 'ac' } })
 
-      mockTrialService.startTrial.mockResolvedValueOnce({
-        trialStartedAt: now,
-        trialEndsAt,
+      const result: any = await controller.initializePayment(user, { startTrial: true })
+
+      expect(result.mode).toBe('trial')
+      expect(result.authorizationUrl).toBe('https://paystack/checkout')
+      const [amount, email, reference, callback, options] = paystack.initialize.mock.calls[0]
+      expect(amount).toBe(TRIAL_CARD_CHECK_KOBO)
+      expect(email).toBe('owner@example.com')
+      expect(reference).toMatch(/^trial-/)
+      expect(callback).toBe('https://dash.example.com/onboarding/payment-callback')
+      expect(options).toEqual({ channels: ['card'], metadata: { tenant_id: user.tenant_id, purpose: 'trial_card_check' } })
+    })
+
+    it('refuses a second trial', async () => {
+      prisma.subscription.findUnique.mockResolvedValue({ ...pendingSub, trial_started_at: new Date() })
+      await expect(controller.initializePayment(user, { startTrial: true })).rejects.toThrow(BadRequestException)
+      expect(paystack.initialize).not.toHaveBeenCalled()
+    })
+
+    it('saves the reusable card, starts a 14-day trial and refunds the check', async () => {
+      prisma.subscription.findUnique.mockResolvedValue(pendingSub)
+      prisma.subscription.update.mockImplementation(async ({ data }: any) => data)
+      paystack.verify.mockResolvedValue({
+        data: {
+          status: 'success',
+          metadata: { tenant_id: user.tenant_id },
+          customer: { email: 'owner@example.com' },
+          authorization: { authorization_code: 'AUTH_x', reusable: true, last4: '4081', card_type: 'visa' },
+        },
       })
 
-      const result = await controller.startTrial(user, {})
+      const result: any = await controller.verifyPayment('trial-tenant-1-1', user)
 
-      expect(result.success).toBe(true)
-      expect(result.daysRemaining).toBe(7)
-      expect(mockTrialService.startTrial).toHaveBeenCalledWith('tenant-1', 'promo')
+      expect(result).toMatchObject({ success: true, isTrial: true })
+      const data = prisma.subscription.update.mock.calls[0][0].data
+      expect(data).toMatchObject({
+        status: 'trial',
+        post_trial_plan_tier: 'starter',
+        conversations_limit: 300,
+        paystack_authorization_code: 'AUTH_x',
+        card_last4: '4081',
+        billing_email: 'owner@example.com',
+      })
+      const days = (data.trial_ends_at.getTime() - data.trial_started_at.getTime()) / 86400000
+      expect(days).toBe(14)
+      expect(paystack.refund).toHaveBeenCalledWith('trial-tenant-1-1')
+      expect(prisma.invoice.updateMany).not.toHaveBeenCalled()
     })
 
-    it('should start a trial with specified plan tier', async () => {
-      const user = { tenant_id: 'tenant-1' }
-      const now = new Date()
-      const trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+    it("rejects a card-check payment made for another tenant", async () => {
+      paystack.verify.mockResolvedValue({ data: { status: 'success', metadata: { tenant_id: 'someone-else' } } })
+      await expect(controller.verifyPayment('trial-x-1', user)).rejects.toThrow(BadRequestException)
+      expect(prisma.subscription.update).not.toHaveBeenCalled()
+    })
 
-      mockTrialService.startTrial.mockResolvedValueOnce({
-        trialStartedAt: now,
-        trialEndsAt,
+    it('refunds and asks for another card when the card is not reusable', async () => {
+      prisma.subscription.findUnique.mockResolvedValue(pendingSub)
+      paystack.verify.mockResolvedValue({
+        data: {
+          status: 'success',
+          metadata: { tenant_id: user.tenant_id },
+          authorization: { authorization_code: 'AUTH_y', reusable: false },
+        },
       })
 
-      const result = await controller.startTrial(user, { planTier: 'starter' })
+      const result: any = await controller.verifyPayment('trial-tenant-1-2', user)
 
-      expect(result.success).toBe(true)
-      expect(mockTrialService.startTrial).toHaveBeenCalledWith('tenant-1', 'starter')
-    })
-
-    it('should throw if user not authenticated', async () => {
-      const user = { tenant_id: null }
-
-      await expect(controller.startTrial(user, {})).rejects.toThrow(UnauthorizedException)
-    })
-  })
-
-  describe('getTrialStatus', () => {
-    it('should return trial status', async () => {
-      const user = { tenant_id: 'tenant-1' }
-      const now = new Date()
-      const trialEndsAt = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
-
-      mockTrialService.getTrialStatus.mockResolvedValueOnce({
-        isTrialActive: true,
-        trialStartedAt: now,
-        trialEndsAt,
-        daysRemaining: 3,
-        hasExpired: false,
-        trialConvertedAt: null,
-      })
-
-      const result = await controller.getTrialStatus(user)
-
-      expect(result.isTrialActive).toBe(true)
-      expect(result.daysRemaining).toBe(3)
-      expect(result.hasExpired).toBe(false)
-    })
-
-    it('should throw if user not authenticated', async () => {
-      const user = { tenant_id: null }
-
-      await expect(controller.getTrialStatus(user)).rejects.toThrow(UnauthorizedException)
-    })
-  })
-
-  describe('convertTrial', () => {
-    it('should convert trial to starter plan', async () => {
-      const user = { tenant_id: 'tenant-1' }
-      const now = new Date()
-
-      mockTrialService.convertTrial.mockResolvedValueOnce({
-        status: 'active',
-        planTier: 'starter',
-        convertedAt: now,
-      })
-
-      const result = await controller.convertTrial(user, { planTier: 'starter' })
-
-      expect(result.success).toBe(true)
-      expect(result.status).toBe('active')
-      expect(result.planTier).toBe('starter')
-      expect(mockTrialService.convertTrial).toHaveBeenCalledWith('tenant-1', 'starter')
-    })
-
-    it('should convert trial to growth plan', async () => {
-      const user = { tenant_id: 'tenant-1' }
-      const now = new Date()
-
-      mockTrialService.convertTrial.mockResolvedValueOnce({
-        status: 'active',
-        planTier: 'growth',
-        convertedAt: now,
-      })
-
-      const result = await controller.convertTrial(user, { planTier: 'growth' })
-
-      expect(result.success).toBe(true)
-      expect(result.planTier).toBe('growth')
-    })
-
-    it('should throw if user not authenticated', async () => {
-      const user = { tenant_id: null }
-
-      await expect(controller.convertTrial(user, { planTier: 'starter' })).rejects.toThrow(UnauthorizedException)
-    })
-
-    it('should throw if planTier is not provided', async () => {
-      const user = { tenant_id: 'tenant-1' }
-
-      await expect(controller.convertTrial(user, { planTier: '' })).rejects.toThrow(BadRequestException)
-    })
-
-    it('should throw if planTier is invalid', async () => {
-      const user = { tenant_id: 'tenant-1' }
-
-      await expect(controller.convertTrial(user, { planTier: 'invalid' })).rejects.toThrow(BadRequestException)
-    })
-  })
-})
-
-
-  afterEach(() => {
-    jest.clearAllMocks()
-  })
-
-  describe('startTrial', () => {
-    it('should start a trial with default promo plan', async () => {
-      const user = { tenant_id: 'tenant-1' }
-      const now = new Date()
-      const trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-
-      mockTrialService.startTrial.mockResolvedValueOnce({
-        trialStartedAt: now,
-        trialEndsAt,
-      })
-
-      const result = await controller.startTrial(user, {})
-
-      expect(result.success).toBe(true)
-      expect(result.daysRemaining).toBe(7)
-      expect(mockTrialService.startTrial).toHaveBeenCalledWith('tenant-1', 'promo')
-    })
-
-    it('should start a trial with specified plan tier', async () => {
-      const user = { tenant_id: 'tenant-1' }
-      const now = new Date()
-      const trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-
-      mockTrialService.startTrial.mockResolvedValueOnce({
-        trialStartedAt: now,
-        trialEndsAt,
-      })
-
-      const result = await controller.startTrial(user, { planTier: 'starter' })
-
-      expect(result.success).toBe(true)
-      expect(mockTrialService.startTrial).toHaveBeenCalledWith('tenant-1', 'starter')
-    })
-
-    it('should throw if user not authenticated', async () => {
-      const user = { tenant_id: null }
-
-      await expect(controller.startTrial(user, {})).rejects.toThrow(UnauthorizedException)
+      expect(result).toMatchObject({ success: false, status: 'card_not_reusable' })
+      expect(paystack.refund).toHaveBeenCalledWith('trial-tenant-1-2')
+      expect(prisma.subscription.update).not.toHaveBeenCalled()
     })
   })
 
-  describe('getTrialStatus', () => {
-    it('should return trial status', async () => {
-      const user = { tenant_id: 'tenant-1' }
-      const now = new Date()
-      const trialEndsAt = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+  describe('paid activation', () => {
+    it('starts a fresh 30-day period when a past_due tenant pays', async () => {
+      paystack.verify.mockResolvedValue({ data: { status: 'success' } })
+      prisma.invoice.findFirst.mockResolvedValue({ plan: 'starter' })
+      prisma.subscription.findUnique.mockResolvedValue({ status: 'past_due', plan_tier: 'starter' })
 
-      mockTrialService.getTrialStatus.mockResolvedValueOnce({
-        isTrialActive: true,
-        trialStartedAt: now,
-        trialEndsAt,
-        daysRemaining: 3,
-        hasExpired: false,
-        trialConvertedAt: null,
-      })
+      await controller.verifyPayment('sub-abc-1', user)
 
-      const result = await controller.getTrialStatus(user)
-
-      expect(result.isTrialActive).toBe(true)
-      expect(result.daysRemaining).toBe(3)
-      expect(result.hasExpired).toBe(false)
+      const data = prisma.subscription.update.mock.calls[0][0].data
+      expect(data.status).toBe('active')
+      expect(data.current_period_end.getTime()).toBeGreaterThan(Date.now() + 29 * 86400000)
+      expect(data.conversations_limit).toBe(500)
     })
 
-    it('should throw if user not authenticated', async () => {
-      const user = { tenant_id: null }
+    it('lets a trial tenant pay for the plan they are trialling', async () => {
+      prisma.subscription.findUnique.mockResolvedValue({ status: 'trial', plan_tier: 'starter' })
+      paystack.initialize.mockResolvedValue({ data: { authorization_url: 'u', access_code: 'a' } })
 
-      await expect(controller.getTrialStatus(user)).rejects.toThrow(UnauthorizedException)
+      const result: any = await controller.initializePayment(user, { newPlanTier: 'starter' })
+
+      expect(result.authorizationUrl).toBe('u')
     })
   })
 
-  describe('convertTrial', () => {
-    it('should convert trial to starter plan', async () => {
-      const user = { tenant_id: 'tenant-1' }
-      const now = new Date()
+  describe('trial status & cancellation', () => {
+    it('requires a tenant', async () => {
+      await expect(controller.getTrialStatus({})).rejects.toThrow(UnauthorizedException)
+      await expect(controller.setCancelAtPeriodEnd({}, {})).rejects.toThrow(UnauthorizedException)
+    })
 
-      mockTrialService.convertTrial.mockResolvedValueOnce({
-        status: 'active',
-        planTier: 'starter',
-        convertedAt: now,
+    it('turns auto-renew off by default', async () => {
+      prisma.subscription.findUnique.mockResolvedValue({ status: 'trial' })
+      const result = await controller.setCancelAtPeriodEnd(user, {})
+      expect(result).toEqual({ cancelAtPeriodEnd: true })
+      expect(prisma.subscription.update).toHaveBeenCalledWith({
+        where: { tenant_id: user.tenant_id },
+        data: { cancel_at_period_end: true },
       })
-
-      const result = await controller.convertTrial(user, { planTier: 'starter' })
-
-      expect(result.success).toBe(true)
-      expect(result.status).toBe('active')
-      expect(result.planTier).toBe('starter')
-      expect(mockTrialService.convertTrial).toHaveBeenCalledWith('tenant-1', 'starter')
-    })
-
-    it('should convert trial to growth plan', async () => {
-      const user = { tenant_id: 'tenant-1' }
-      const now = new Date()
-
-      mockTrialService.convertTrial.mockResolvedValueOnce({
-        status: 'active',
-        planTier: 'growth',
-        convertedAt: now,
-      })
-
-      const result = await controller.convertTrial(user, { planTier: 'growth' })
-
-      expect(result.success).toBe(true)
-      expect(result.planTier).toBe('growth')
-    })
-
-    it('should throw if user not authenticated', async () => {
-      const user = { tenant_id: null }
-
-      await expect(controller.convertTrial(user, { planTier: 'starter' })).rejects.toThrow(UnauthorizedException)
-    })
-
-    it('should throw if planTier is not provided', async () => {
-      const user = { tenant_id: 'tenant-1' }
-
-      await expect(controller.convertTrial(user, { planTier: '' })).rejects.toThrow(BadRequestException)
-    })
-
-    it('should throw if planTier is invalid', async () => {
-      const user = { tenant_id: 'tenant-1' }
-
-      await expect(controller.convertTrial(user, { planTier: 'invalid' })).rejects.toThrow(BadRequestException)
     })
   })
 })

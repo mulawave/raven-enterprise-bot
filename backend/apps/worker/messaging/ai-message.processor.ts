@@ -178,6 +178,12 @@ export class AiMessageProcessor implements OnModuleInit, OnApplicationShutdown {
 
     this.logger.log(`Processing message ${messageId} in conversation ${conversationId}`)
 
+    if (!(await this.subscriptionsService.canBotReply(tenantId))) {
+      // Inbound message is already stored; the owner can still reply manually
+      this.logger.warn(`Bot paused for tenant ${tenantId} (subscription inactive or trial limit reached) — no auto-reply`)
+      return { text: '', state: 'Validated', intent: 'HelpRequest' }
+    }
+
     const sessionKey = `conv_session:${conversationId}`
     const retryOpts = {
       attempts: 3,

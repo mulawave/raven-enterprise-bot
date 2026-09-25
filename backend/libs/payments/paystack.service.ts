@@ -33,7 +33,13 @@ export class PaystackService {
     return { Authorization: `Bearer ${this.secretKey}` }
   }
 
-  async initialize(amountKobo: number, email: string, reference: string, callbackUrl: string) {
+  async initialize(
+    amountKobo: number,
+    email: string,
+    reference: string,
+    callbackUrl: string,
+    options: { channels?: string[]; metadata?: Record<string, unknown> } = {},
+  ) {
     try {
       const res = await axios.post(
         'https://api.paystack.co/transaction/initialize',
@@ -43,6 +49,8 @@ export class PaystackService {
           reference,
           callback_url: callbackUrl,
           currency: 'NGN',
+          ...(options.channels ? { channels: options.channels } : {}),
+          ...(options.metadata ? { metadata: options.metadata } : {}),
         },
         { headers: this.headers },
       )
@@ -56,6 +64,50 @@ export class PaystackService {
   async verify(reference: string) {
     const res = await axios.get(
       `https://api.paystack.co/transaction/verify/${reference}`,
+      { headers: this.headers },
+    )
+    return res.data
+  }
+
+  /**
+   * Charge a saved, reusable card authorization (no customer interaction).
+   * Paystack rejects a repeated reference, which makes retries idempotent.
+   */
+  async chargeAuthorization(
+    authorizationCode: string,
+    email: string,
+    amountKobo: number,
+    reference: string,
+    metadata: Record<string, unknown> = {},
+  ): Promise<{ status: string; gatewayResponse?: string }> {
+    try {
+      const res = await axios.post(
+        'https://api.paystack.co/transaction/charge_authorization',
+        {
+          authorization_code: authorizationCode,
+          email,
+          amount: amountKobo,
+          reference,
+          currency: 'NGN',
+          metadata,
+        },
+        { headers: this.headers },
+      )
+      return {
+        status: res.data?.data?.status ?? 'failed',
+        gatewayResponse: res.data?.data?.gateway_response,
+      }
+    } catch (err: any) {
+      const body = err?.response?.data
+      throw new Error(`Paystack charge_authorization failed [${err?.response?.status}]: ${JSON.stringify(body)}`)
+    }
+  }
+
+  /** Refund a transaction in full (used to return the card-verification charge). */
+  async refund(reference: string) {
+    const res = await axios.post(
+      'https://api.paystack.co/refund',
+      { transaction: reference },
       { headers: this.headers },
     )
     return res.data

@@ -432,6 +432,14 @@ model Subscription {
   trial_ends_at               DateTime?
   trial_converted_at          DateTime?
   promo_offer_code            String?
+  post_trial_plan_tier        String?  // tier billed when the trial ends
+  cancel_at_period_end        Boolean  @default(false)
+  paystack_authorization_code String?  // reusable card authorization (card-up-front trials + renewals)
+  card_last4                  String?
+  card_brand                  String?
+  billing_email               String?
+  last_charge_attempt_at      DateTime?
+  last_charge_error           String?
   current_period_start        DateTime
   current_period_end          DateTime
   conversations_used          Int      @default(0)

@@ -3,7 +3,7 @@
 import { createContext, useContext } from 'react'
 
 export type TenantStatus = 'ACTIVE' | 'SUSPENDED' | 'TRIAL'
-export type SubscriptionStatus = 'active' | 'past_due' | 'cancelled'
+export type SubscriptionStatus = 'active' | 'trial' | 'past_due' | 'cancelled' | 'pending_payment'
 export type SubscriptionPlan = 'starter' | 'growth' | 'enterprise'
 
 export interface TenantInfo {

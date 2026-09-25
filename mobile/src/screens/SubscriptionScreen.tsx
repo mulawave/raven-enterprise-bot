@@ -96,7 +96,9 @@ export function SubscriptionScreen({ navigation }: Props) {
 
   const statusColors: Record<string, { color: string; bg: string }> = {
     active: { color: '#00B894', bg: '#00B89418' },
+    trial: { color: '#74B9FF', bg: '#74B9FF18' },
     trialing: { color: '#74B9FF', bg: '#74B9FF18' },
+    cancelled: { color: '#FF7675', bg: '#FF767518' },
     past_due: { color: '#FDCB6E', bg: '#FDCB6E18' },
     canceled: { color: '#FF7675', bg: '#FF767518' },
     expired: { color: '#636E72', bg: '#636E7218' },

@@ -20,6 +20,8 @@ import { ChargeWebhookHandler } from '../../../libs/billing/charging/charge.webh
 import { GracePeriodChecker } from '../../../libs/billing/enforcement/grace.checker'
 import { UsageTracker as BillingUsageTracker } from '../../../libs/billing/usage.tracker'
 import { BillingLifecycleService } from '../../../libs/billing/billing-lifecycle.service'
+import { BillingRenewalService } from '../../../libs/billing/billing-renewal.service'
+import { TrialService } from '../../../libs/billing/trial.service'
 import { PaystackService } from '../../../libs/payments/paystack.service'
 import { FlutterwaveService } from '../../../libs/payments/flutterwave.service'
 import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
@@ -46,6 +48,8 @@ import { AppConfigModule } from './app-config.module'
     GracePeriodChecker,
     BillingUsageTracker,
     BillingLifecycleService,
+    BillingRenewalService,
+    TrialService,
     {
       provide: PaystackService,
       useFactory: async (config: ConfigLoaderService) => new PaystackService(await config.getPaystackSecret()),

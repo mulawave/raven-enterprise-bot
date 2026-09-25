@@ -12,6 +12,7 @@ function PaymentCallbackContent() {
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<Status>('verifying')
   const [message, setMessage] = useState('')
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null)
 
   useEffect(() => {
     // Paystack sends ?reference=xxx&trxref=xxx
@@ -37,14 +38,15 @@ function PaymentCallbackContent() {
         if (!res.ok) throw new Error(data.message ?? `Error ${res.status}`)
         return data
       })
-      .then((data: { success: boolean; status?: string }) => {
+      .then((data: { success: boolean; status?: string; message?: string; isTrial?: boolean; trialEndsAt?: string }) => {
         if (data.success) {
+          if (data.isTrial && data.trialEndsAt) setTrialEndsAt(data.trialEndsAt)
           setStatus('success')
           // Redirect to onboarding after a brief success display
           setTimeout(() => router.replace('/onboarding'), 2000)
         } else {
           setStatus('failed')
-          setMessage(`Payment status: ${data.status ?? 'not completed'}. Please try again.`)
+          setMessage(data.message ?? `Payment status: ${data.status ?? 'not completed'}. Please try again.`)
         }
       })
       .catch(err => {
@@ -88,8 +90,20 @@ function PaymentCallbackContent() {
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
               </div>
-              <h1 className="text-xl font-semibold text-white mb-2">Payment confirmed! 🎉</h1>
-              <p className="text-sm text-slate-400 mb-2">Your subscription is now active.</p>
+              {trialEndsAt ? (
+                <>
+                  <h1 className="text-xl font-semibold text-white mb-2">Your free trial has started! 🎉</h1>
+                  <p className="text-sm text-slate-400 mb-2">
+                    Card saved and the ₦50 check refunded. Your trial runs until{' '}
+                    {new Date(trialEndsAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-xl font-semibold text-white mb-2">Payment confirmed! 🎉</h1>
+                  <p className="text-sm text-slate-400 mb-2">Your subscription is now active.</p>
+                </>
+              )}
               <p className="text-xs text-slate-500">Returning you to setup in a moment…</p>
             </>
           )}

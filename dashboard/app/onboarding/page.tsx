@@ -281,7 +281,7 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Subscription plan info for the payment step
-  const [planInfo, setPlanInfo] = useState<{ planName: string; amountKobo: number; planTier: string } | null>(null)
+  const [planInfo, setPlanInfo] = useState<{ planName: string; amountKobo: number; planTier: string; trialEligible: boolean; trialDays: number } | null>(null)
   const [isInitializingPayment, setIsInitializingPayment] = useState(false)
 
   const [profile, setProfile] = useState<ProfileForm>({
@@ -332,9 +332,17 @@ export default function OnboardingPage() {
         planTier: string
         onboardingStep: string | null
         onboardingCompleted: boolean
+        trialEligible?: boolean
+        trialDays?: number
       } | null) => {
         if (data) {
-          setPlanInfo({ planName: data.planName, amountKobo: data.amountKobo, planTier: data.planTier })
+          setPlanInfo({
+            planName: data.planName,
+            amountKobo: data.amountKobo,
+            planTier: data.planTier,
+            trialEligible: data.trialEligible === true,
+            trialDays: data.trialDays ?? 14,
+          })
 
           if (data.onboardingCompleted || data.onboardingStep === 'done') {
             // Fully completed — go straight to the dashboard
@@ -342,7 +350,7 @@ export default function OnboardingPage() {
             return
           }
 
-          if (data.subscriptionStatus !== 'active') {
+          if (data.subscriptionStatus !== 'active' && data.subscriptionStatus !== 'trial') {
             // Payment not done yet — go to welcome (brand new) or payment (returning)
             setStep(data.onboardingStep === 'payment' ? 'payment' : 'welcome')
           } else {
@@ -362,7 +370,7 @@ export default function OnboardingPage() {
 
   // ── Initialize subscription payment (step 2) ─────────────────────────────
 
-  async function handlePayNow() {
+  async function handlePayNow(startTrial = false) {
     setIsInitializingPayment(true)
     setError(null)
     try {
@@ -372,6 +380,7 @@ export default function OnboardingPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.accessToken}`,
         },
+        body: JSON.stringify(startTrial ? { startTrial: true } : {}),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message ?? `Error ${res.status}`)
@@ -552,14 +561,32 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* ── Step: Subscription Payment ── */}
-        {step === 'payment' && (
+        {/* ── Step: Subscription Payment / Free trial ── */}
+        {step === 'payment' && (() => {
+          const trial = planInfo?.trialEligible === true
+          const trialDays = planInfo?.trialDays ?? 14
+          const price = planInfo ? `₦${(planInfo.amountKobo / 100).toLocaleString()}` : '…'
+          const firstChargeDate = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000)
+            .toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+          const planLabel = planInfo?.planName ?? (planInfo?.planTier ? planInfo.planTier.charAt(0).toUpperCase() + planInfo.planTier.slice(1) + ' Plan' : 'Loading…')
+          const spinner = (
+            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+          )
+
+          return (
           <div className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
             <div className="text-center mb-8">
-              <div className="text-4xl mb-3">💳</div>
-              <h2 className="text-xl font-bold text-white mb-1">Activate your subscription</h2>
+              <div className="text-4xl mb-3">{trial ? '🎁' : '💳'}</div>
+              <h2 className="text-xl font-bold text-white mb-1">
+                {trial ? `Start your ${trialDays}-day free trial` : 'Activate your subscription'}
+              </h2>
               <p className="text-sm text-slate-400">
-                Pay securely with your card or via bank transfer. You will not be charged any recurring fees automatically — renewals require explicit approval.
+                {trial
+                  ? `Try everything free for ${trialDays} days. Add a card now — you won't be charged until the trial ends, and you can cancel any time before then.`
+                  : 'Pay securely with your card or via bank transfer.'}
               </p>
             </div>
 
@@ -568,27 +595,34 @@ export default function OnboardingPage() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400 mb-1">Your plan</p>
-                  <p className="text-xl font-bold text-white capitalize">
-                    {planInfo?.planName ?? (planInfo?.planTier ? planInfo.planTier.charAt(0).toUpperCase() + planInfo.planTier.slice(1) + ' Plan' : 'Loading…')}
-                  </p>
+                  <p className="text-xl font-bold text-white capitalize">{planLabel}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-slate-400 mb-0.5">Amount due</p>
-                  <p className="text-2xl font-bold text-emerald-400">
-                    {planInfo ? `₦${(planInfo.amountKobo / 100).toLocaleString()}` : '…'}
-                  </p>
+                  <p className="text-xs text-slate-400 mb-0.5">{trial ? 'Due today' : 'Amount due'}</p>
+                  <p className="text-2xl font-bold text-emerald-400">{trial ? '₦0' : price}</p>
                 </div>
               </div>
               <div className="h-px bg-white/10 mb-4" />
-              <ul className="space-y-1.5 text-sm text-slate-300">
-                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Billed as a one-time activation for your first month</li>
-                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Payment processed securely by Paystack</li>
-                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Card, bank transfer, or USSD accepted</li>
-              </ul>
+              {trial ? (
+                <ul className="space-y-1.5 text-sm text-slate-300">
+                  <li className="flex items-start gap-2"><span className="text-emerald-400">✓</span> Full access for {trialDays} days (up to 300 customer conversations)</li>
+                  <li className="flex items-start gap-2"><span className="text-emerald-400">✓</span> A ₦50 card check is taken now and refunded immediately</li>
+                  <li className="flex items-start gap-2"><span className="text-amber-300">•</span> On {firstChargeDate} your card is charged {price} for the {planLabel}, then every 30 days</li>
+                  <li className="flex items-start gap-2"><span className="text-amber-300">•</span> Cancel any time before then in Subscription &amp; Billing — you won&apos;t be charged</li>
+                </ul>
+              ) : (
+                <ul className="space-y-1.5 text-sm text-slate-300">
+                  <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Covers your first 30 days</li>
+                  <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Payment processed securely by Paystack</li>
+                  <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Card, bank transfer, or USSD accepted</li>
+                </ul>
+              )}
             </div>
 
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs text-amber-300 mb-6 leading-relaxed">
-              You will be redirected to Paystack's secure checkout page. After completing payment you will be automatically returned here to finish setup.
+              {trial
+                ? "You will be redirected to Paystack's secure checkout to add a debit or credit card. After that you will be returned here to finish setup."
+                : "You will be redirected to Paystack's secure checkout page. After completing payment you will be automatically returned here to finish setup."}
             </div>
 
             {error && (
@@ -605,25 +639,33 @@ export default function OnboardingPage() {
               </button>
               <button
                 type="button"
-                onClick={handlePayNow}
+                onClick={() => handlePayNow(trial)}
                 disabled={isInitializingPayment || !planInfo}
                 className="flex-[2] rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-3 font-semibold text-white transition hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isInitializingPayment ? (
-                  <>
-                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                    </svg>
-                    Redirecting to Paystack…
-                  </>
+                  <>{spinner} Redirecting to Paystack…</>
+                ) : trial ? (
+                  <>Add card &amp; start free trial →</>
                 ) : (
-                  <>Pay ₦{planInfo ? (planInfo.amountKobo / 100).toLocaleString() : '…'} →</>
+                  <>Pay {price} →</>
                 )}
               </button>
             </div>
+
+            {trial && (
+              <button
+                type="button"
+                onClick={() => handlePayNow(false)}
+                disabled={isInitializingPayment || !planInfo}
+                className="mt-4 w-full text-center text-xs text-slate-400 underline-offset-2 hover:text-slate-200 hover:underline disabled:opacity-50"
+              >
+                Skip the trial and pay {price} now
+              </button>
+            )}
           </div>
-        )}
+          )
+        })()}
 
         {/* ── Step: Profile (3-field groups) ── */}
         {step === 'profile' && (

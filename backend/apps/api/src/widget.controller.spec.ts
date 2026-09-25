@@ -48,6 +48,9 @@ describe('WidgetController', () => {
     user: {
       findMany: jest.fn(),
     },
+    subscription: {
+      findUnique: jest.fn(),
+    },
   }
 
   const redis = {
@@ -76,6 +79,7 @@ describe('WidgetController', () => {
     redis.set.mockResolvedValue('OK')
     prisma.user.findMany.mockResolvedValue([{ id: 'user-1' }])
     prisma.websiteAssistantAlertPreference.findMany.mockResolvedValue([])
+    prisma.subscription.findUnique.mockResolvedValue({ status: 'active', trial_ends_at: null, conversations_used: 0, conversations_limit: 500 })
   })
 
   it('returns widget config for a verified domain', async () => {
@@ -248,5 +252,33 @@ describe('WidgetController', () => {
     expect(notificationService.send).toHaveBeenCalled()
     expect(result.requiresHandoff).toBe(true)
     expect(result.reply).toBe('Please wait while I connect you to a human.')
+  })
+
+  it('returns a fallback without calling the AI when the tenant is paused', async () => {
+    prisma.websiteAssistant.findUnique.mockResolvedValue({
+      id: 'assistant-1',
+      tenant_id: 'tenant-1',
+      name: 'Website Assistant',
+      domains: [{ hostname: 'example.com', verification_status: 'verified' }],
+      handoff_enabled: true,
+    })
+    prisma.websiteVisitSession.findFirst.mockResolvedValue({
+      id: 'session-1',
+      session_token: 'session-token',
+      visitor_id: 'visitor-1',
+      chat_started: false,
+    })
+    prisma.subscription.findUnique.mockResolvedValue({ status: 'past_due', trial_ends_at: null, conversations_used: 0, conversations_limit: 500 })
+    const processMessage = jest.fn()
+    ;(controller as any).aiService = { processMessage }
+
+    const result = await controller.sendMessage('embed-key', makeRequest(), {
+      sessionToken: 'session-token',
+      message: 'Hello',
+    })
+
+    expect(processMessage).not.toHaveBeenCalled()
+    expect(result.requiresHandoff).toBe(false)
+    expect(result.reply).toMatch(/unavailable/)
   })
 })
