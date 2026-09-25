@@ -30,6 +30,7 @@ export class LicensingService {
     const license = await prisma.license.create({
       data: {
         key_hash: keyHash,
+        key_display: rawKey,
         type: input.type,
         status: 'ACTIVE',
         buyer_email: input.buyer_email,
@@ -52,6 +53,17 @@ export class LicensingService {
       include: { activations: true },
       orderBy: { created_at: 'desc' },
     })
+  }
+
+  async deleteKey(licenseId: string) {
+    const prisma = this.prisma as unknown as GeneratedPrismaClient
+
+    // Cascade will delete activations; delete the license entirely
+    await prisma.license.delete({
+      where: { id: licenseId },
+    })
+
+    return { deleted: true }
   }
 
   async revokeKey(licenseId: string) {
@@ -173,9 +185,21 @@ export class LicensingService {
         await this.logAttempt({ license_key, domain, ip_address, email, user_agent, status: 'REJECTED', failure_reason: 'Domain activation was revoked' })
         return { status: 'rejected', message: 'This domain activation has been revoked. Contact support.' }
       }
-      // PENDING — return pending status
+      // PENDING — auto-approve now
+      await prisma.licenseActivation.update({
+        where: { id: existingForDomain.id },
+        data: { status: 'ACTIVE', activated_at: new Date(), last_verified_at: new Date() },
+      })
+      const token = generateVerificationToken()
+      await this.upsertInstanceActivation({
+        license_key,
+        license_type: license.type,
+        domain,
+        status: 'ACTIVE',
+        verification_token: token,
+      })
       await this.logAttempt({ license_key, domain, ip_address, email, user_agent, status: 'SUCCESS', failure_reason: null })
-      return { status: 'pending_approval', message: 'Your activation request is awaiting admin approval.' }
+      return { status: 'active', license_type: license.type, verification_token: token }
     }
 
     // Domain count check
@@ -188,39 +212,32 @@ export class LicensingService {
       return { status: 'rejected', message: msg }
     }
 
-    // Create activation
-    const isRegular = license.type === 'REGULAR'
-    const activationStatus = isRegular ? 'ACTIVE' : 'PENDING'
-
+    // Create activation — auto-approve for all license types
     const activation = await prisma.licenseActivation.create({
       data: {
         license_id: license.id,
         domain,
         ip_address,
-        status: activationStatus,
-        activated_at: isRegular ? new Date() : null,
-        last_verified_at: isRegular ? new Date() : null,
+        status: 'ACTIVE',
+        activated_at: new Date(),
+        last_verified_at: new Date(),
         fingerprint: generateFingerprint(domain),
       },
     })
 
     await this.logAttempt({ license_key, domain, ip_address, email, user_agent, status: 'SUCCESS', failure_reason: null })
 
-    if (isRegular) {
-      // Also store locally on this instance
-      const token = generateVerificationToken()
-      await this.upsertInstanceActivation({
-        license_key,
-        license_type: license.type,
-        domain,
-        status: 'ACTIVE',
-        verification_token: token,
-      })
+    // Store locally on this instance
+    const token = generateVerificationToken()
+    await this.upsertInstanceActivation({
+      license_key,
+      license_type: license.type,
+      domain,
+      status: 'ACTIVE',
+      verification_token: token,
+    })
 
-      return { status: 'active', license_type: license.type, verification_token: token }
-    }
-
-    return { status: 'pending_approval', message: 'Your activation request has been submitted for admin approval.' }
+    return { status: 'active', license_type: license.type, verification_token: token }
   }
 
   /* ── Public: Verification (phone-home) ─────────────────────────────── */
@@ -252,6 +269,11 @@ export class LicensingService {
   /* ── Public: Local status check ────────────────────────────────────── */
 
   async getLocalStatus() {
+    // Master/seller instance — licensing enforcement is off, always report activated
+    if (process.env.LICENSING_ENABLED === 'false') {
+      return { activated: true, status: 'ACTIVE', license_type: 'MASTER', domain: 'master' }
+    }
+
     const prisma = this.prisma as unknown as GeneratedPrismaClient
 
     const activation = await prisma.instanceActivation.findFirst({

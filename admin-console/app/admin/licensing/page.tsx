@@ -8,6 +8,7 @@ import { api } from '@/lib/api'
 interface License {
   id: string
   key_hash: string
+  key_display: string | null
   type: string
   status: string
   buyer_email: string
@@ -322,6 +323,18 @@ export default function LicensingPage() {
     } finally { setActionLoading(null) }
   }
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('Permanently delete this license key and all its activations? This cannot be undone.')) return
+    setActionLoading(id)
+    try {
+      await api.delete(`/admin/licensing/keys/${id}`)
+      showToast('License deleted')
+      loadKeys()
+    } catch {
+      showToast('Failed to delete', 'error')
+    } finally { setActionLoading(null) }
+  }
+
   const handleApprove = async (id: string) => {
     setActionLoading(id)
     try {
@@ -394,6 +407,7 @@ export default function LicensingPage() {
                 <tr className="border-b border-slate-700/50 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Buyer</th>
+                  <th className="px-4 py-3">License Key</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Domains</th>
                   <th className="px-4 py-3">Created</th>
@@ -402,10 +416,10 @@ export default function LicensingPage() {
               </thead>
               <tbody className="divide-y divide-slate-800/50">
                 {loading ? (
-                  <ShimmerRows cols={6} />
+                  <ShimmerRows cols={7} />
                 ) : keys.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                    <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
                       No license keys generated yet.
                     </td>
                   </tr>
@@ -425,25 +439,44 @@ export default function LicensingPage() {
                         <p className="text-white font-medium">{k.buyer_name}</p>
                         <p className="text-xs text-slate-500">{k.buyer_email}</p>
                       </td>
+                      <td className="px-4 py-3">
+                        {k.key_display ? (
+                          <code className="rounded bg-slate-800 px-2 py-1 text-xs font-mono text-slate-300 select-all">{k.key_display}</code>
+                        ) : (
+                          <span className="text-xs text-slate-600 italic">hidden</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">{statusBadge(k.status)}</td>
                       <td className="px-4 py-3 text-slate-400">
                         {k.activations.filter(a => a.status === 'ACTIVE').length} / {k.max_domains}
                       </td>
                       <td className="px-4 py-3 text-slate-500 text-xs">{fmt(k.created_at)}</td>
                       <td className="px-4 py-3 text-right">
-                        {k.status === 'ACTIVE' && (
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+                          {k.status === 'ACTIVE' && (
+                            <button
+                              onClick={() => handleRevoke(k.id)}
+                              disabled={actionLoading === k.id}
+                              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                            >
+                              {actionLoading === k.id ? (
+                                <div className="h-3 w-3 animate-spin rounded-full border border-red-400/30 border-t-red-400" />
+                              ) : (
+                                'Revoke'
+                              )}
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleRevoke(k.id)}
+                            onClick={() => handleDelete(k.id)}
                             disabled={actionLoading === k.id}
-                            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-red-400 transition opacity-0 group-hover:opacity-100 hover:bg-red-500/10 disabled:opacity-50"
+                            className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition disabled:opacity-50"
+                            title="Delete license"
                           >
-                            {actionLoading === k.id ? (
-                              <div className="h-3 w-3 animate-spin rounded-full border border-red-400/30 border-t-red-400" />
-                            ) : (
-                              'Revoke'
-                            )}
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                            </svg>
                           </button>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   ))

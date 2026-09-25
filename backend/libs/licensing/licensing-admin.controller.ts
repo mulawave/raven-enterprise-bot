@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common'
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { SuperAdminGuard } from '../auth/guards/super-admin.guard'
 import { LicensingService } from './licensing.service'
@@ -23,6 +23,11 @@ export class LicensingAdminController {
   @Patch('keys/:id/revoke')
   async revokeKey(@Param('id') id: string) {
     return this.licensingService.revokeKey(id)
+  }
+
+  @Delete('keys/:id')
+  async deleteKey(@Param('id') id: string) {
+    return this.licensingService.deleteKey(id)
   }
 
   @Get('activations')
