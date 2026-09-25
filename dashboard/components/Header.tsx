@@ -211,11 +211,7 @@ export default function Header({ onMobileMenuToggle }: { onMobileMenuToggle: () 
                 aria-haspopup="true"
                 aria-expanded={menuOpen}
               >
-                {logoSrc ? (
-                  <img src={logoSrc} alt={displayName} className="h-9 w-9 rounded-full object-cover" />
-                ) : (
-                  initials
-                )}
+                <img src={logoSrc || '/raven.png'} alt={displayName} className="h-9 w-9 rounded-full object-cover" />
               </button>
             </div>
 

@@ -35,6 +35,8 @@ async function fetchAndApplyFavicon() {
         ? data.favicon_url
         : `${API_BASE_URL}${data.favicon_url}`
       applyFavicon(_cachedFaviconHref!)
+    } else {
+      applyFavicon('/raven.png')
     }
   } catch {
     // non-critical

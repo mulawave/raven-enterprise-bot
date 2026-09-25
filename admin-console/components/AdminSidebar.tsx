@@ -108,14 +108,8 @@ export default function AdminSidebar({ mobileOpen = false, onMobileClose }: { mo
         <div className="flex items-start justify-between gap-3">
           {!isCollapsed ? (
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600">
-                {logoUrl ? (
-                  <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
-                ) : (
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                )}
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 overflow-hidden">
+                <img src={logoUrl || '/raven.png'} alt="Logo" className="w-full h-full object-cover" />
               </div>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Raven Admin</h1>
@@ -124,14 +118,8 @@ export default function AdminSidebar({ mobileOpen = false, onMobileClose }: { mo
             </div>
           ) : (
             <div className="flex justify-center flex-1">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600">
-                {logoUrl ? (
-                  <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
-                ) : (
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                )}
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 overflow-hidden">
+                <img src={logoUrl || '/raven.png'} alt="Logo" className="w-full h-full object-cover" />
               </div>
             </div>
           )}

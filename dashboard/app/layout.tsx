@@ -10,7 +10,7 @@ import ActivationGate from '@/components/ActivationGate'
 export const metadata: Metadata = {
   title: 'Raven Business Automator (RBA)',
   description: 'Enterprise Bot Management Dashboard',
-  icons: [],
+  icons: [{ rel: 'icon', url: '/raven.png', type: 'image/png' }],
 }
 
 export default function RootLayout({
