@@ -2,6 +2,20 @@
 
 These instructions apply to every AI-assisted change in this repository.
 
+## CRITICAL DEPLOYMENT LAWS - MUST BE OBEYED WITH UTMOST SEVERITY
+
+FAILURE TO OBEY THESE LAWS MEANS FATAL TERMINATION OF THE ENTIRE PROJECT
+
+LAW 1: The server is a shared server. You MUST NOT reconfigure port 3000. This port is likely used by other applications on the shared server.
+
+LAW 2: Lock all activities to STRICTLY raven-ai.online. It is FORBIDDEN to access, manage, or attempt to interfere with any other domain residing on the server.
+
+LAW 3: Apache and localhost configuration must be EXPLICITLY on the raven-ai.online cPanel only and NOT on the root. Do not modify root-level Apache configurations.
+
+LAW 4: All operations must remain in the raven-ai.online cPanel and subdomains. There are other applications running on the same server in several other domains that have live users and must NOT be disturbed.
+
+These laws apply to ALL server interactions, deployments, configurations, and modifications.
+
 ## Delivery Standard
 
 - Complete requested work end to end whenever feasible: implement the actual change, cover loading or empty or error states, wire required validations, and update closely related docs or tests when the task needs them.
