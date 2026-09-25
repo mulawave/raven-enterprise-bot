@@ -18,11 +18,16 @@ interface Subscription {
   conversationsLimit: number
 }
 
+interface ApiPlan {
+  tier: string
+  features: string[]
+}
+
 interface Props {
   navigation: NativeStackNavigationProp<MoreStackParamList, 'Subscription'>
 }
 
-const PLAN_FEATURES: Record<string, string[]> = {
+const FALLBACK_PLAN_FEATURES: Record<string, string[]> = {
   free: ['100 conversations/month', 'Basic AI bot', 'WhatsApp integration', 'Order management'],
   starter: ['500 conversations/month', 'Advanced AI bot', 'WhatsApp integration', 'Order & booking management', 'Email list'],
   pro: ['2,000 conversations/month', 'Premium AI bot', 'All integrations', 'Full analytics', 'Priority support'],
@@ -34,13 +39,17 @@ export function SubscriptionScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets()
 
   const [sub, setSub] = useState<Subscription | null>(null)
+  const [planFeatures, setPlanFeatures] = useState<Record<string, string[]>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
   const fetchSubscription = useCallback(async () => {
     try {
-      const res = await api<any>('/tenant/context')
-      const raw = res?.subscription ?? res?.data?.subscription
+      const [ctxRes, plansRes] = await Promise.all([
+        api<any>('/tenant/context').catch(() => null),
+        api<any>('/api/plans').catch(() => null),
+      ])
+      const raw = ctxRes?.subscription ?? ctxRes?.data?.subscription
       if (raw) {
         setSub({
           status: raw.status || 'active',
@@ -50,6 +59,12 @@ export function SubscriptionScreen({ navigation }: Props) {
           conversationsUsed: raw.conversations_used ?? raw.conversationsUsed ?? 0,
           conversationsLimit: raw.conversations_limit ?? raw.conversationsLimit ?? 100,
         })
+      }
+      const apiPlans: ApiPlan[] = plansRes?.plans ?? plansRes?.data?.plans ?? []
+      if (apiPlans.length > 0) {
+        const map: Record<string, string[]> = {}
+        for (const p of apiPlans) { map[p.tier] = p.features }
+        setPlanFeatures(map)
       }
     } catch {
       // keep existing
@@ -191,7 +206,7 @@ export function SubscriptionScreen({ navigation }: Props) {
             <Card>
               <Text style={{ fontSize: FontSize.md, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Plan Features</Text>
               <View style={{ gap: 8 }}>
-                {(PLAN_FEATURES[sub.plan.toLowerCase()] ?? PLAN_FEATURES.free).map((feature, i) => (
+                {(planFeatures[sub.plan.toLowerCase()] ?? FALLBACK_PLAN_FEATURES[sub.plan.toLowerCase()] ?? FALLBACK_PLAN_FEATURES.free).map((feature, i) => (
                   <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <Ionicons name="checkmark-circle" size={16} color="#00B894" />
                     <Text style={{ fontSize: FontSize.sm, color: colors.text }}>{feature}</Text>

@@ -72,53 +72,22 @@ function ToastContainer({ toasts }: { toasts: Toast[] }) {
   )
 }
 
-const PLANS = [
-  {
-    id: 'starter' as const,
-    name: 'Starter',
-    price: '₦49,000',
-    period: '/month',
-    description: 'Perfect for small businesses getting started with AI.',
-    features: ['500 conversations/month', 'WhatsApp bot', 'Menu & ordering', 'Basic analytics'],
-    selectedBorder: 'border-emerald-400',
-    selectedBg: 'bg-emerald-500/20',
-    selectedRing: 'ring-emerald-400',
-    checkColor: 'bg-emerald-400 text-gray-900',
-    idleBorder: 'border-white/15',
-    idleBg: 'bg-slate-800/40',
-  },
-  {
-    id: 'growth' as const,
-    name: 'Growth',
-    price: '₦199,000',
-    period: '/month',
-    description: 'For growing businesses with higher volume.',
-    features: ['2,500 conversations/month', 'Multi-branch support', 'Broadcast messaging', 'Advanced analytics'],
-    selectedBorder: 'border-sky-400',
-    selectedBg: 'bg-sky-500/20',
-    selectedRing: 'ring-sky-400',
-    checkColor: 'bg-sky-400 text-gray-900',
-    idleBorder: 'border-white/15',
-    idleBg: 'bg-slate-800/40',
-    highlight: true,
-  },
-  {
-    id: 'enterprise' as const,
-    name: 'Enterprise',
-    price: '₦799,000',
-    period: '/month',
-    description: 'Unlimited scale with full white-labelling.',
-    features: ['Unlimited conversations', 'White-label branding', 'Priority support', 'Custom integrations'],
-    selectedBorder: 'border-violet-400',
-    selectedBg: 'bg-violet-500/20',
-    selectedRing: 'ring-violet-400',
-    checkColor: 'bg-violet-400 text-gray-900',
-    idleBorder: 'border-white/15',
-    idleBg: 'bg-slate-800/40',
-  },
+// ── Plan color schemes by sort order (0-indexed) ───────────────────────────
+const PLAN_COLORS = [
+  { selectedBorder: 'border-emerald-400', selectedBg: 'bg-emerald-500/20', selectedRing: 'ring-emerald-400', checkColor: 'bg-emerald-400 text-gray-900', highlight: false },
+  { selectedBorder: 'border-sky-400',     selectedBg: 'bg-sky-500/20',     selectedRing: 'ring-sky-400',     checkColor: 'bg-sky-400 text-gray-900',     highlight: true  },
+  { selectedBorder: 'border-violet-400',  selectedBg: 'bg-violet-500/20',  selectedRing: 'ring-violet-400',  checkColor: 'bg-violet-400 text-gray-900',  highlight: false },
 ]
 
-type PlanTier = 'starter' | 'growth' | 'enterprise'
+interface ApiPlan {
+  tier: string
+  name: string
+  description: string | null
+  price_formatted: string
+  conversations_limit: number
+  features: string[]
+}
+
 type Step = 'account' | 'plan'
 
 // ── email field status ───────────────────────────────────────────────────────
@@ -138,7 +107,10 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false)
 
   // Plan selection
-  const [selectedPlan, setSelectedPlan] = useState<PlanTier>('starter')
+  const [selectedPlan, setSelectedPlan] = useState<string>('starter')
+  const [apiPlans, setApiPlans] = useState<ApiPlan[]>([])
+  const [plansLoading, setPlansLoading] = useState(false)
+  const [plansError, setPlansError] = useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -152,6 +124,21 @@ export default function RegisterPage() {
       .then(r => r.json())
       .then((d: Record<string, string | null>) => { if (d.RECAPTCHA_SITE_KEY) setRecaptchaKey(d.RECAPTCHA_SITE_KEY) })
       .catch(() => { /* captcha stays disabled */ })
+  }, [])
+
+  // Load plans from API on mount
+  useEffect(() => {
+    setPlansLoading(true)
+    setPlansError(false)
+    fetch(`${API_BASE_URL}/api/plans/public`)
+      .then(r => r.json())
+      .then((d: { plans?: ApiPlan[] }) => {
+        const plans = d.plans ?? []
+        setApiPlans(plans)
+        if (plans.length > 0) setSelectedPlan(plans[0].tier)
+      })
+      .catch(() => setPlansError(true))
+      .finally(() => setPlansLoading(false))
   }, [])
 
   // Email status
@@ -655,50 +642,88 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-3">
-                {PLANS.map(plan => {
-                  const isSelected = selectedPlan === plan.id
-                  return (
+                {plansLoading ? (
+                  // Shimmer skeleton — 3 plan card rows
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="w-full rounded-xl border-2 border-white/10 bg-slate-800/40 p-4 animate-pulse">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="h-4 w-24 rounded bg-white/10" />
+                        <div className="h-4 w-20 rounded bg-white/10" />
+                      </div>
+                      <div className="h-3 w-48 rounded bg-white/10 mb-2" />
+                      <div className="flex gap-3">
+                        <div className="h-3 w-28 rounded bg-white/10" />
+                        <div className="h-3 w-20 rounded bg-white/10" />
+                      </div>
+                    </div>
+                  ))
+                ) : plansError ? (
+                  <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-center">
+                    <p className="text-sm text-red-400 mb-2">Failed to load plans</p>
                     <button
-                      key={plan.id}
                       type="button"
-                      onClick={() => setSelectedPlan(plan.id)}
-                      className={`w-full text-left rounded-xl border-2 p-4 transition-all duration-150 ${
-                        isSelected
-                          ? `${plan.selectedBorder} ${plan.selectedBg} ring-2 ${plan.selectedRing}`
-                          : `${plan.idleBorder} ${plan.idleBg} hover:bg-white/6 hover:border-white/20`
-                      }`}
+                      onClick={() => {
+                        setPlansLoading(true); setPlansError(false)
+                        fetch(`${API_BASE_URL}/api/plans/public`)
+                          .then(r => r.json())
+                          .then((d: { plans?: ApiPlan[] }) => { const p = d.plans ?? []; setApiPlans(p); if (p.length > 0) setSelectedPlan(p[0].tier) })
+                          .catch(() => setPlansError(true))
+                          .finally(() => setPlansLoading(false))
+                      }}
+                      className="text-sm text-red-300 underline hover:text-red-200"
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-white">{plan.name}</span>
-                          {plan.highlight && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-medium">Popular</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-bold text-white">
-                            {plan.price}<span className="text-xs text-slate-400 font-normal">{plan.period}</span>
-                          </span>
-                          <div className={`flex h-5 w-5 items-center justify-center rounded-full transition-all ${
-                            isSelected ? `${plan.checkColor} scale-110` : 'border-2 border-slate-600'
-                          }`}>
-                            {isSelected && (
-                              <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
-                                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
+                      Retry
+                    </button>
+                  </div>
+                ) : (
+                  apiPlans.map((plan, idx) => {
+                    const colors = PLAN_COLORS[idx] ?? PLAN_COLORS[0]
+                    const isSelected = selectedPlan === plan.tier
+                    return (
+                      <button
+                        key={plan.tier}
+                        type="button"
+                        onClick={() => setSelectedPlan(plan.tier)}
+                        className={`w-full text-left rounded-xl border-2 p-4 transition-all duration-150 ${
+                          isSelected
+                            ? `${colors.selectedBorder} ${colors.selectedBg} ring-2 ${colors.selectedRing}`
+                            : 'border-white/15 bg-slate-800/40 hover:bg-white/6 hover:border-white/20'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-white">{plan.name}</span>
+                            {colors.highlight && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-medium">Popular</span>
                             )}
                           </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-white">
+                              {plan.price_formatted}<span className="text-xs text-slate-400 font-normal">/month</span>
+                            </span>
+                            <div className={`flex h-5 w-5 items-center justify-center rounded-full transition-all ${
+                              isSelected ? `${colors.checkColor} scale-110` : 'border-2 border-slate-600'
+                            }`}>
+                              {isSelected && (
+                                <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
+                                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <p className="text-xs text-slate-300 mb-2">{plan.description}</p>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1">
-                        {plan.features.map(f => (
-                          <span key={f} className={`text-xs ${isSelected ? 'text-white' : 'text-slate-300'}`}>✓ {f}</span>
-                        ))}
-                      </div>
-                    </button>
-                  )
-                })}
+                        {plan.description && (
+                          <p className="text-xs text-slate-300 mb-2">{plan.description}</p>
+                        )}
+                        <div className="flex flex-wrap gap-x-3 gap-y-1">
+                          {plan.features.map(f => (
+                            <span key={f} className={`text-xs ${isSelected ? 'text-white' : 'text-slate-300'}`}>✓ {f}</span>
+                          ))}
+                        </div>
+                      </button>
+                    )
+                  })
+                )}
               </div>
 
               {error && (

@@ -4,8 +4,8 @@ import { NotificationService } from '../notifications/notification.service'
 import { ConfigLoaderService } from '../config/config-loader.service'
 import type { GeneratedPrismaClient } from '../../types/prisma-generated'
 
-export type PlanTier = 'starter' | 'growth' | 'enterprise'
-export type SubscriptionStatus = 'active' | 'cancelled' | 'past_due'
+export type PlanTier = 'promo' | 'starter' | 'growth' | 'enterprise'
+export type SubscriptionStatus = 'active' | 'cancelled' | 'past_due' | 'trial'
 
 export interface SubscriptionPlan {
   tier: PlanTier
@@ -16,6 +16,13 @@ export interface SubscriptionPlan {
 }
 
 export const PLANS: Record<PlanTier, SubscriptionPlan> = {
+  promo: {
+    tier: 'promo',
+    name: 'Promo Plan',
+    priceKobo: 1900000, // ₦19,000
+    conversationsLimit: 200,
+    overagePriceKobo: 15000, // ₦150 per additional conversation
+  },
   starter: {
     tier: 'starter',
     name: 'Starter Plan',

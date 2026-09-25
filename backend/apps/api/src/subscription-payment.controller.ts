@@ -14,6 +14,7 @@ import { CurrentUser } from '../../../libs/auth/decorators/current-user.decorato
 import { PaystackService } from '../../../libs/payments/paystack.service'
 import { ConfigLoaderService } from '../../../libs/config/config-loader.service'
 import { SubscriptionsService } from '../../../libs/billing/subscriptions.service'
+import { TrialService } from '../../../libs/billing/trial.service'
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -23,6 +24,7 @@ export class SubscriptionPaymentController {
     private readonly paystack: PaystackService,
     private readonly configLoader: ConfigLoaderService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly trialService: TrialService,
   ) {}
 
   /** Resolve Paystack from DB-stored key so admin changes take effect without restart */
@@ -291,5 +293,76 @@ export class SubscriptionPaymentController {
     })
 
     return { success: true }
+  }
+
+  /**
+   * POST /api/subscription/trial/start
+   * Start a 7-day free trial for a new tenant.
+   * Accepts optional planTier; defaults to 'promo'.
+   */
+  @Post('api/subscription/trial/start')
+  async startTrial(
+    @CurrentUser() user: any,
+    @Body() body: { planTier?: string } = {},
+  ) {
+    if (!user?.tenant_id) throw new UnauthorizedException()
+
+    const planTier = body.planTier ?? 'promo'
+    const result = await this.trialService.startTrial(user.tenant_id, planTier)
+
+    return {
+      success: true,
+      trialStartedAt: result.trialStartedAt,
+      trialEndsAt: result.trialEndsAt,
+      daysRemaining: 7,
+    }
+  }
+
+  /**
+   * GET /api/subscription/trial/status
+   * Get the current trial status (active, expired, days remaining, etc.).
+   */
+  @Get('api/subscription/trial/status')
+  async getTrialStatus(@CurrentUser() user: any) {
+    if (!user?.tenant_id) throw new UnauthorizedException()
+
+    const status = await this.trialService.getTrialStatus(user.tenant_id)
+
+    return {
+      isTrialActive: status.isTrialActive,
+      trialStartedAt: status.trialStartedAt,
+      trialEndsAt: status.trialEndsAt,
+      daysRemaining: status.daysRemaining,
+      hasExpired: status.hasExpired,
+      trialConvertedAt: status.trialConvertedAt,
+    }
+  }
+
+  /**
+   * POST /api/subscription/trial/convert
+   * Convert a trial subscription to a paid subscription.
+   * Requires the target plan tier in the request body.
+   */
+  @Post('api/subscription/trial/convert')
+  async convertTrial(
+    @CurrentUser() user: any,
+    @Body() body: { planTier: string },
+  ) {
+    if (!user?.tenant_id) throw new UnauthorizedException()
+    if (!body.planTier?.trim()) throw new BadRequestException('planTier is required')
+
+    const validTiers = ['promo', 'starter', 'growth', 'enterprise']
+    if (!validTiers.includes(body.planTier)) {
+      throw new BadRequestException('Invalid plan tier. Must be promo, starter, growth, or enterprise.')
+    }
+
+    const result = await this.trialService.convertTrial(user.tenant_id, body.planTier)
+
+    return {
+      success: true,
+      status: result.status,
+      planTier: result.planTier,
+      convertedAt: result.convertedAt,
+    }
   }
 }
