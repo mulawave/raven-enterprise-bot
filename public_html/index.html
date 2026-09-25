@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raven AI — Powering Africa's Digital Future</title>
+  <meta name="description" content="Enterprise-grade AI automation, secure communication, and digital infrastructure for African businesses ready to lead.">
+  <meta name="theme-color" content="#050a14">
+  <link rel="icon" type="image/png" href="/raven.png">
+  <link rel="apple-touch-icon" href="/raven.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: {
+      fontFamily: { sans:['Inter','system-ui','sans-serif'], display:['Outfit','Inter','sans-serif'] },
+      colors: { brand:{ gold:'#f5c16c', amber:'#f49617', blue:'#8fd8ff', navy:'#173a6c', deep:'#1e4d8c' }, surface:{'0':'#050a14','1':'#0a1120','2':'#0f1a2e','3':'#162544'} }
+    }}}
+  </script>
+  <style>
+    body{font-family:'Inter',system-ui,sans-serif;background:#050a14}
+    .font-display{font-family:'Outfit','Inter',sans-serif}
+    @keyframes orbFloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-20px) scale(1.05)}66%{transform:translate(-20px,15px) scale(.97)}}
+    .orb{animation:orbFloat 12s ease-in-out infinite}.orb-d1{animation-delay:-4s}.orb-d2{animation-delay:-8s}
+    .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+    .reveal.visible{opacity:1;transform:translateY(0)}
+    .glass{background:rgba(255,255,255,.03);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.07)}
+    .t-slide{position:absolute;inset:0;opacity:0;transition:opacity .5s ease,transform .5s ease;transform:scale(.97);pointer-events:none}
+    .t-slide.active{opacity:1;transform:scale(1);pointer-events:auto;position:relative}
+    .faq-body{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s ease}.faq-body.open{max-height:300px;padding-bottom:1.5rem}
+    .cta-glow{box-shadow:0 0 40px rgba(244,150,23,.15),0 0 80px rgba(30,77,140,.12)}.cta-glow:hover{box-shadow:0 0 50px rgba(244,150,23,.25),0 0 100px rgba(30,77,140,.18)}
+    .mob-nav{transform:translateX(100%);transition:transform .3s cubic-bezier(.16,1,.3,1)}.mob-nav.open{transform:translateX(0)}
+    [id]{scroll-margin-top:80px}
+    .stat-num{font-variant-numeric:tabular-nums}
+    .nav-scrolled{background:rgba(5,10,20,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06)}
+  </style>
+</head>
+<body class="min-h-screen bg-surface-0 text-white antialiased">
+
+<!-- NAV -->
+<nav id="nav" class="fixed inset-x-0 top-0 z-50 transition-all duration-300">
+  <div class="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-6 lg:px-10">
+    <a href="/" class="flex items-center gap-3 group">
+      <img src="/raven.png" alt="Raven AI" class="h-10 w-10 rounded-xl object-cover ring-1 ring-white/10 transition group-hover:ring-brand-gold/30">
+      <span class="font-display text-lg font-bold tracking-tight">Raven<span class="text-brand-gold">AI</span></span>
+    </a>
+    <div class="hidden lg:flex items-center gap-1">
+      <a href="#about" class="px-3.5 py-2 text-[13px] font-medium text-slate-400 rounded-lg transition hover:text-white hover:bg-white/5">About</a>
+      <a href="#products" class="px-3.5 py-2 text-[13px] font-medium text-slate-400 rounded-lg transition hover:text-white hover:bg-white/5">Products</a>
+      <a href="#how-it-works" class="px-3.5 py-2 text-[13px] font-medium text-slate-400 rounded-lg transition hover:text-white hover:bg-white/5">How It Works</a>
+      <a href="#testimonials" class="px-3.5 py-2 text-[13px] font-medium text-slate-400 rounded-lg transition hover:text-white hover:bg-white/5">Testimonials</a>
+      <a href="#faq" class="px-3.5 py-2 text-[13px] font-medium text-slate-400 rounded-lg transition hover:text-white hover:bg-white/5">FAQ</a>
+      <a href="https://app.raven-ai.online/login" class="ml-4 px-3.5 py-2 text-[13px] font-medium text-slate-400 rounded-lg transition hover:text-white hover:bg-white/5">Log In</a>
+      <a href="https://app.raven-ai.online/register" class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-amber to-brand-gold px-5 py-2.5 text-[13px] font-semibold text-surface-0 shadow-lg shadow-brand-amber/20 transition hover:shadow-brand-amber/40 hover:-translate-y-0.5">Sign Up <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></a>
+    </div>
+    <button id="mob-toggle" class="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5" aria-label="Menu">
+      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+    </button>
+  </div>
+  <div id="mob-drawer" class="mob-nav fixed inset-y-0 right-0 z-50 w-72 bg-surface-1/95 backdrop-blur-2xl border-l border-white/10 p-6 flex flex-col gap-3 lg:hidden">
+    <button id="mob-close" class="self-end h-10 w-10 flex items-center justify-center rounded-xl border border-white/10 bg-white/5"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg></button>
+    <a href="#about" class="mob-link rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">About</a>
+    <a href="#products" class="mob-link rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">Products</a>
+    <a href="#how-it-works" class="mob-link rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">How It Works</a>
+    <a href="#testimonials" class="mob-link rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">Testimonials</a>
+    <a href="#faq" class="mob-link rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">FAQ</a>
+    <a href="https://app.raven-ai.online/login" class="mob-link rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">Log In</a>
+    <a href="https://app.raven-ai.online/register" class="mt-auto rounded-xl bg-gradient-to-r from-brand-amber to-brand-gold px-6 py-3 text-sm font-semibold text-surface-0 text-center">Sign Up</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="relative overflow-hidden min-h-screen flex items-center px-6 lg:px-10 pt-[72px]">
+  <div class="pointer-events-none absolute inset-0">
+    <div class="orb absolute -top-40 left-1/2 -translate-x-1/2 h-[700px] w-[900px] rounded-full bg-brand-navy/30 blur-[120px]"></div>
+    <div class="orb orb-d1 absolute top-1/3 -left-32 h-[400px] w-[400px] rounded-full bg-brand-amber/8 blur-[100px]"></div>
+    <div class="orb orb-d2 absolute top-20 -right-40 h-[500px] w-[500px] rounded-full bg-brand-deep/20 blur-[100px]"></div>
+    <div class="absolute bottom-0 inset-x-0 h-48 bg-gradient-to-t from-surface-0 to-transparent"></div>
+  </div>
+  <div class="relative mx-auto max-w-6xl w-full grid lg:grid-cols-2 gap-12 lg:gap-20 items-center py-20 lg:py-0">
+    <div class="space-y-8 max-w-xl">
+      <div class="inline-flex items-center gap-2 rounded-full border border-brand-gold/20 bg-brand-amber/8 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.25em] text-brand-gold">
+        <span class="h-1.5 w-1.5 rounded-full bg-brand-gold animate-pulse"></span>Africa's Digital Future — Now
+      </div>
+      <h1 class="font-display text-[2.75rem] leading-[1.08] font-extrabold tracking-tight sm:text-5xl lg:text-[3.5rem]">
+        Automate. Innovate.<br><span class="bg-gradient-to-r from-brand-gold via-white to-brand-blue bg-clip-text text-transparent">Dominate Your Market.</span>
+      </h1>
+      <p class="text-lg leading-relaxed text-slate-400 max-w-lg">Enterprise-grade AI tools built for African businesses ready to lead. From WhatsApp automation to military-grade private networks — we give you the unfair advantage.</p>
+      <div class="flex flex-col sm:flex-row gap-4">
+        <a href="https://app.raven-ai.online" class="cta-glow inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-amber to-brand-gold px-8 py-4 text-base font-bold text-surface-0 transition-all hover:-translate-y-0.5">Visit Raven Business Manager <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></a>
+        <a href="#ecosystem" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-8 py-4 text-base font-semibold text-slate-300 transition-all hover:-translate-y-0.5 hover:bg-white/[0.07]">Explore Ecosystem</a>
+      </div>
+      <div class="flex items-center gap-6 pt-2 text-xs text-slate-500">
+        <span class="flex items-center gap-1.5"><svg class="h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>No credit card required</span>
+        <span class="flex items-center gap-1.5"><svg class="h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>Setup in 30 min</span>
+        <span class="hidden sm:flex items-center gap-1.5"><svg class="h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>24/7 support</span>
+      </div>
+    </div>
+    <!-- Hero Stats Card -->
+    <div class="relative hidden lg:block">
+      <div class="glass rounded-3xl p-8 space-y-6">
+        <div class="flex items-center gap-3"><div class="h-3 w-3 rounded-full bg-emerald-400 animate-pulse"></div><span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Live Platform Metrics</span></div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="rounded-2xl bg-white/[0.04] border border-white/5 p-5"><p class="text-3xl font-extrabold text-brand-gold stat-num">3x</p><p class="text-xs text-slate-400 mt-1">Revenue growth with AI</p></div>
+          <div class="rounded-2xl bg-white/[0.04] border border-white/5 p-5"><p class="text-3xl font-extrabold text-brand-blue stat-num">40%</p><p class="text-xs text-slate-400 mt-1">Productivity increase</p></div>
+          <div class="rounded-2xl bg-white/[0.04] border border-white/5 p-5"><p class="text-3xl font-extrabold text-emerald-400 stat-num">24/7</p><p class="text-xs text-slate-400 mt-1">Automated support</p></div>
+          <div class="rounded-2xl bg-white/[0.04] border border-white/5 p-5"><p class="text-3xl font-extrabold text-white stat-num">2K+</p><p class="text-xs text-slate-400 mt-1">Daily conversations</p></div>
+        </div>
+        <div class="flex items-center gap-3 rounded-xl bg-emerald-500/8 border border-emerald-500/15 px-4 py-3">
+          <svg class="h-5 w-5 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941"/></svg>
+          <p class="text-xs text-emerald-300">Businesses using Raven AI see <strong class="text-white">45% more revenue</strong> in 3 months</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about" class="px-6 lg:px-10 py-24 lg:py-32">
+  <div class="mx-auto max-w-6xl grid lg:grid-cols-2 gap-16 items-center">
+    <div class="reveal">
+      <p class="text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold mb-4">Who We Are</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-bold mb-6">Building Africa's Digital Infrastructure</h2>
+      <p class="text-slate-400 leading-relaxed mb-4">Raven AI is a forward-thinking technology company building the next generation of digital tools for the African market and beyond. We believe AI should be accessible to every business — and amplify human potential, not replace it.</p>
+      <p class="text-slate-400 leading-relaxed mb-8">Our ecosystem spans WhatsApp business automation, secure private networks, advanced browsing technology, and next-gen security monitoring — designed for African businesses competing on a global scale.</p>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="rounded-2xl bg-white/[0.03] border border-white/5 p-4"><p class="text-2xl font-bold text-brand-gold">4</p><p class="text-xs text-slate-400 mt-1">Products in Ecosystem</p></div>
+        <div class="rounded-2xl bg-white/[0.03] border border-white/5 p-4"><p class="text-2xl font-bold text-brand-blue">97M</p><p class="text-xs text-slate-400 mt-1">New AI Roles Emerging</p></div>
+      </div>
+    </div>
+    <div class="reveal grid grid-cols-2 gap-4">
+      <div class="rounded-2xl border border-brand-gold/15 bg-brand-amber/5 p-6">
+        <svg class="h-8 w-8 text-brand-gold mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+        <h3 class="font-bold text-white text-sm mb-1">Our Mission</h3>
+        <p class="text-xs text-slate-400 leading-relaxed">Empower African businesses with AI-driven tools that transform how they work, communicate, and grow.</p>
+      </div>
+      <div class="rounded-2xl border border-brand-blue/15 bg-brand-navy/20 p-6">
+        <svg class="h-8 w-8 text-brand-blue mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+        <h3 class="font-bold text-white text-sm mb-1">Our Vision</h3>
+        <p class="text-xs text-slate-400 leading-relaxed">Be the leading force in Africa's digital transformation with world-class innovation and local relevance.</p>
+      </div>
+      <div class="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-6">
+        <svg class="h-8 w-8 text-emerald-400 mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/></svg>
+        <h3 class="font-bold text-white text-sm mb-1">Security First</h3>
+        <p class="text-xs text-slate-400 leading-relaxed">Military-grade encryption and zero-trust architecture across every product we build.</p>
+      </div>
+      <div class="rounded-2xl border border-white/8 bg-white/[0.03] p-6">
+        <svg class="h-8 w-8 text-white mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
+        <h3 class="font-bold text-white text-sm mb-1">People First</h3>
+        <p class="text-xs text-slate-400 leading-relaxed">AI that amplifies human potential — helping you do more, be more, and earn more.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section id="products" class="px-6 lg:px-10 py-24 lg:py-32 bg-gradient-to-b from-surface-0 via-surface-1/50 to-surface-0">
+  <div class="mx-auto max-w-6xl">
+    <div class="text-center mb-16 reveal">
+      <p class="text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold mb-3">The Ecosystem</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-bold mb-4">Four Products. One Unfair Advantage.</h2>
+      <p class="text-slate-400 text-sm max-w-xl mx-auto">Each product is designed to work independently — or together as a unified digital powerhouse for your business.</p>
+    </div>
+
+    <!-- Flagship: Raven Business Manager -->
+    <div class="reveal mb-8 relative overflow-hidden rounded-3xl border border-brand-blue/20 bg-gradient-to-br from-brand-navy/30 to-surface-1 p-8 md:p-12">
+      <div class="absolute top-0 right-0 w-96 h-96 bg-brand-blue/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3"></div>
+      <div class="relative grid md:grid-cols-2 gap-10 items-center">
+        <div>
+          <div class="flex items-center gap-3 mb-6">
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-deep/30 text-brand-blue ring-1 ring-brand-blue/20">
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z"/></svg>
+            </div>
+            <span class="rounded-full bg-emerald-500/15 px-3 py-1 text-[11px] font-semibold text-emerald-300 ring-1 ring-emerald-400/20">Available Now</span>
+          </div>
+          <h3 class="font-display text-2xl sm:text-3xl font-bold text-white mb-4">Raven Business Manager</h3>
+          <p class="text-slate-400 leading-relaxed mb-6">Complete multi-tenant WhatsApp Business automation. AI chatbot with GPT, order management, payment processing, booking systems, and a full dashboard — automate your entire customer operations.</p>
+          <div class="grid grid-cols-2 gap-3 mb-8">
+            <div class="flex items-center gap-2 text-sm text-slate-300"><svg class="h-4 w-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>AI-Powered Chatbot</div>
+            <div class="flex items-center gap-2 text-sm text-slate-300"><svg class="h-4 w-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>Order Management</div>
+            <div class="flex items-center gap-2 text-sm text-slate-300"><svg class="h-4 w-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>Payment Processing</div>
+            <div class="flex items-center gap-2 text-sm text-slate-300"><svg class="h-4 w-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>Mobile App Included</div>
+            <div class="flex items-center gap-2 text-sm text-slate-300"><svg class="h-4 w-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>Multi-Tenant SaaS</div>
+            <div class="flex items-center gap-2 text-sm text-slate-300"><svg class="h-4 w-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>Booking System</div>
+          </div>
+          <div class="flex flex-wrap gap-3">
+            <a href="https://app.raven-ai.online" class="cta-glow inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-amber to-brand-gold px-6 py-3 text-sm font-bold text-surface-0 transition-all hover:-translate-y-0.5">Visit RBM App <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></a>
+            <a href="https://app.raven-ai.online/rba_sales" class="inline-flex items-center gap-2 rounded-2xl border border-brand-gold/20 bg-brand-amber/10 px-6 py-3 text-sm font-semibold text-brand-gold transition-all hover:-translate-y-0.5 hover:bg-brand-amber/18">White Label Option</a>
+            <a href="https://play.google.com/store/apps/details?id=com.mulawave.raven" target="_blank" class="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-slate-300 transition-all hover:-translate-y-0.5 hover:bg-white/[0.07]"><svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3.609 1.814 13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92Zm10.89 10.893 2.302 2.302-10.937 6.333 8.635-8.635ZM18.8 10.969c.609.317.609 1.1 0 1.418l-2.4 1.243-2.488-2.488 2.488-2.488 2.4 1.315ZM5.864 2.658 16.8 9.012l-2.302 2.3L5.864 2.658Z"/></svg>Google Play</a>
+          </div>
+        </div>
+        <div class="hidden md:grid grid-cols-2 gap-3">
+          <div class="rounded-2xl bg-white/[0.04] border border-white/5 p-5 text-center"><p class="text-3xl font-extrabold text-brand-gold stat-num">2K+</p><p class="text-[11px] text-slate-400 mt-1">Daily Conversations</p></div>
+          <div class="rounded-2xl bg-white/[0.04] border border-white/5 p-5 text-center"><p class="text-3xl font-extrabold text-emerald-400 stat-num">45%</p><p class="text-[11px] text-slate-400 mt-1">Revenue Increase</p></div>
+          <div class="rounded-2xl bg-white/[0.04] border border-white/5 p-5 text-center"><p class="text-3xl font-extrabold text-brand-blue stat-num">80%</p><p class="text-[11px] text-slate-400 mt-1">Auto-Resolved Queries</p></div>
+          <div class="rounded-2xl bg-white/[0.04] border border-white/5 p-5 text-center"><p class="text-3xl font-extrabold text-white stat-num">24/7</p><p class="text-[11px] text-slate-400 mt-1">Always Online</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coming Soon Grid -->
+    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500 mb-6 mt-2">Coming Soon</p>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="reveal group rounded-2xl border border-white/8 bg-white/[0.03] p-6 transition hover:border-brand-gold/20 hover:bg-white/[0.05] hover:-translate-y-1">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-amber/10 text-brand-gold ring-1 ring-brand-gold/15"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg></div>
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-brand-gold/70">Coming Soon</span>
+        </div>
+        <h3 class="font-bold text-white mb-2">Thunderhawk Browser</h3>
+        <p class="text-xs text-slate-400 leading-relaxed mb-4">Enhanced privacy browser with network optimizer, vPIN Ecosystem Plugin, and RAVEN Memory Bank integration.</p>
+        <a href="/thunderhawk.html" class="text-xs font-semibold text-brand-gold hover:text-white transition inline-flex items-center gap-1">Learn More <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></a>
+      </div>
+      <div class="reveal group rounded-2xl border border-white/8 bg-white/[0.03] p-6 transition hover:border-emerald-500/20 hover:bg-white/[0.05] hover:-translate-y-1">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-400/15"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg></div>
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-400/70">Coming Soon</span>
+        </div>
+        <h3 class="font-bold text-white mb-2">RAVEN Private Network</h3>
+        <p class="text-xs text-slate-400 leading-relaxed mb-4">Military-grade messaging, escrow contracting, and secure digital memory bank for elite business leaders.</p>
+        <a href="/raven-private-network.html" class="text-xs font-semibold text-emerald-400 hover:text-white transition inline-flex items-center gap-1">Learn More <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></a>
+      </div>
+      <div class="reveal group rounded-2xl border border-white/8 bg-white/[0.03] p-6 transition hover:border-sky-500/20 hover:bg-white/[0.05] hover:-translate-y-1">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-400 ring-1 ring-sky-400/15"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.745 3.745 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z"/></svg></div>
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-sky-400/70">Coming Soon</span>
+        </div>
+        <h3 class="font-bold text-white mb-2">RAVEN Nexus Hub</h3>
+        <p class="text-xs text-slate-400 leading-relaxed mb-4">Real-time threat detection, automated patching, and comprehensive security monitoring across all devices.</p>
+        <a href="/raven-nexus-hub.html" class="text-xs font-semibold text-sky-400 hover:text-white transition inline-flex items-center gap-1">Learn More <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ECOSYSTEM APPS -->
+<section id="ecosystem" class="px-6 lg:px-10 py-24 lg:py-32">
+  <div class="mx-auto max-w-6xl">
+    <div class="text-center mb-16 reveal">
+      <p class="text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold mb-3">Partner Ecosystem</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-bold mb-4">Apps in the Raven AI Ecosystem</h2>
+      <p class="text-slate-400 text-sm max-w-xl mx-auto">Our growing ecosystem of applications powering African creators, businesses, and communities.</p>
+    </div>
+    <div class="grid md:grid-cols-2 gap-6">
+      <!-- Afrovision -->
+      <div class="reveal group relative overflow-hidden rounded-3xl border border-purple-500/15 bg-gradient-to-br from-purple-500/8 to-surface-1 p-8 transition hover:border-purple-500/25">
+        <div class="absolute top-0 right-0 w-60 h-60 bg-purple-500/5 rounded-full blur-[100px] -translate-y-1/3 translate-x-1/4"></div>
+        <div class="relative">
+          <div class="flex items-center gap-4 mb-5">
+            <img src="https://play-lh.googleusercontent.com/qx0cIKx0YmNFRGTpkxZGNEzAqcFxZyornsUNNxwgrrUXm0U97MyPSodV0JMKSDBxj-KKbloRXP3LX-kdHdJvGQ=w240-h480" alt="Afrovision" class="h-14 w-14 rounded-2xl ring-1 ring-white/10">
+            <div>
+              <h3 class="font-bold text-white text-lg">Afrovision Digital TV</h3>
+              <p class="text-xs text-purple-300">ADTv Go</p>
+            </div>
+          </div>
+          <p class="text-sm text-slate-400 leading-relaxed mb-6">A next-level digital TV and streaming hybrid application for the new generation of creative minds to express their motion ideas, concepts, build, grow and earn — an economic pipeline and business launchpad.</p>
+          <div class="flex flex-wrap gap-3">
+            <a href="https://afrovision.online" target="_blank" class="inline-flex items-center gap-2 rounded-xl border border-purple-500/20 bg-purple-500/10 px-5 py-2.5 text-xs font-semibold text-purple-300 transition hover:-translate-y-0.5 hover:bg-purple-500/15"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/></svg>Website</a>
+            <a href="https://play.google.com/store/apps/details?id=com.afrovision.afrovision" target="_blank" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-5 py-2.5 text-xs font-semibold text-slate-300 transition hover:-translate-y-0.5 hover:bg-white/[0.07]"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M3.609 1.814 13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92Zm10.89 10.893 2.302 2.302-10.937 6.333 8.635-8.635ZM18.8 10.969c.609.317.609 1.1 0 1.418l-2.4 1.243-2.488-2.488 2.488-2.488 2.4 1.315ZM5.864 2.658 16.8 9.012l-2.302 2.3L5.864 2.658Z"/></svg>Google Play</a>
+          </div>
+        </div>
+      </div>
+      <!-- Myngul -->
+      <div class="reveal group relative overflow-hidden rounded-3xl border border-orange-500/15 bg-gradient-to-br from-orange-500/8 to-surface-1 p-8 transition hover:border-orange-500/25">
+        <div class="absolute top-0 right-0 w-60 h-60 bg-orange-500/5 rounded-full blur-[100px] -translate-y-1/3 translate-x-1/4"></div>
+        <div class="relative">
+          <div class="flex items-center gap-4 mb-5">
+            <img src="https://play-lh.googleusercontent.com/uQupF5EGVFQTqj7NbpWpDo3uUAcJHlZKy31-c5rPTTHKY5NPDR0VUnEicQ40Q1wQhQ=w240-h480" alt="Myngul" class="h-14 w-14 rounded-2xl ring-1 ring-white/10">
+            <div>
+              <h3 class="font-bold text-white text-lg">Myngul Social Network</h3>
+              <p class="text-xs text-orange-300">Pan-African Social</p>
+            </div>
+          </div>
+          <p class="text-sm text-slate-400 leading-relaxed mb-6">A Pan-African Social Network built to give African content creators the freedom and unrestricted capabilities to express themselves. Zero censorship, zero target-induced earning goals — start monetization on your very first day.</p>
+          <div class="flex flex-wrap gap-3">
+            <a href="https://myngul.com" target="_blank" class="inline-flex items-center gap-2 rounded-xl border border-orange-500/20 bg-orange-500/10 px-5 py-2.5 text-xs font-semibold text-orange-300 transition hover:-translate-y-0.5 hover:bg-orange-500/15"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/></svg>Website</a>
+            <a href="https://play.google.com/store/apps/details?id=sngine.app.tellit" target="_blank" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-5 py-2.5 text-xs font-semibold text-slate-300 transition hover:-translate-y-0.5 hover:bg-white/[0.07]"><svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M3.609 1.814 13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92Zm10.89 10.893 2.302 2.302-10.937 6.333 8.635-8.635ZM18.8 10.969c.609.317.609 1.1 0 1.418l-2.4 1.243-2.488-2.488 2.488-2.488 2.4 1.315ZM5.864 2.658 16.8 9.012l-2.302 2.3L5.864 2.658Z"/></svg>Google Play</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works" class="px-6 lg:px-10 py-24 lg:py-32">
+  <div class="mx-auto max-w-6xl">
+    <div class="text-center mb-16 reveal">
+      <p class="text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold mb-3">Simple Process</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-bold mb-4">Up and Running in Three Steps</h2>
+      <p class="text-slate-400 text-sm max-w-xl mx-auto">No technical expertise required. Our onboarding wizard guides you through everything.</p>
+    </div>
+    <div class="grid md:grid-cols-3 gap-8 reveal">
+      <div class="relative text-center">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-amber/10 text-brand-gold ring-1 ring-brand-gold/15 mb-6"><span class="font-display text-2xl font-bold">1</span></div>
+        <h3 class="font-bold text-white mb-2">Purchase &amp; Register</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Get Raven Business Manager from our sales page. Create your account in under 2 minutes.</p>
+        <div class="hidden md:block absolute top-8 left-[60%] w-[80%] h-px bg-gradient-to-r from-brand-gold/30 to-transparent"></div>
+      </div>
+      <div class="relative text-center">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-deep/20 text-brand-blue ring-1 ring-brand-blue/15 mb-6"><span class="font-display text-2xl font-bold">2</span></div>
+        <h3 class="font-bold text-white mb-2">Connect &amp; Configure</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Link your WhatsApp Business API, add your catalog, FAQs, and payment details through the dashboard.</p>
+        <div class="hidden md:block absolute top-8 left-[60%] w-[80%] h-px bg-gradient-to-r from-brand-blue/30 to-transparent"></div>
+      </div>
+      <div class="text-center">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-400/15 mb-6"><span class="font-display text-2xl font-bold">3</span></div>
+        <h3 class="font-bold text-white mb-2">Launch &amp; Grow</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Your AI bot starts handling conversations immediately. Watch revenue grow while you focus on strategy.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section id="testimonials" class="px-6 lg:px-10 py-24 lg:py-32 bg-gradient-to-b from-surface-0 via-surface-1/50 to-surface-0">
+  <div class="mx-auto max-w-4xl">
+    <div class="text-center mb-16 reveal">
+      <p class="text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold mb-3">Social Proof</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-bold mb-4">Trusted by Business Leaders</h2>
+    </div>
+    <div class="reveal relative glass rounded-3xl p-8 md:p-12" style="min-height:220px">
+      <div class="t-slide active" data-i="0">
+        <svg class="h-8 w-8 text-brand-gold/30 mb-4" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.51.88-3.978 2.737-3.978 4.737h3.983v11.112h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.527.88-3.996 2.737-3.996 4.737h4v11.112h-10z"/></svg>
+        <p class="text-lg md:text-xl leading-relaxed text-slate-300 mb-6">"Raven Business Manager transformed our customer service completely. We went from 50 messages a day to handling <strong class="text-white">2000+ conversations automatically</strong>. Revenue increased 45% in just 3 months."</p>
+        <div><p class="font-semibold text-white">Adebayo Okafor</p><p class="text-sm text-slate-500">CEO, Lagos E-Commerce Hub</p></div>
+      </div>
+      <div class="t-slide" data-i="1">
+        <svg class="h-8 w-8 text-brand-blue/30 mb-4" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.51.88-3.978 2.737-3.978 4.737h3.983v11.112h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.527.88-3.996 2.737-3.996 4.737h4v11.112h-10z"/></svg>
+        <p class="text-lg md:text-xl leading-relaxed text-slate-300 mb-6">"The AI chatbot handles <strong class="text-white">80% of our inquiries automatically</strong>. Our team now focuses on complex cases and strategic initiatives. It's like 24/7 service without the overhead."</p>
+        <div><p class="font-semibold text-white">Ngozi Mba</p><p class="text-sm text-slate-500">Operations Director, Nairobi Tech Solutions</p></div>
+      </div>
+      <div class="t-slide" data-i="2">
+        <svg class="h-8 w-8 text-emerald-400/30 mb-4" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.51.88-3.978 2.737-3.978 4.737h3.983v11.112h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.527.88-3.996 2.737-3.996 4.737h4v11.112h-10z"/></svg>
+        <p class="text-lg md:text-xl leading-relaxed text-slate-300 mb-6">"We reached profitability in <strong class="text-white">4 months instead of 18</strong>. The tools are intuitive, powerful, and the support team is incredibly responsive. Game-changing."</p>
+        <div><p class="font-semibold text-white">Kwame Essien</p><p class="text-sm text-slate-500">Founder, Accra Digital Services</p></div>
+      </div>
+      <div class="flex items-center justify-center gap-2 mt-8">
+        <button onclick="goSlide(0)" class="t-dot h-2.5 w-2.5 rounded-full bg-brand-gold transition"></button>
+        <button onclick="goSlide(1)" class="t-dot h-2.5 w-2.5 rounded-full bg-white/20 transition"></button>
+        <button onclick="goSlide(2)" class="t-dot h-2.5 w-2.5 rounded-full bg-white/20 transition"></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="px-6 lg:px-10 py-24 lg:py-32">
+  <div class="mx-auto max-w-3xl">
+    <div class="text-center mb-12 reveal">
+      <p class="text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold mb-3">FAQ</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-bold">Common Questions</h2>
+    </div>
+    <div class="space-y-3 reveal" id="faq-list">
+      <div class="faq rounded-2xl border border-white/8 bg-white/[0.03] overflow-hidden">
+        <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between p-5 text-left"><span class="font-semibold text-sm text-white pr-4">What is Raven Business Manager?</span><svg class="faq-ic h-5 w-5 text-slate-500 shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg></button>
+        <div class="faq-body px-5 text-sm text-slate-400 leading-relaxed">A complete multi-tenant WhatsApp Business automation platform with AI-powered chatbots, order management, payment processing, booking systems, and a full dashboard to automate your entire customer operations.</div>
+      </div>
+      <div class="faq rounded-2xl border border-white/8 bg-white/[0.03] overflow-hidden">
+        <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between p-5 text-left"><span class="font-semibold text-sm text-white pr-4">How does the AI chatbot work?</span><svg class="faq-ic h-5 w-5 text-slate-500 shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg></button>
+        <div class="faq-body px-5 text-sm text-slate-400 leading-relaxed">Our AI chatbot uses GPT integration to understand and respond to inquiries naturally. It learns from your FAQs, product catalog, and business context. You can train it with your knowledge base and it improves over time.</div>
+      </div>
+      <div class="faq rounded-2xl border border-white/8 bg-white/[0.03] overflow-hidden">
+        <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between p-5 text-left"><span class="font-semibold text-sm text-white pr-4">What payment methods are supported?</span><svg class="faq-ic h-5 w-5 text-slate-500 shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg></button>
+        <div class="faq-body px-5 text-sm text-slate-400 leading-relaxed">Integrates with Paystack supporting card payments, bank transfers, and mobile money. The system automatically processes payments, sends confirmations, and handles refunds.</div>
+      </div>
+      <div class="faq rounded-2xl border border-white/8 bg-white/[0.03] overflow-hidden">
+        <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between p-5 text-left"><span class="font-semibold text-sm text-white pr-4">Is there a mobile app?</span><svg class="faq-ic h-5 w-5 text-slate-500 shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg></button>
+        <div class="faq-body px-5 text-sm text-slate-400 leading-relaxed">Yes! Android app included (iOS coming soon) built with React Native. Manage conversations, view orders, and receive push notifications. Works offline and syncs when reconnected.</div>
+      </div>
+      <div class="faq rounded-2xl border border-white/8 bg-white/[0.03] overflow-hidden">
+        <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between p-5 text-left"><span class="font-semibold text-sm text-white pr-4">How do I get started?</span><svg class="faq-ic h-5 w-5 text-slate-500 shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg></button>
+        <div class="faq-body px-5 text-sm text-slate-400 leading-relaxed">Purchase from our sales page, complete the onboarding wizard, connect your WhatsApp Business API, and start automating. Our team provides setup support and training.</div>
+      </div>
+      <div class="faq rounded-2xl border border-white/8 bg-white/[0.03] overflow-hidden">
+        <button onclick="toggleFaq(this)" class="flex w-full items-center justify-between p-5 text-left"><span class="font-semibold text-sm text-white pr-4">What about the other products?</span><svg class="faq-ic h-5 w-5 text-slate-500 shrink-0 transition-transform" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg></button>
+        <div class="faq-body px-5 text-sm text-slate-400 leading-relaxed">Thunderhawk Browser, RAVEN Private Network, and RAVEN Nexus Hub are in development. Sign up on their product pages for launch notifications. Each integrates seamlessly with the ecosystem.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="px-6 lg:px-10 py-24">
+  <div class="reveal relative mx-auto max-w-4xl overflow-hidden rounded-3xl border border-brand-gold/15 bg-gradient-to-br from-brand-navy/40 to-surface-1 p-10 md:p-16 text-center">
+    <div class="pointer-events-none absolute inset-0"><div class="absolute -left-20 top-10 h-72 w-72 rounded-full bg-brand-amber/10 blur-[100px]"></div><div class="absolute right-0 bottom-0 h-80 w-80 rounded-full bg-brand-deep/20 blur-[100px]"></div></div>
+    <div class="relative space-y-6">
+      <p class="text-xs font-semibold uppercase tracking-[0.25em] text-brand-gold">Start Today</p>
+      <h2 class="font-display text-3xl sm:text-4xl font-bold">Ready to Dominate Your Market?</h2>
+      <p class="text-slate-400 text-sm max-w-lg mx-auto">Join the businesses already thriving with AI automation. Setup takes under 30 minutes — no technical expertise required.</p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+        <a href="https://app.raven-ai.online" class="cta-glow inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-amber to-brand-gold px-8 py-4 text-base font-bold text-surface-0 transition-all hover:-translate-y-0.5">Visit Raven Business Manager <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg></a>
+        <a href="https://app.raven-ai.online/rba_sales" class="inline-flex items-center gap-2 rounded-2xl border border-brand-gold/20 bg-brand-amber/10 px-8 py-4 text-base font-semibold text-brand-gold transition hover:-translate-y-0.5 hover:bg-brand-amber/18">White Label Option</a>
+        <a href="https://play.google.com/store/apps/details?id=com.mulawave.raven" target="_blank" class="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-4 text-base font-semibold text-slate-300 transition hover:-translate-y-0.5 hover:bg-white/[0.07]"><svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3.609 1.814 13.792 12 3.61 22.186a.996.996 0 0 1-.61-.92V2.734a1 1 0 0 1 .609-.92Zm10.89 10.893 2.302 2.302-10.937 6.333 8.635-8.635ZM18.8 10.969c.609.317.609 1.1 0 1.418l-2.4 1.243-2.488-2.488 2.488-2.488 2.4 1.315ZM5.864 2.658 16.8 9.012l-2.302 2.3L5.864 2.658Z"/></svg>Download App</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="border-t border-white/5 px-6 lg:px-10 py-12">
+  <div class="mx-auto max-w-7xl grid md:grid-cols-4 gap-10">
+    <div>
+      <div class="flex items-center gap-3 mb-4">
+        <img src="/raven.png" alt="Raven AI" class="h-9 w-9 rounded-lg object-cover ring-1 ring-white/10">
+        <span class="font-display text-base font-bold">Raven<span class="text-brand-gold">AI</span></span>
+      </div>
+      <p class="text-xs text-slate-500 leading-relaxed">Building the infrastructure for Africa's digital future through AI-powered innovation.</p>
+    </div>
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">Products</p>
+      <div class="space-y-2">
+        <a href="https://app.raven-ai.online" class="block text-sm text-slate-500 hover:text-white transition">Raven Business Manager</a>
+        <a href="https://app.raven-ai.online/rba_sales" class="block text-sm text-slate-500 hover:text-white transition">White Label (RBM)</a>
+        <a href="https://play.google.com/store/apps/details?id=com.mulawave.raven" target="_blank" class="block text-sm text-slate-500 hover:text-white transition">RBM Mobile App</a>
+        <a href="/thunderhawk.html" class="block text-sm text-slate-500 hover:text-white transition">Thunderhawk Browser</a>
+        <a href="/raven-private-network.html" class="block text-sm text-slate-500 hover:text-white transition">RAVEN Private Network</a>
+        <a href="/raven-nexus-hub.html" class="block text-sm text-slate-500 hover:text-white transition">RAVEN Nexus Hub</a>
+      </div>
+    </div>
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">Ecosystem</p>
+      <div class="space-y-2">
+        <a href="https://afrovision.online" target="_blank" class="block text-sm text-slate-500 hover:text-white transition">Afrovision Digital TV</a>
+        <a href="https://myngul.com" target="_blank" class="block text-sm text-slate-500 hover:text-white transition">Myngul Social Network</a>
+      </div>
+    </div>
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">Company</p>
+      <div class="space-y-2">
+        <a href="#about" class="block text-sm text-slate-500 hover:text-white transition">About</a>
+        <a href="#faq" class="block text-sm text-slate-500 hover:text-white transition">FAQ</a>
+        <a href="mailto:info@raven-ai.online" class="block text-sm text-slate-500 hover:text-white transition">Contact</a>
+      </div>
+    </div>
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-4">Legal</p>
+      <div class="space-y-2">
+        <a href="/privacy" class="block text-sm text-slate-500 hover:text-white transition">Privacy Policy</a>
+        <a href="/terms" class="block text-sm text-slate-500 hover:text-white transition">Terms of Use</a>
+      </div>
+    </div>
+  </div>
+  <div class="mx-auto max-w-7xl mt-10 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-600">
+    <span>&copy; 2026 Raven AI. All rights reserved.</span>
+    <span>Designed for the future of African business.</span>
+  </div>
+</footer>
+
+<!-- SCRIPTS -->
+<script>
+// Nav scroll effect
+const nav=document.getElementById('nav');
+window.addEventListener('scroll',()=>{nav.classList.toggle('nav-scrolled',window.scrollY>40)});
+
+// Mobile nav
+const d=document.getElementById('mob-drawer'),toggle=document.getElementById('mob-toggle'),close=document.getElementById('mob-close');
+toggle.addEventListener('click',()=>d.classList.add('open'));
+close.addEventListener('click',()=>d.classList.remove('open'));
+d.querySelectorAll('.mob-link').forEach(l=>l.addEventListener('click',()=>d.classList.remove('open')));
+
+// Reveal on scroll
+const obs=new IntersectionObserver(e=>e.forEach(el=>{if(el.isIntersecting){el.target.classList.add('visible');obs.unobserve(el.target)}}),{threshold:.15});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+// Testimonial slider
+let cur=0;const total=3;let autoI;
+function goSlide(i){cur=i;document.querySelectorAll('.t-slide').forEach((s,j)=>s.classList.toggle('active',j===i));document.querySelectorAll('.t-dot').forEach((d,j)=>{d.className='t-dot h-2.5 w-2.5 rounded-full transition '+(j===i?'bg-brand-gold':'bg-white/20')});resetAuto()}
+function resetAuto(){clearInterval(autoI);autoI=setInterval(()=>goSlide((cur+1)%total),5000)}
+resetAuto();
+
+// FAQ
+function toggleFaq(btn){const body=btn.nextElementSibling,ic=btn.querySelector('.faq-ic');const open=body.classList.toggle('open');ic.style.transform=open?'rotate(45deg)':''}
+</script>
+</body>
+</html>
